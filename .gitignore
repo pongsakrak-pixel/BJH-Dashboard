@@ -1,4 +1,4 @@
-﻿# clasp - มี scriptId ไม่ควรขึ้น GitHub
+# clasp - มี scriptId ไม่ควรขึ้น GitHub
 .clasp.json
 
 # npm
@@ -18,3 +18,5 @@ desktop.ini
 
 # bundle เก่า (ไม่ใช้แล้วหลัง migrate)
 BJH_Sales_Dashboard_Tools__*.json
+.claude/
+last.log
