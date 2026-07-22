@@ -55,3 +55,6 @@ Write-Host "  clasp push          = upload to GAS" -ForegroundColor DarkGray
 Write-Host "  claude              = start Claude Code" -ForegroundColor DarkGray
 Write-Host "  git add -A; git commit -m ""...""" -ForegroundColor DarkGray
 Write-Host ""
+
+. "C:\bjh-dashboard\helper.ps1"
+Start-Transcript -Path "C:\bjh-dashboard\last.log" -Force | Out-Null

@@ -1,0 +1,2 @@
+function log { Start-Transcript -Path "C:\bjh-dashboard\last.log" -Force | Out-Null }
+function err { Stop-Transcript 2>$null | Out-Null; Get-Content "C:\bjh-dashboard\last.log" -Raw | Set-Clipboard; Write-Host "copied to clipboard - paste in chat" -F Green }
