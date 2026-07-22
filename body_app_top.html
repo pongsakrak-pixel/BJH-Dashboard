@@ -41,12 +41,12 @@ window._showBootLoading=function(){
 // ═══════════════════════════════════════════════════════════
 (function(){
   var STEPS = [
-    { key:'core',   label:'ระบบหลัก (Dashboard)' },
-    { key:'master', label:'ข้อมูลหลัก (Install Base · Contracts)' },
-    { key:'tx',     label:'ข้อมูลรายการ (Bills · Quotations)' },
-    { key:'config', label:'ตั้งค่า (Sales Areas · กลุ่ม รพ. · โน้ต)' },  // [V479.47]
-    { key:'actual', label:'Actual FAD รายเซลล์' },
-    { key:'lowfc',  label:'Forecast (Send to FC)' }
+    { key:'core',   label:'Core system' },
+    { key:'master', label:'Master data · Install base and contracts' },
+    { key:'tx',     label:'Transactions · Bills and quotations' },
+    { key:'config', label:'Settings · Areas, groups and notes' },  // [V479.47]
+    { key:'actual', label:'Actual FAD by representative' },
+    { key:'lowfc',  label:'Forecast pipeline' }
   ];
   var done = {};
   window._bootSteps = STEPS;
@@ -73,7 +73,7 @@ window._showBootLoading=function(){
       var me  = document.getElementById('boot-msg');
       if(me){
         var next = STEPS.filter(function(s){ return !done[s.key]; })[0];
-        me.textContent = next ? ('กำลังโหลด: ' + next.label + '…') : 'พร้อมแล้ว ✓';
+        me.textContent = next ? ('Loading · ' + next.label + '…') : 'Ready ✓';
       }
     }catch(e){}
   }

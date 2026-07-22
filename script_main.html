@@ -10242,13 +10242,13 @@ function showSaveBtn(){
 // ═══════════════════════════════════════════════════════════════════
 (function(){
   var STEPS = [
-    { key:'config', label:'ตั้งค่าระบบ (Config)' },
-    { key:'master', label:'ข้อมูลหลัก (Install Base · Contracts)' },
-    { key:'tx',     label:'ข้อมูลรายการ (Bills · Quotations)' },
-    { key:'etl',    label:'ประมวลผลข้อมูล (ETL)' },
-    { key:'actual', label:'Actual FAD รายเซลล์' },
-    { key:'lowfc',  label:'Forecast (Send to FC)' },
-    { key:'render', label:'คำนวณ + แสดงผล' }
+    { key:'config', label:'System configuration' },
+    { key:'master', label:'Master data · Install base and contracts' },
+    { key:'tx',     label:'Transactions · Bills and quotations' },
+    { key:'etl',    label:'Processing records' },
+    { key:'actual', label:'Actual FAD by representative' },
+    { key:'lowfc',  label:'Forecast pipeline' },
+    { key:'render', label:'Building your dashboard' }
   ];
 
   function _gsRun(){ 
@@ -10271,7 +10271,7 @@ function showSaveBtn(){
       +   '<div id="fr-spin" style="width:40px;height:40px;border:3px solid rgba(120,140,180,.16);border-top-color:#3b82f6;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0"></div>'
       +   '<div>'
       +     '<div style="color:#e2e8f0;font-size:17px;font-weight:800">BJH Revenue Dashboard</div>'
-      +     '<div id="fr-msg" style="color:#8494b2;font-size:12.5px;font-weight:600;margin-top:3px">กำลังเตรียมข้อมูล…</div>'
+      +     '<div id="fr-msg" style="color:#8494b2;font-size:12.5px;font-weight:600;margin-top:3px">Preparing your workspace…</div>'
       +   '</div>'
       + '</div>'
       + '<div style="height:7px;background:rgba(120,140,180,.14);border-radius:99px;overflow:hidden;margin-bottom:7px">'
@@ -10311,7 +10311,7 @@ function showSaveBtn(){
       var m = document.getElementById('fr-msg');
       if(m){
         var next = STEPS.filter(function(s){ return !_done[s.key]; })[0];
-        m.textContent = next ? ('กำลังโหลด: ' + next.label + '…') : 'เสร็จสมบูรณ์ ✓';
+        m.textContent = next ? ('Loading · ' + next.label + '…') : 'Ready ✓';
       }
     }catch(e){}
   }
