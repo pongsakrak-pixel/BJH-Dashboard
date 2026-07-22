@@ -653,6 +653,13 @@ html,body{display:flex;flex-direction:column;height:100%;background:var(--bg);co
   .sep{display:none;}
   .nav-btn{display:none;}
   .topbar{padding:0 12px;gap:8px;height:40px;min-height:40px;}
+  /* [V560] มือถือ: ปุ่มขวาสุด (ชื่อผู้ใช้/logout) ถูกดันตกขอบ กดไม่ได้ — V560 mobile topbar */
+  .topbar{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
+  .topbar::-webkit-scrollbar{display:none;}
+  .topbar > *{flex-shrink:0;}
+  #user-badge{padding:3px 7px;font-size:10px;gap:4px;}
+  #user-badge .ubrole{display:none;}
+  #user-badge span:last-child{display:none;}
   .logo{font-size:12px;}
   #ver-stamp{padding:1px 5px;font-size:9px;}
   #app{padding-bottom:54px;}
