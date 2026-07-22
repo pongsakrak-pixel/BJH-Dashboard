@@ -8,14 +8,14 @@
 
 | | |
 |---|---|
-| **เวอร์ชันปัจจุบัน** | **V558.0** |
+| **เวอร์ชันปัจจุบัน** | **V559.0** |
 | **🆕 วิธีจัดการโค้ด** | **git + clasp** (`C:\bjh-dashboard`) — **เลิกใช้ bundle JSON แล้ว** |
 | **Bundle สุดท้าย** | `BJH_Sales_Dashboard_Tools__108_UPDATED.json` (V554.0) — **เก็บไว้อ้างอิงเท่านั้น ห้ามใช้ทำงานต่อ** |
 | **Base เริ่มต้น** | V479.75 (`__29_`) |
 | **เช็คเวอร์ชัน** | `_BUILD_VER` ใน `overrides.html` · หรือ badge `#ver-stamp` มุมซ้ายบน |
-| **ไฟล์ STATE** | `STATE_V558.md` — **ชื่อไฟล์มี version เสมอ** |
-| **Deploy ปัจจุบัน** | **@851** (`clasp create-deployment -i AKfycbzO7...`) |
-| **GitHub** | `https://github.com/pongsakrak-pixel/BJH-Dashboard` (main) |
+| **ไฟล์ STATE** | `STATE_V559.md` — **ชื่อไฟล์มี version เสมอ** |
+| **Deploy ปัจจุบัน** | **@852** (`clasp create-deployment -i AKfycbzO7...`) |
+| **GitHub** | `https://github.com/pongsakrak-pixel/BJH-Dashboard` (main) — **Public แล้ว** |
 
 > ⚠️ **เปลี่ยนวิธีทำงานตั้งแต่ 22 ก.ค. 2569** — ดูหัวข้อ **🚀 MIGRATION: git + clasp** ด้านล่าง
 > ไม่ต้องส่ง/รับ bundle JSON อีกแล้ว · ไม่ต้อง Ctrl+S ทีละไฟล์ · ย้อนกลับได้ด้วย git
@@ -344,6 +344,31 @@ if (!_mgP.getProperty('BJH_MIG_DONE')) {
 
 ---
 
+## V559.0 — แยก base64 assets ออกจาก `Code.js`
+
+**ปัญหา:** `Code.js` 458 KB แต่ **286 KB (62%) เป็น base64 ไม่ใช่โค้ด**
+
+| บรรทัด | ขนาด | คือ |
+|---|---|---|
+| 4 | 118 KB | `SARABUN_REGULAR_B64` |
+| 5 | 117 KB | `SARABUN_BOLD_B64` |
+| 6 | 52 KB | `BJC_LOGO_B64` |
+
+**Fix:** ย้ายทั้ง 3 ไป **`PdfAssets.js`** (ไฟล์ใหม่)
+→ `Code.js` **458 → 205 KB**
+
+> 🔑 **GAS แชร์ global scope ข้ามไฟล์ `.gs`** → ตัวแปรเรียกได้เหมือนเดิม **ไม่ต้องแก้โค้ดที่ใช้งานสักบรรทัด**
+
+**ใช้ที่ไหน (ตรวจแล้ว — เฉพาะ `Code.js` เท่านั้น):**
+- `maBuildPdfHtml()` (~line 3952) — โลโก้ + `@font-face` Sarabun
+- **ทดสอบ:** แท็บ **MA** → ปุ่ม **👁 ดูตัวอย่าง PDF** → ไทยไม่เป็น □□□ + โลโก้ขึ้น ✅ ผ่านแล้ว
+
+**หมายเหตุ:** ไม่ได้ทำให้เร็วขึ้น (GAS โหลดทุกไฟล์อยู่ดี) แต่ได้:
+- ผม/Claude อ่าน `Code.js` ผ่าน GitHub ได้ (เดิมโดน base64 กิน quota หมด)
+- `git diff` สะอาด ไม่มีบรรทัด 118 KB มาเกะกะ
+
+---
+
 # ✅ DECISION (สรุปแล้ว อย่ารื้อซ้ำ)
 
 ## ❌ ไม่เปิด cache กลับ
@@ -368,6 +393,10 @@ if (!_mgP.getProperty('BJH_MIG_DONE')) {
 เคยคิดจะตัดเพราะ log บอก "ตัด getLowProspects ที่ซ้ำ" แต่ตรวจแล้ว:
 - `confirm_billing.html:433` ใช้ `window._bootBundle.edits`
 - `script_main.html:10576` ใช้ `B.low`
+
+## 📁 ไฟล์ใหม่: `PdfAssets.js`
+**ห้ามแก้ด้วยมือ** — มีแค่ 3 ตัวแปร base64 (ฟอนต์ Sarabun + โลโก้ BJC)
+ถ้าจะเปลี่ยนฟอนต์/โลโก้ ต้อง encode ใหม่ทั้งก้อน
 
 ---
 
@@ -427,6 +456,22 @@ https://github.com/pongsakrak-pixel/BJH-Dashboard   (branch: main)
 
 **❌ ห้ามเดา** — ไม่ชัดต้องถาม
 **✅ ทุกงาน: `git diff` ก่อน commit เสมอ**
+
+## 💬 รูปแบบการทำงานกับ Eak (ตกลง 22 ก.ค. 2569)
+
+**Claude ส่ง "บรรทัดเดียว" มาให้วางใน PowerShell — Eak วางแล้วจบ ไม่ต้องส่งผลกลับ**
+
+คำสั่งที่ส่งต้อง **ตรวจ + ตัดสินใจ + ย้อนกลับเองในตัว**:
+- เช็ค anchor/ไฟล์ก่อนแตะ → ถ้าผิด `ABORT` ไม่เขียนไฟล์เลย
+- `node --check` → syntax ผิด `git checkout --` ย้อนอัตโนมัติ
+- ผ่านแล้วค่อย `clasp push` + `create-deployment` + `git commit` + `git push`
+
+**Eak บอกกลับเฉพาะตอน "พัง"** — ไม่พังไม่ต้องบอกอะไร
+
+**เทคนิคที่ต้องใช้:**
+- คำสั่งยาว → **บรรทัดเดียว + base64** (`ConvertFrom-Json`) เพราะ copy หลายบรรทัดขาดกลางคัน
+- ห้ามใส่อักษรไทยในคำสั่ง PowerShell (เพี้ยนเป็น `เธเธณ`) → ใช้ `$([char]0xNNNN)` หรือซ่อนใน base64
+- ผลลัพธ์ยาว → `err` (แต่ไม่เสถียร ถ้าไม่ออกให้รันเปล่าๆ แล้วดูหน้าจอ)
 
 ## 2. CASE LIST ต้องอยู่ใน STATE.md เสมอ
 ทุกครั้งที่ Eak แจ้งเคสใหม่ → **เขียนลง CASE LIST ด้านล่างทันที** (ไม่รอจบงาน)
