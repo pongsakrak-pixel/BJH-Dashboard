@@ -730,11 +730,17 @@ function _getConfig_() {
     var config = {};
 
     // ── Auto-migrate _config_kv ครั้งแรก (ถ้ายังว่าง) ──
-    try { _ckvAutoMigrate(ss); } catch(e){}
-    // ── Auto-migrate _log ครั้งแรก (access_log + activity_log → _log) ──
-    try { _logAutoMigrate(ss); } catch(e){}
-    // ── Auto-migrate _qn_overrides (unassigned_overrides + brand_overrides → _qn_overrides) ──
-    try { _qnoAutoMigrate(ss); } catch(e){}
+    var _mgP=PropertiesService.getScriptProperties();
+    if (!_mgP.getProperty('BJH_MIG_DONE')) {
+      try { _ckvAutoMigrate(ss); } catch(e){}
+      try { _logAutoMigrate(ss); } catch(e){}
+      try { _qnoAutoMigrate(ss); } catch(e){}
+      try {
+        var _lg=['fcsp','fcfad','display_config','hm_stage','status_group','tab_permissions','access_log','activity_log','unassigned_overrides','brand_overrides'];
+        var _left=0; for (var _z=0;_z<_lg.length;_z++){ if (ss.getSheetByName(_lg[_z])) _left++; }
+        if (_left===0) _mgP.setProperty('BJH_MIG_DONE','1');
+      } catch(e){}
+    }
     // ── อ่าน _config_kv (รวม fcsp + fcfad + display_config + hm_stage + status_group + tab_permissions) ──
     var ckv = _ckvReadAll(ss) || {};
     if (ckv.qf_chips) config.qf_chips = ckv.qf_chips;
