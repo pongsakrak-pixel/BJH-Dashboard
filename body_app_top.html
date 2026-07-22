@@ -57,10 +57,22 @@ window._showBootLoading=function(){
     try{
       var box = document.getElementById('boot-steps');
       if(box){
-        box.innerHTML = STEPS.map(function(s){
+        var doneCount = STEPS.filter(function(s){ return done[s.key]; }).length;
+        var nextIdx = doneCount; // ขั้นถัดไปที่กำลังโหลด
+        
+        box.innerHTML = STEPS.map(function(s, i){
           var ok = !!done[s.key];
+          // แสดงเฉพาะขั้นที่เสร็จแล้ว + ขั้นถัดไปอีก 1 อัน
+          var shouldShow = i <= nextIdx;
+          var opacity = shouldShow ? '1' : '0';
+          var maxH = shouldShow ? '24px' : '0';
+          var minH = shouldShow ? '24px' : '0';
+          var marginB = shouldShow ? '9px' : '0';
           return '<div style="display:flex;align-items:center;gap:9px;font-size:12px;'
-            + (ok ? 'color:#7ee2b8' : 'color:#5a6478') + ';font-weight:'+(ok?'700':'500')+';transition:color .2s">'
+            + (ok ? 'color:#7ee2b8' : 'color:#5a6478') + ';font-weight:'+(ok?'700':'500')+';'
+            + 'opacity:' + opacity + ';max-height:' + maxH + ';min-height:' + minH + ';overflow:hidden;'
+            + 'margin-bottom:' + marginB + ';'
+            + 'transition:opacity 0.3s ease,max-height 0.3s ease,min-height 0.3s ease,margin-bottom 0.3s ease,color 0.2s">'
             + '<span style="width:15px;flex-shrink:0;text-align:center">' + (ok ? '✓' : '○') + '</span>'
             + '<span>' + s.label + '</span></div>';
         }).join('');

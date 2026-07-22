@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Select-String -Path overrides.html -Pattern ''BUILD_VER'' | Select-Object -First 5\")",
+      "Bash(node --check body_app_top.html)",
+      "Bash(node --check script_main.html)",
+      "Bash(node --check overrides.html)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
