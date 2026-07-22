@@ -1,0 +1,20 @@
+﻿# clasp - มี scriptId ไม่ควรขึ้น GitHub
+.clasp.json
+
+# npm
+node_modules/
+package-lock.json
+
+# ไฟล์ชั่วคราว / สำรอง
+*.bak
+*.tmp
+*.log
+~$*
+
+# Windows / Mac
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# bundle เก่า (ไม่ใช้แล้วหลัง migrate)
+BJH_Sales_Dashboard_Tools__*.json
