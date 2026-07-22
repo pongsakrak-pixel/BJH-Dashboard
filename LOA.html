@@ -1,0 +1,534 @@
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- เอกสาร LOA — in-app view (theme เดียวกับแอป) -->
+<!-- PDF import → Anthropic extract → Drive → table -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="view" id="v-loa" style="display:none;flex-direction:column;flex:1;overflow:auto">
+<style>
+  #v-loa{font-family:var(--font);color:var(--tx);font-size:13px;line-height:1.5;padding:14px 16px;}
+  #v-loa *{box-sizing:border-box;}
+  #v-loa .loa-wrap{max-width:1280px;margin:0 auto;width:100%;}
+
+  #v-loa .loa-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  #v-loa .loa-head h1{margin:0;font-size:16px;font-weight:700;color:var(--tx);}
+  #v-loa .loa-head .sub{color:var(--mu);font-size:11px;}
+
+  #v-loa .loa-card{
+    background:var(--sur2);border:1px solid var(--bd);border-radius:8px;
+    overflow:hidden;margin-bottom:14px;
+  }
+  #v-loa .loa-card-hd{
+    background:var(--sur3);padding:9px 14px;border-bottom:1px solid var(--bd);
+    font-weight:700;color:var(--tx);font-size:13px;
+    display:flex;align-items:center;gap:8px;
+  }
+  #v-loa .loa-card-bd{padding:14px;}
+
+  #v-loa .loa-drop{
+    border:2px dashed var(--bd2);border-radius:8px;padding:26px 16px;text-align:center;
+    background:var(--sur);cursor:pointer;transition:border-color .15s,background .15s;
+  }
+  #v-loa .loa-drop:hover{border-color:var(--ac);background:var(--sur3);}
+  #v-loa .loa-drop.dragover{border-color:var(--ac);background:var(--sur3);}
+  #v-loa .loa-drop-ico{font-size:30px;margin-bottom:6px;}
+  #v-loa .loa-drop-txt{font-size:13px;color:var(--tx);font-weight:600;}
+  #v-loa .loa-drop-sub{font-size:11px;color:var(--mu);margin-top:4px;}
+
+
+  #v-loa .loa-log{
+    margin-top:10px;font-size:12px;color:var(--mu);
+    max-height:140px;overflow-y:auto;font-family:var(--mono);line-height:1.6;
+  }
+  #v-loa .loa-log .ok{color:#4ade80;}
+  #v-loa .loa-log .err{color:#f87171;}
+  #v-loa .loa-log .warn{color:#fbbf24;}
+
+  #v-loa .loa-import-btn{margin-left:auto;border-color:var(--ac);color:var(--ac2,var(--ac));font-weight:600;}
+  #v-loa .loa-import-btn:hover{background:var(--ac);color:#fff;}
+
+  #v-loa .loa-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+  #v-loa .loa-search{
+    flex:1;min-width:180px;border:1px solid var(--bd2);border-radius:6px;
+    padding:6px 10px;font-size:13px;font-family:inherit;background:var(--sur);color:var(--tx);outline:none;
+  }
+  #v-loa .loa-search:focus{border-color:var(--ac);}
+  #v-loa .loa-count{
+    background:var(--sur3);color:var(--mu2);padding:2px 10px;border-radius:10px;
+    font-size:11px;font-weight:600;white-space:nowrap;
+  }
+
+  #v-loa .loa-btn{
+    border:1px solid var(--bd2);background:transparent;color:var(--mu2);
+    padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;
+  }
+  #v-loa .loa-btn:hover{border-color:var(--ac);color:var(--tx);}
+
+  #v-loa .loa-tbl-wrap{overflow-x:auto;}
+  #v-loa table{width:100%;border-collapse:collapse;font-size:12px;}
+  #v-loa thead th{
+    background:var(--sur3);text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd2);
+    color:var(--mu2);font-weight:700;font-size:12px;white-space:nowrap;cursor:pointer;user-select:none;
+  }
+  #v-loa thead th:hover{color:var(--tx);}
+  #v-loa thead th .arr{font-size:10px;color:var(--ac);}
+  #v-loa tbody td{padding:7px 10px;border-bottom:1px solid var(--bd);vertical-align:middle;color:var(--tx);}
+  #v-loa tbody tr:hover{background:var(--sur3);}
+  #v-loa .badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;}
+  #v-loa .b-active{background:rgba(74,222,128,.12);color:#4ade80;}
+  #v-loa .b-expired{background:rgba(248,113,113,.12);color:#f87171;}
+  #v-loa .b-soon{background:rgba(251,191,36,.12);color:#fbbf24;}
+  #v-loa .b-na{background:var(--sur3);color:var(--mu);}
+  #v-loa .dl-btn{
+    border:1px solid var(--ac);color:var(--ac2,var(--ac));background:transparent;
+    padding:3px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;white-space:nowrap;
+  }
+  #v-loa .dl-btn:hover{background:var(--ac);color:#fff;}
+  #v-loa .dl-btn:disabled{border-color:var(--bd2);color:var(--mu);cursor:not-allowed;}
+  #v-loa .loa-empty{padding:36px;text-align:center;color:var(--mu);font-size:13px;}
+</style>
+
+<div class="loa-wrap">
+
+  <div class="loa-head">
+    <h1>📄 เอกสาร LOA</h1>
+    <span class="sub">นำเข้า / ค้นหา / ดาวน์โหลด LOA</span>
+  </div>
+
+  <!-- Table card -->
+  <div class="loa-card">
+    <div class="loa-card-hd">📋 รายการเอกสาร LOA <span class="loa-count" id="loa-rowCount">0 รายการ</span>
+      <button class="loa-btn loa-import-btn" onclick="document.getElementById('loa-fileInput').click()">📤 Import LOA</button>
+      <input type="file" id="loa-fileInput" accept="application/pdf,.pdf" multiple style="display:none" onchange="loaHandleFiles(this.files)">
+    </div>
+    <div class="loa-card-bd">
+      <div class="loa-log" id="loa-uploadLog" style="margin-top:0;margin-bottom:10px"></div>
+      <div class="loa-toolbar">
+        <input class="loa-search" id="loa-searchBox" placeholder="🔍 ค้นหา บริษัท / Brand / สถานะ ..." oninput="loaRenderTable()">
+        <button class="loa-btn" onclick="loaLoadList()">🔄 รีเฟรช</button>
+      </div>
+      <div class="loa-tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="loaSortBy('brand')">Brand <span class="arr" id="loa-arr-brand"></span></th>
+              <th onclick="loaSortBy('company_to')">บริษัทปลายทาง <span class="arr" id="loa-arr-company_to"></span></th>
+              <th onclick="loaSortBy('company_from')">บริษัทต้นทาง <span class="arr" id="loa-arr-company_from"></span></th>
+              <th onclick="loaSortBy('language')">ภาษา <span class="arr" id="loa-arr-language"></span></th>
+              <th onclick="loaSortBy('expiry_date')">วันหมดอายุ <span class="arr" id="loa-arr-expiry_date"></span></th>
+              <th onclick="loaSortBy('status')">สถานะ <span class="arr" id="loa-arr-status"></span></th>
+              <th style="text-align:center;cursor:default">Download</th>
+              <th style="text-align:center;cursor:default">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="loa-tbody"></tbody>
+        </table>
+        <div class="loa-empty" id="loa-emptyMsg">ยังไม่มีข้อมูล — กรุณานำเข้าเอกสาร PDF</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   เอกสาร LOA — in-app view · PDF import → Anthropic → Drive → table
+   ฟังก์ชัน prefix loaXxx กันชนกับ global อื่นในแอป
+   ============================================================ */
+
+var _loaRows = [];
+var _loaSortKey = 'created_at';
+var _loaSortAsc = false;
+var _loaBooted = false;
+var _loaEditId = null;
+var _loaLoading = false;
+var _loaLoadErr = false;
+var _loaLoadSec = 0;
+var _loaLoadTimer = null;
+
+/* ---------- Utilities ---------- */
+function loaEscHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+/* แสดงวันหมดอายุเป็น 'Jun 04 2026' (เก็บใน sheet เหมือนเดิม)
+   รองรับ YYYY-MM-DD และ date string เต็ม โดยไม่ให้ timezone ทำให้วันเพี้ยน */
+function loaFmtDate(s){
+  var v = String(s == null ? '' : s).trim();
+  if(!v || v === '-') return '-';
+  var mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  // 1) YYYY-MM-DD (อ่านตรง ไม่ผ่าน Date)
+  var m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m){
+    var mi = parseInt(m[2], 10) - 1;
+    if(mi >= 0 && mi <= 11) return mon[mi] + ' ' + m[3] + ' ' + m[1];
+  }
+  // 2) date string เต็มที่มี 'Mon DD YYYY' อยู่ข้างใน (เช่นที่ Sheets คืนมา) — อ่านตรง กัน TZ เพี้ยน
+  var m2 = v.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})\b/);
+  if(m2) return m2[1] + ' ' + pad(parseInt(m2[2], 10)) + ' ' + m2[3];
+  // 3) fallback: parse แบบ UTC (ไม่ให้ local TZ ถอยวัน)
+  var d = new Date(v);
+  if(!isNaN(d.getTime())) return mon[d.getUTCMonth()] + ' ' + pad(d.getUTCDate()) + ' ' + d.getUTCFullYear();
+  return v;
+}
+/* normalize ชื่อบริษัทปลายทางให้สั้น คืนเป็น array (รองรับหลายบริษัทในเอกสารเดียว)
+   ค่าใน sheet ไม่แตะ — มีแค่ BJC Healthcare / BJH Medical */
+function loaNormCompanyTo(s){
+  var v = String(s == null ? '' : s).trim();
+  if(!v) return ['-'];
+  var t = v.toLowerCase();
+  var out = [];
+  if(t.indexOf('bjc') >= 0 && t.indexOf('health') >= 0) out.push('BJC Healthcare');
+  if(t.indexOf('bjh') >= 0 && t.indexOf('medical') >= 0) out.push('BJH Medical');
+  if(out.length) return out;
+  // ไม่เข้า rule → แยกตามตัวคั่นแล้วแสดงดิบ
+  var parts = v.split(/[;\/]| and /i).map(function(x){ return x.trim(); }).filter(Boolean);
+  return parts.length ? parts : [v];
+}
+function loaLogMsg(html, cls){
+  var el = document.getElementById('loa-uploadLog');
+  if(!el) return;
+  var line = document.createElement('div');
+  if(cls) line.className = cls;
+  line.innerHTML = html;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ---------- Read file → base64 (strip data: prefix) ---------- */
+function loaFileToBase64(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var s = String(reader.result || '');
+      var idx = s.indexOf(',');
+      resolve(idx >= 0 ? s.substring(idx+1) : s);
+    };
+    reader.onerror = function(){ reject(new Error('อ่านไฟล์ไม่ได้')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- Handle uploaded files (sequential) ---------- */
+function loaHandleFiles(files){
+  if(!files || !files.length) return;
+  var arr = Array.prototype.slice.call(files).filter(function(f){
+    return /\.pdf$/i.test(f.name) || f.type === 'application/pdf';
+  });
+  if(!arr.length){ loaLogMsg('⚠ กรุณาเลือกไฟล์ PDF', 'warn'); return; }
+
+  var btn = document.querySelector('#v-loa .loa-import-btn');
+  var btnTxt = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled = true; btn.innerHTML = '⏳ กำลังประมวลผล…'; btn.style.opacity = '0.6'; btn.style.cursor = 'not-allowed'; }
+
+  var i = 0;
+  function finish(){
+    if(btn){ btn.disabled = false; btn.innerHTML = btnTxt; btn.style.opacity = ''; btn.style.cursor = ''; }
+    var inp = document.getElementById('loa-fileInput');
+    if(inp) inp.value = '';
+    loaLoadList();
+  }
+  function next(){
+    if(i >= arr.length){ finish(); return; }
+    var f = arr[i++];
+    loaProcessOne(f, next);
+  }
+  next();
+}
+
+function loaProcessOne(file, done){
+  loaLogMsg('⏳ กำลังอ่านไฟล์ <b>' + loaEscHtml(file.name) + '</b> ...');
+  loaFileToBase64(file).then(function(b64){
+    loaLogMsg('🤖 ส่งให้ AI อ่านข้อมูล <b>' + loaEscHtml(file.name) + '</b> (อาจใช้เวลาสักครู่)...');
+    var payload = { action:'loaExtract', filename: file.name, pdfBase64: b64 };
+    if(typeof google !== 'undefined' && google.script && google.script.run){
+      google.script.run
+        .withSuccessHandler(function(res){
+          var r = typeof res === 'string' ? JSON.parse(res) : res;
+          if(r && r.ok && r.duplicate){
+            loaLogMsg('⚠ ข้าม: ไฟล์ <b>' + loaEscHtml(file.name) + '</b> ถูกนำเข้าแล้ว', 'warn');
+          } else if(r && r.ok){
+            loaLogMsg('✅ บันทึกสำเร็จ: <b>' + loaEscHtml(file.name) + '</b>', 'ok');
+          } else {
+            loaLogMsg('❌ ล้มเหลว: ' + loaEscHtml((r && r.error) || 'unknown') + ' (' + loaEscHtml(file.name) + ')', 'err');
+          }
+          done();
+        })
+        .withFailureHandler(function(e){
+          loaLogMsg('❌ Server error: ' + loaEscHtml((e && e.message) || String(e)) + ' (' + loaEscHtml(file.name) + ')', 'err');
+          done();
+        })
+        .loaExtract(JSON.stringify(payload));
+    } else {
+      loaLogMsg('❌ ไม่สามารถเรียก server ได้ (ต้องรันใน Apps Script)', 'err');
+      done();
+    }
+  }).catch(function(e){
+    loaLogMsg('❌ ' + loaEscHtml(e.message || String(e)) + ' (' + loaEscHtml(file.name) + ')', 'err');
+    done();
+  });
+}
+
+/* ---------- Load list ---------- */
+function loaStopTimer(){
+  if(_loaLoadTimer){ clearInterval(_loaLoadTimer); _loaLoadTimer = null; }
+}
+function loaLoadList(){
+  if(!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  _loaLoading = true;
+  _loaLoadErr = false;
+  _loaLoadSec = 0;
+  loaStopTimer();
+  loaRenderTable();
+  _loaLoadTimer = setInterval(function(){
+    _loaLoadSec++;
+    var rc = document.getElementById('loa-rowCount');
+    var em = document.getElementById('loa-emptyMsg');
+    if(rc) rc.textContent = '⏳ กำลังโหลด… ' + _loaLoadSec + ' วิ';
+    if(em && _loaLoading) em.textContent = '⏳ กำลังโหลด… ' + _loaLoadSec + ' วิ';
+  }, 1000);
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      _loaLoading = false; loaStopTimer();
+      var r = typeof res === 'string' ? JSON.parse(res) : res;
+      if(r && r.ok){ _loaRows = r.rows || []; }
+      else { _loaRows = []; _loaLoadErr = true; }
+      loaRenderTable();
+    })
+    .withFailureHandler(function(){
+      _loaLoading = false; loaStopTimer();
+      _loaRows = []; _loaLoadErr = true;
+      loaRenderTable();
+    })
+    .loaList();
+}
+
+/* ---------- Status badge ---------- */
+/* [v176] parse expiry -> Date (รองรับ format เดียวกับ loaFmtDate) */
+function loaParseDate(v){
+  var x = String(v == null ? '' : v).trim();
+  if(!x || x === '-') return null;
+  var m = x.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(Date.UTC(+m[1], +m[2]-1, +m[3]));
+  var mon = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  var m2 = x.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2})\s+(\d{4})\b/);
+  if(m2) return new Date(Date.UTC(+m2[3], mon[m2[1]], +m2[2]));
+  var dd = new Date(x);
+  if(!isNaN(dd.getTime())) return new Date(Date.UTC(dd.getUTCFullYear(), dd.getUTCMonth(), dd.getUTCDate()));
+  return null;
+}
+/* [v176] badge คำนวณจากวันหมดอายุจริง (ไม่เชื่อ text status ใน sheet) */
+function loaStatusBadge(s, expiry){
+  var exp = loaParseDate(expiry);
+  // ว่าง = Active ไม่มีกำหนดหมดอายุ
+  if(!exp) return '<span class="badge b-active">Active · ไม่มีกำหนดหมดอายุ</span>';
+  var now = new Date();
+  var today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  var days = Math.round((exp.getTime() - today.getTime()) / 86400000);
+  if(days < 0)  return '<span class="badge b-expired">Expired</span>';
+  if(days <= 30) return '<span class="badge b-soon">ใกล้หมดอายุ (' + days + ' วัน)</span>';
+  return '<span class="badge b-active">Active</span>';
+}
+
+/* ---------- Sort ---------- */
+function loaSortBy(key){
+  if(_loaSortKey === key) _loaSortAsc = !_loaSortAsc;
+  else { _loaSortKey = key; _loaSortAsc = true; }
+  loaRenderTable();
+}
+
+/* ---------- Render table ---------- */
+function loaRenderTable(){
+  var sb = document.getElementById('loa-searchBox');
+  var q = ((sb ? sb.value : '') || '').toLowerCase().trim();
+  var rows = _loaRows.filter(function(r){
+    if(!q) return true;
+    var hay = ((r.company_from||'')+' '+(r.company_to||'')+' '+(r.brand||'')+' '+
+               (r.language||'')+' '+(r.status||'')+' '+(r.expiry_date||'')+' '+
+               (r.pdf_filename||'')).toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+
+  rows.sort(function(a, b){
+    var av = String(a[_loaSortKey] || ''), bv = String(b[_loaSortKey] || '');
+    var c = av.localeCompare(bv, 'th');
+    return _loaSortAsc ? c : -c;
+  });
+
+  // arrows
+  ['company_from','company_to','expiry_date','brand','language','status'].forEach(function(k){
+    var el = document.getElementById('loa-arr-' + k);
+    if(el) el.textContent = (_loaSortKey === k) ? (_loaSortAsc ? '▲' : '▼') : '';
+  });
+
+  var tb = document.getElementById('loa-tbody');
+  var em = document.getElementById('loa-emptyMsg');
+  var rc = document.getElementById('loa-rowCount');
+
+  if(_loaLoading){
+    if(rc) rc.textContent = '⏳ กำลังโหลด… ' + _loaLoadSec + ' วิ';
+    if(tb) tb.innerHTML = '';
+    if(em){ em.style.display = 'block'; em.textContent = '⏳ กำลังโหลด… ' + _loaLoadSec + ' วิ'; }
+    return;
+  }
+
+  if(rc) rc.textContent = rows.length + ' รายการ';
+
+  if(!rows.length){
+    if(tb) tb.innerHTML = '';
+    if(em){
+      em.style.display = 'block';
+      if(_loaLoadErr) em.textContent = '❌ โหลดไม่สำเร็จ — กดรีเฟรชอีกครั้ง';
+      else em.textContent = _loaRows.length ? 'ไม่พบรายการที่ค้นหา' : 'ยังไม่มีข้อมูล — กรุณานำเข้าเอกสาร PDF';
+    }
+    return;
+  }
+  if(em) em.style.display = 'none';
+
+  var h = '';
+  rows.forEach(function(r){
+    var fid = loaEscHtml(r.pdf_file_id || '');
+    var fname = loaEscHtml(r.pdf_filename || 'LOA.pdf');
+    var rid = loaEscHtml(r.id || '');
+    var editing = (_loaEditId && String(r.id) === String(_loaEditId));
+
+    if(editing){
+      h += '<tr style="background:rgba(55,138,221,0.08)">';
+      h += '<td><input id="loa-ed-brand" type="text" value="' + loaEscHtml(r.brand || '') + '" style="width:100%"></td>';
+      h += '<td><input id="loa-ed-company_to" type="text" value="' + loaEscHtml(r.company_to || '') + '" style="width:100%"></td>';
+      h += '<td><input id="loa-ed-company_from" type="text" value="' + loaEscHtml(r.company_from || '') + '" style="width:100%"></td>';
+      h += '<td><input id="loa-ed-language" type="text" value="' + loaEscHtml(r.language || '') + '" style="width:100%"></td>';
+      h += '<td><input id="loa-ed-expiry_date" type="text" value="' + loaEscHtml(r.expiry_date || '') + '" placeholder="YYYY-MM-DD" style="width:100%"></td>';
+      h += '<td style="color:#888;font-size:11px">auto</td>';
+      h += '<td style="text-align:center">';
+      if(fid){
+        h += '<button class="dl-btn" onclick="loaDownloadPdf(\'' + fid + '\',\'' + fname.replace(/'/g, "\\'") + '\',this)">⬇ ดาวน์โหลด</button>';
+      } else {
+        h += '<button class="dl-btn" disabled>—</button>';
+      }
+      h += '</td>';
+      h += '<td style="text-align:center;white-space:nowrap">';
+      h += '<button class="loa-btn" onclick="loaSaveEdit(\'' + rid + '\',this)">💾 บันทึก</button> ';
+      h += '<button class="loa-btn" onclick="loaCancelEdit()">✖ ยกเลิก</button>';
+      h += '</td>';
+      h += '</tr>';
+    } else {
+      h += '<tr>';
+      h += '<td>' + loaEscHtml(r.brand || '-') + '</td>';
+      h += '<td>' + loaNormCompanyTo(r.company_to).map(loaEscHtml).join('<br>') + '</td>';
+      h += '<td>' + loaEscHtml(r.company_from || '-') + '</td>';
+      h += '<td>' + loaEscHtml(r.language || '-') + '</td>';
+      h += '<td style="white-space:nowrap">' + loaEscHtml(loaFmtDate(r.expiry_date)) + '</td>';
+      h += '<td>' + loaStatusBadge(r.status, r.expiry_date) + '</td>';
+      h += '<td style="text-align:center">';
+      if(fid){
+        h += '<button class="dl-btn" onclick="loaDownloadPdf(\'' + fid + '\',\'' + fname.replace(/'/g, "\\'") + '\',this)">⬇ ดาวน์โหลด</button>';
+      } else {
+        h += '<button class="dl-btn" disabled>—</button>';
+      }
+      h += '</td>';
+      h += '<td style="text-align:center">';
+      h += '<button class="loa-btn" onclick="loaStartEdit(\'' + rid + '\')">✏️ แก้ไข</button>';
+      h += '</td>';
+      h += '</tr>';
+    }
+  });
+  if(tb) tb.innerHTML = h;
+}
+
+/* ---------- Inline edit ---------- */
+function loaStartEdit(id){
+  _loaEditId = id;
+  loaRenderTable();
+}
+function loaCancelEdit(){
+  _loaEditId = null;
+  loaRenderTable();
+}
+function loaSaveEdit(id, btn){
+  function v(f){ var el = document.getElementById('loa-ed-' + f); return el ? el.value.trim() : ''; }
+  var payload = {
+    id: id,
+    brand:        v('brand'),
+    company_to:   v('company_to'),
+    company_from: v('company_from'),
+    language:     v('language'),
+    expiry_date:  v('expiry_date')
+  };
+  var orig = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled = true; btn.innerHTML = '⏳ ...'; }
+  if(typeof google !== 'undefined' && google.script && google.script.run){
+    google.script.run
+      .withSuccessHandler(function(res){
+        var r = typeof res === 'string' ? JSON.parse(res) : res;
+        if(r && r.ok){
+          // อัปเดต local row แล้วออกจากโหมด edit
+          for(var i = 0; i < _loaRows.length; i++){
+            if(String(_loaRows[i].id) === String(id)){
+              _loaRows[i].brand        = payload.brand;
+              _loaRows[i].company_to   = payload.company_to;
+              _loaRows[i].company_from = payload.company_from;
+              _loaRows[i].language     = payload.language;
+              _loaRows[i].expiry_date  = payload.expiry_date;
+              break;
+            }
+          }
+          _loaEditId = null;
+          loaRenderTable();
+        } else {
+          alert('❌ บันทึกไม่ได้: ' + ((r && r.error) || 'unknown'));
+          if(btn){ btn.disabled = false; btn.innerHTML = orig; }
+        }
+      })
+      .withFailureHandler(function(e){
+        alert('❌ Server error: ' + ((e && e.message) || e));
+        if(btn){ btn.disabled = false; btn.innerHTML = orig; }
+      })
+      .loaUpdate(JSON.stringify(payload));
+  }
+}
+
+/* ---------- Download original PDF (base64 from Drive → blob) ---------- */
+function loaDownloadPdf(fileId, filename, btn){
+  if(!fileId) return;
+  var orig = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ ...'; }
+  google.script.run
+    .withSuccessHandler(function(res){
+      var r = typeof res === 'string' ? JSON.parse(res) : res;
+      if(r && r.ok && r.base64){
+        try {
+          var bin = atob(r.base64);
+          var len = bin.length;
+          var bytes = new Uint8Array(len);
+          for(var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+          var blob = new Blob([bytes], { type: 'application/pdf' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = r.filename || filename || 'LOA.pdf';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+        } catch(e){ alert('❌ แปลงไฟล์ไม่ได้: ' + e.message); }
+      } else {
+        alert('❌ ดาวน์โหลดไม่ได้: ' + ((r && r.error) || 'unknown'));
+      }
+      if(btn){ btn.disabled = false; btn.textContent = orig; }
+    })
+    .withFailureHandler(function(e){
+      alert('❌ Server error: ' + ((e && e.message) || e));
+      if(btn){ btn.disabled = false; btn.textContent = orig; }
+    })
+    .loaDownload(fileId);
+}
+
+/* ---------- Init (เรียกจาก sv('loa')) ---------- */
+function loaInit(){
+  _loaBooted = true;
+  setTimeout(loaLoadList, 0);
+}
+</script>
+</div>

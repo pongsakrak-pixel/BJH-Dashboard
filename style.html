@@ -1,0 +1,1385 @@
+<style>
+:root{
+  --bg:#0b0d13;--sur:#10141d;--sur2:#161b26;--sur3:#1c2232;
+  /* [V479.66] --bg2 ไม่เคยถูกนิยาม -> modal ที่ใช้ var(--bg2,#0f1729) ได้ fallback dark ตายตัว
+     ทั้งใน light mode ด้วย -> พื้น modal ทึบ + label var(--mu) เทาเข้ม = อ่านไม่ออก */
+  --bg2:#0f1729;
+  --bd:#1e2538;--bd2:#28304c;
+  --tx:#dde5f2;--mu:#5c6b88;--mu2:#8494b2;
+  --ac:#3b7bff;--ac2:#5b98ff;
+  --grn:#1db954;--red:#e8344a;--ylw:#f0a500;--ylw2:#ffd166;
+  --pur:#8b5cf6;--cyn:#0ea5e9;--org:#f97316;
+  --font:'Noto Sans Thai','Sarabun',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+/* ── LIGHT THEME — GitHub-style (เทาฟ้าอ่อน · สีสื่อความหมาย · ขาวนวลไม่แสบตา) ── */
+html[data-theme="light"]{
+  /* [V479.19] contrast สูงแบบ SF — พื้นเข้มลง (ลดจ้าบนจอ projector) + ตัวอักษรเข้มขึ้น (เกือบดำ) */
+  --bg:#dde2e8;--sur:#eef1f5;--sur2:#e3e8ee;--sur3:#d4dae1;
+  --bg2:#eef1f5;   /* [V479.66] พื้น modal ใน light (เดิมไม่มี -> ทึบดำ) */
+  --bd:#9099a3;--bd2:#6b747e;
+  --tx:#1a1f26;--mu:#333b44;--mu2:#242a31;
+  --ac:#043d84;--ac2:#0757b8;
+  --grn:#0b4d20;--red:#8a0b1f;--ylw:#5a3f00;--ylw2:#7d5300;
+  --pur:#542e9c;--cyn:#043d84;--org:#7a2d00;
+}
+
+/* ═══ [V479.66] LIGHT — modal/popup อ่านไม่ออก (พื้น dark ค้าง + label เทาเข้ม) ═══
+   ต้นเหตุ: inline style ใช้ var(--bg2,#0f1729) / var(--sur2,#0f172a) ฯลฯ
+   ซึ่ง _recolorInlineBg (JS) จับไม่ได้ เพราะ regex match แค่ #hex/rgb() ไม่ match var() */
+html[data-theme="light"] [style*="var(--bg2"],
+html[data-theme="light"] [style*="var(--sur2"],
+html[data-theme="light"] [style*="var(--sur3"]{
+  background:var(--sur) !important;
+}
+/* พื้น modal ที่ hardcode dark hex ตรง ๆ */
+html[data-theme="light"] [style*="background:#0f1729"],
+html[data-theme="light"] [style*="background:#111722"],
+html[data-theme="light"] [style*="background:#0f172a"],
+html[data-theme="light"] [style*="background:#161b26"],
+html[data-theme="light"] [style*="background:#1a2332"],
+html[data-theme="light"] [style*="background:#1e293b"],
+html[data-theme="light"] [style*="background:#10141d"]{
+  background:var(--sur) !important;
+}
+/* label ใน modal ใช้ color:var(--mu) — ต้องเข้มพอบนพื้นสว่าง */
+html[data-theme="light"] [style*="color:var(--mu)"]{ color:#333b44 !important; }
+html[data-theme="light"] [style*="color:var(--mu2)"]{ color:#242a31 !important; }
+/* ค่าฝั่งขวาใน modal (ไม่ระบุสี = inherit --tx) ให้เข้มชัด */
+html[data-theme="light"] #sp-spdetail-body,
+html[data-theme="light"] #sp-spdetail-title{ color:var(--tx) !important; }
+/* ปุ่มปิด × */
+html[data-theme="light"] #sp-spdetail-overlay button[style*="transparent"]{ color:#333b44 !important; }
+/* overlay backdrop จางลง (light) */
+html[data-theme="light"] #sp-spdetail-overlay{ background:rgba(0,0,0,.28) !important; }
+
+/* ═══ [V479.67] LIGHT — ตัวเลข Story card (.flow-val) จางบนพื้นสว่าง ═══
+   Dashboard.html นิยาม .flow-card.X .flow-val เป็นสีสว่าง (สำหรับ dark) 14 คลาส
+   -> ใน light ไม่มี override เลย -> เขียว/เหลือง/ส้ม/ชมพู อ่านไม่ชัด
+   Fix: สีเข้มโทน GitHub (contrast >= 6:1 บนพื้น --sur2) + หนาขึ้น 800 */
+html[data-theme="light"] .flow-val{
+  font-weight:800 !important;
+  letter-spacing:.2px;
+}
+/* [V479.69] เข้มกว่าเดิมอีกขั้น (feedback: ยังไม่ชัดพอบนโปรเจกเตอร์) — ทุกสี >= 9:1 */
+/* เขียว (Actual / Backlog) */
+html[data-theme="light"] .flow-card.actual   .flow-val,
+html[data-theme="light"] .flow-card.backlog  .flow-val{ color:#04431b !important; }
+html[data-theme="light"] .flow-card.backlogc .flow-val{ color:#033214 !important; }
+/* เหลือง/ทอง (SC Ordered / Carry) — เหลืองบนขาวแย่สุด ต้องเข้มเป็นน้ำตาลเข้ม */
+html[data-theme="light"] .flow-card.ordered  .flow-val,
+html[data-theme="light"] .flow-card.carry    .flow-val{ color:#452b00 !important; }
+/* ส้ม (SP Forecast / SP Ordered) */
+html[data-theme="light"] .flow-card.fcsp     .flow-val,
+html[data-theme="light"] .flow-card.sford    .flow-val{ color:#5c2100 !important; }
+/* ม่วง (FAD / Confirmed+Order) */
+html[data-theme="light"] .flow-card.fcfad    .flow-val,
+html[data-theme="light"] .flow-card.confirmed-order .flow-val,
+html[data-theme="light"] .flow-sumcard.confirmed-order .flow-val{ color:#35146b !important; }
+/* ชมพู (SC Prospect) */
+html[data-theme="light"] .flow-card.prospect .flow-val{ color:#6d0f36 !important; }
+/* ฟ้า (Forecast YE) */
+html[data-theme="light"] .flow-card.forecast-ye .flow-val,
+html[data-theme="light"] .flow-sumcard.forecast-ye .flow-val{ color:#082c68 !important; }
+/* แดง (Challenge) */
+html[data-theme="light"] .flow-card.challenge .flow-val,
+html[data-theme="light"] .flow-sumcard.challenge .flow-val{ color:#630816 !important; }
+/* หัวการ์ดกลุ่ม + ยอดรวมมุมขวา (CONFIRMED ฿118.98M / ORDER / PIPELINE) */
+html[data-theme="light"] .flow-group-title,
+html[data-theme="light"] .flow-group-title *,
+html[data-theme="light"] .flow-group-sum,
+html[data-theme="light"] .flow-group-sum *{ color:#1a1f26 !important; font-weight:800 !important; }
+/* BUDGET row + Year Progress */
+html[data-theme="light"] .budget-content,
+html[data-theme="light"] .budget-content *{ font-weight:800 !important; }
+/* label / % / sub รอบตัวเลข — เข้มขึ้นให้อ่านออก */
+html[data-theme="light"] .flow-name{ color:#1a1f26 !important; font-weight:800 !important; }
+html[data-theme="light"] .flow-pct{ color:#333b44 !important; font-weight:700 !important; }
+html[data-theme="light"] .flow-sub,
+html[data-theme="light"] .flow-subname,
+html[data-theme="light"] .flow-formula{ color:#3d444d !important; }
+html[data-theme="light"] .flow-plusrow,
+html[data-theme="light"] .flow-arrow,
+html[data-theme="light"] .flow-eq{ color:#333b44 !important; }
+/* หัวการ์ดกลุ่ม (CONFIRMED / ORDER / PIPELINE) + ยอดรวมมุมขวา */
+html[data-theme="light"] .story-progress{ color:var(--tx) !important; }
+
+/* ═══ [V479.69] LIGHT — โลโก้ BJH Revenue (.logo{color:#fff} -> ขาวบนขาว) ═══ */
+html[data-theme="light"] .logo{ color:#04431b !important; font-weight:800 !important; }   /* BJH = เขียวเข้ม */
+html[data-theme="light"] .logo em{ color:#0b3d91 !important; font-weight:800 !important; } /* Revenue = น้ำเงินเข้ม */
+html[data-theme="light"] .logo span{ color:#333b44 !important; }                           /* 2026 · Service Commercial */
+html[data-theme="light"] .login-logo{ color:#04431b !important; }
+html[data-theme="light"] .login-logo em{ color:#0b3d91 !important; }
+
+/* ═══ [V479.66] SAFETY NET — ตัวอักษรสีอ่อนที่ยังหลุดใน light (ทุกหน้า/ทุก modal) ═══ */
+html[data-theme="light"] [style*="color:#e6edf3"],
+html[data-theme="light"] [style*="color:#f1f5f9"],
+html[data-theme="light"] [style*="color:#f8fafc"],
+html[data-theme="light"] [style*="color:#d1d5db"],
+html[data-theme="light"] [style*="color:#9ca3af"],
+html[data-theme="light"] [style*="color:#8b949e"],
+html[data-theme="light"] [style*="color:#64748b"],
+html[data-theme="light"] [style*="color:#6b7280"]{
+  color:#343b43 !important;
+}
+/* ── LIGHT: เน้นหัวข้อให้ชัด (section title + table header + filter label) ── */
+html[data-theme="light"] thead th,
+html[data-theme="light"] .section-title,
+html[data-theme="light"] .flbl-qf{
+  color:#1a1f26 !important;font-weight:700;letter-spacing:.3px;
+}
+html[data-theme="light"] thead th{font-size:12px;}
+html[data-theme="light"] .section-title{font-size:13px;}
+html[data-theme="light"] .flbl{color:#242a31 !important;font-weight:700;}
+
+/* [V479.19] projector-friendly: ขยายตัวอักษรจุดเล็กใน light mode ให้อ่านชัดบนจอ (dark mode ไม่กระทบ) */
+html[data-theme="light"] .flbl,
+html[data-theme="light"] .flbl-qf{ font-size:12px !important; }
+html[data-theme="light"] thead th{ font-size:12.5px !important; }
+html[data-theme="light"] td{ font-size:12.5px !important; }
+html[data-theme="light"] .section-title{ font-size:13.5px !important; }
+/* ตัวเลขรอง/หน่วยเล็กๆ ที่มักจาง */
+html[data-theme="light"] [style*="font-size:9px"]{ font-size:10.5px !important; }
+html[data-theme="light"] [style*="font-size:10px"]{ font-size:11px !important; }
+html[data-theme="light"] [style*="font-size:11px"]{ font-size:11.5px !important; }
+
+/* [V479.21b] บังคับสีตัวอักษรจาง → เข้ม ทุกจุดใน light mode (present บนจอ อ่านชัด) */
+/* เทาจาง → เทาเข้ม/ดำ */
+html[data-theme="light"] [style*="color:#64748b"],
+html[data-theme="light"] [style*="color:#8494b2"],
+html[data-theme="light"] [style*="color:#6b7a9c"],
+html[data-theme="light"] [style*="color:#9ca3af"],
+html[data-theme="light"] [style*="color:#748ba8"],
+html[data-theme="light"] [style*="color:#6b7280"],
+html[data-theme="light"] [style*="color:#6e7681"],
+html[data-theme="light"] [style*="color:#8b98a5"]{ color:#2a323b !important; }
+/* เทาอ่อนมาก/เกือบขาว (มองไม่เห็นบนพื้นขาว) → เข้ม */
+html[data-theme="light"] [style*="color:#94a3b8"],
+html[data-theme="light"] [style*="color:#cbd5e1"],
+html[data-theme="light"] [style*="color:#d8dee4"],
+html[data-theme="light"] [style*="color:#e2e8f0"],
+html[data-theme="light"] [style*="color:#e8ebee"],
+html[data-theme="light"] [style*="color:#d1d5db"]{ color:#1f262d !important; }
+/* สีสว่าง (เขียว/เหลือง/ส้ม/ฟ้า/ม่วง) → เข้มลงให้ตัดพื้นขาว — เว้น element ที่มี background (ปุ่ม/badge) กันตัวอักษรกลืนพื้น */
+html[data-theme="light"] [style*="color:#4ade80"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#34d399"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#22c55e"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="color:#fbbf24"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#facc15"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#f59e0b"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="color:#fb923c"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fdba74"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#a8480a !important; }
+html[data-theme="light"] [style*="color:#38bdf8"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#7dd3fc"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#60a5fa"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#67e8f9"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#0757b8 !important; }
+html[data-theme="light"] [style*="color:#a78bfa"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#b8b0ff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#c4b5fd"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#7c6fe0"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="color:#f87171"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#ef4444"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e8344a"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#b01226 !important; }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* [V479.23] PRESENTATION-GRADE Light Mode — ครอบทุกสีที่ตกหล่น + ขยาย + เส้นคม */
+/* จอ projector: ตัวอักษรเข้มดำ ตัวเลขใหญ่ เส้นตารางชัด ไม่มีสีจาง */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* ── กลุ่มสีจางที่ยังตกหล่น → เข้มทั้งหมด ── */
+/* เทา/น้ำเงินเทา อ่อน → เกือบดำ */
+html[data-theme="light"] [style*="color:#475569"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#6e7681"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e6edf3"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#444"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#1a1f26 !important; }
+
+/* เขียวอ่อน (pastel) → เขียวเข้ม */
+html[data-theme="light"] [style*="color:#7ee2b8"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#6ee7b7"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#bbf7d0"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#7ee787"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#0b7a2e !important; }
+
+/* เหลืองอ่อน → น้ำตาลเข้ม */
+html[data-theme="light"] [style*="color:#fcd34d"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fde68a"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fef08a"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#8a5a00 !important; }
+
+/* ชมพู/แดงอ่อน (pastel) → แดงเข้ม */
+html[data-theme="light"] [style*="color:#f9a8d4"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fecaca"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fca5a5"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#f472b6"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fda4af"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#b01226 !important; }
+
+/* ฟ้าอ่อน → ฟ้าเข้ม */
+html[data-theme="light"] [style*="color:#58a6ff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#a5b4fc"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#93c5fd"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#0757b8 !important; }
+
+/* ม่วงอ่อน → ม่วงเข้ม */
+html[data-theme="light"] [style*="color:#c4b5fd"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#ddd6fe"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#5b32b0 !important; }
+
+/* ── ขยายตัวเลขใหญ่ (การ์ด KPI) ให้เห็นจากไกล ── */
+/* ตัวเลขใหญ่ในการ์ด — font-size 20px+ ขยายเป็นหนา+ใหญ่ขึ้น */
+html[data-theme="light"] [style*="font-size:24px"],
+html[data-theme="light"] [style*="font-size:26px"],
+html[data-theme="light"] [style*="font-size:28px"],
+html[data-theme="light"] [style*="font-size:30px"],
+html[data-theme="light"] [style*="font-size:32px"]{ font-weight:800 !important; letter-spacing:-0.5px; }
+
+/* ── เส้นตารางคมชัด (projector ไม่จาง) ── */
+html[data-theme="light"] table,
+html[data-theme="light"] th,
+html[data-theme="light"] td{ border-color:#8a95a1 !important; }
+html[data-theme="light"] thead th:not([style*="background:#0"]):not([style*="background:#1"]){
+  background:#d4dae1 !important; color:#0f141a !important;
+  font-weight:800 !important; border-bottom:2px solid #6b747e !important;
+}
+html[data-theme="light"] tbody tr{ border-bottom:1px solid #b4bcc4 !important; }
+html[data-theme="light"] td:not([style*="background:#0"]):not([style*="background:#1"]){ color:#12181f !important; }
+
+/* ── ปุ่ม/badge: ถ้าพื้นใส/อ่อน ทำให้เข้มชัด (ไม่ใสๆ) ── */
+/* ปุ่ม border ใส → เพิ่มความเข้มของ border + text */
+html[data-theme="light"] button[style*="background:transparent"],
+html[data-theme="light"] button[style*="background:none"]{
+  border-width:1.5px !important;
+}
+
+/* ── หัวข้อ section เข้ม+ใหญ่ ── */
+html[data-theme="light"] .section-title,
+html[data-theme="light"] [style*="letter-spacing:0.6px"]{ color:#0f141a !important; font-weight:800 !important; }
+
+/* [V479.24] override 34 สีที่ตกหล่น (โผล่ตอนกดปุ่ม/popup/tooltip) — present ชัดทุกจุด */
+html[data-theme="light"] [style*="color:#f59e0b"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#facc15"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#ff9d3c"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e6b35e"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#f5c400"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fdba74"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fde68a"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#d9952a"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#f97316"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#f5c400"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="color:#34d399"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#3ddc84"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#9fe0c1"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#7fd6b0"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#86efac"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="color:#7c6fe0"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#b8b0ff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#8b5cf6"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#7c3aed"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#8b5cf6"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="color:#9cc0ff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#22d3ee"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#3b82f6"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#5b98ff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#cfe0ff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#38d3e0"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#22d3ee"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#0757b8 !important; }
+html[data-theme="light"] [style*="color:#ff5252"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e69aa0"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#f472b6"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#fda4af"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#b01226 !important; }
+html[data-theme="light"] [style*="color:#8a98a8"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e8ebf0"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e6edf3"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#7f879a"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e8ebee"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e5e7eb"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){ color:#1a1f26 !important; }
+
+/* ── LIGHT THEME — Strategy B: override inline dark hex ── */
+/* พื้น dark ทั่วๆ — flat → ขาว/เทาอ่อน */
+html[data-theme="light"] [style*="background:#0d1525"],
+html[data-theme="light"] [style*="background:#0f172a"],
+html[data-theme="light"] [style*="background:#0a0f1e"],
+html[data-theme="light"] [style*="background:#0b0d13"],
+html[data-theme="light"] [style*="background:#10141d"],
+html[data-theme="light"] [style*="background:#161b26"],
+html[data-theme="light"] [style*="background:#0e1020"],
+html[data-theme="light"] [style*="background:#343b43"],
+html[data-theme="light"] [style*="background:#1e293b"]{
+  background:var(--sur2) !important;
+}
+/* gradient dark → flat ขาว */
+html[data-theme="light"] [style*="linear-gradient(135deg,#0f1727"],
+html[data-theme="light"] [style*="linear-gradient(135deg,#0d1525"],
+html[data-theme="light"] [style*="linear-gradient(90deg,#0d1730"],
+html[data-theme="light"] [style*="linear-gradient(90deg,#0d1525"]{
+  background:var(--sur2) !important;
+}
+/* text สีเทาอ่อนอ่านไม่ได้บนขาว → เทาเข้ม */
+html[data-theme="light"] [style*="color:#94a3b8"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#1f262d !important;}
+html[data-theme="light"] [style*="color:#cbd5e1"]{color:#3d444d !important;}
+html[data-theme="light"] [style*="color:#e2e8f0"]{color:#343b43 !important;}
+html[data-theme="light"] [style*="color:#dde5f2"]{color:#343b43 !important;}
+/* cyan/blue อ่อน → ฟ้า GitHub */
+html[data-theme="light"] [style*="color:#67e8f9"]{color:#0550ae !important;}
+html[data-theme="light"] [style*="color:#7dd3fc"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#0550ae !important;}
+html[data-theme="light"] [style*="color:#38bdf8"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#0550ae !important;}
+html[data-theme="light"] [style*="color:#60a5fa"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#0550ae !important;}
+/* green อ่อน → green GitHub */
+html[data-theme="light"] [style*="color:#4ade80"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#116329 !important;}
+html[data-theme="light"] [style*="color:#22c55e"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#0b7a2e !important;}
+/* yellow/amber อ่อน → amber GitHub */
+html[data-theme="light"] [style*="color:#fbbf24"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#6f4e00 !important;}
+html[data-theme="light"] [style*="color:#fcd34d"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#6f4e00 !important;}
+html[data-theme="light"] [style*="color:#ffd166"]{color:#6f4e00 !important;}
+/* purple อ่อน → purple GitHub */
+html[data-theme="light"] [style*="color:#a78bfa"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#6639ba !important;}
+html[data-theme="light"] [style*="color:#c4b5fd"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#6639ba !important;}
+html[data-theme="light"] [style*="color:#b8b0ff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#5b32b0 !important;}
+/* red อ่อน → red GitHub */
+html[data-theme="light"] [style*="color:#f87171"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#a40e26 !important;}
+html[data-theme="light"] [style*="color:#fca5a5"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#a40e26 !important;}
+html[data-theme="light"] [style*="color:#ef4444"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#a40e26 !important;}
+/* orange อ่อน → orange GitHub */
+html[data-theme="light"] [style*="color:#fb923c"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#953800 !important;}
+html[data-theme="light"] [style*="color:#f59e0b"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#953800 !important;}
+html[data-theme="light"] [style*="color:#f97316"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#953800 !important;}
+/* border dark hex → light border */
+html[data-theme="light"] [style*="border:1px solid #1e293b"],
+html[data-theme="light"] [style*="border:1px solid #2d3748"],
+html[data-theme="light"] [style*="border:1px solid #2a3450"]{
+  border-color:var(--bd) !important;
+}
+
+/* ── Theme toggle button SVG icons (D = SVG Moon/Sun) ── */
+#theme-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;padding:5px 8px;}
+#theme-toggle-btn svg{width:14px;height:14px;display:block;}
+#theme-toggle-btn .ico-sun{display:none;}
+html[data-theme="light"] #theme-toggle-btn .ico-moon{display:none;}
+html[data-theme="light"] #theme-toggle-btn .ico-sun{display:block;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{display:flex;flex-direction:column;height:100%;background:var(--bg);color:var(--tx);font-family:var(--font);font-size:14px;font-weight:500;overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+#app{display:flex;flex-direction:column;height:100vh;}
+
+/* LOGIN OVERLAY */
+#login-overlay{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:24px;overflow-y:auto;}
+.login-box{background:var(--sur);border:1px solid var(--bd2);border-radius:16px;padding:40px 36px;width:100%;max-width:480px;box-shadow:0 24px 80px #000c;}
+.login-logo{font-size:24px;font-weight:700;color:#fff;margin-bottom:6px;}
+.login-logo em{color:var(--ac2);font-style:normal;}
+.login-sub{font-size:11px;color:var(--mu);margin-bottom:28px;}
+.login-lbl{font-size:11px;color:var(--mu2);margin-bottom:5px;font-weight:600;letter-spacing:.3px;}
+.login-inp{width:100%;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:10px;padding:15px 14px;font-size:16px;font-family:var(--font);outline:none;margin-bottom:18px;}
+.login-inp:focus{border-color:var(--ac);}
+.login-btn{width:100%;padding:16px;border-radius:10px;border:none;background:var(--ac);color:#fff;font-size:17px;font-weight:700;font-family:var(--font);cursor:pointer;margin-top:6px;}
+.login-btn:hover{background:var(--ac2);}
+.login-err{color:#e8344a;font-size:11px;margin-top:8px;min-height:16px;text-align:center;}
+.login-role{font-size:10px;color:var(--mu);margin-top:12px;text-align:center;}
+#login-overlay.mob-login{padding:0;align-items:stretch;justify-content:stretch;}
+#login-overlay.mob-login .login-box{width:100%;max-width:none;min-height:100vh;border:none;border-radius:0;box-shadow:none;display:flex;flex-direction:column;justify-content:center;padding:0 7vw;}
+#login-overlay.mob-login .login-logo{font-size:30px;margin-bottom:8px;}
+#login-overlay.mob-login .login-sub{font-size:15px;margin-bottom:36px;}
+#login-overlay.mob-login .login-lbl{font-size:15px;margin-bottom:7px;}
+#login-overlay.mob-login .login-inp{font-size:18px;padding:18px 16px;border-radius:12px;margin-bottom:22px;}
+#login-overlay.mob-login .login-btn{font-size:19px;padding:19px;border-radius:12px;margin-top:8px;}
+#login-overlay.mob-login .login-role{font-size:14px;margin-top:18px;}
+/* MUST CHANGE PASSWORD */
+#chgpwd-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:none;align-items:center;justify-content:center;}
+.chgpwd-box{background:var(--sur);border:1px solid var(--bd2);border-radius:14px;padding:32px 36px;width:min(360px,92vw);box-shadow:0 24px 80px #000c;}
+/* USER BADGE IN TOPBAR */
+#user-badge{display:none;align-items:center;gap:6px;font-size:11px;color:var(--mu2);border:1px solid var(--bd2);border-radius:6px;padding:3px 10px;cursor:pointer;}
+#user-badge:hover{border-color:var(--ac);color:var(--tx);}
+#user-badge .ubname{font-weight:600;color:var(--tx);}
+#user-badge .ubrole{font-size:9px;color:var(--mu);background:var(--sur2);border-radius:3px;padding:1px 5px;}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;min-height:46px;background:var(--sur);border-bottom:1px solid var(--bd);}
+.logo{font-size:14px;font-weight:700;color:#fff;letter-spacing:.3px;}
+.logo em{color:var(--ac2);font-style:normal;}
+.tagline{font-size:11px;color:var(--mu);padding:2px 8px;background:var(--sur2);border-radius:4px;border:1px solid var(--bd);}
+.sep{min-width:8px;flex:0;}
+.nav-btn{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:var(--mu2);cursor:pointer;font-family:var(--font);font-size:11px;font-weight:500;transition:all .15s;white-space:nowrap;}
+.nav-btn:hover{border-color:var(--ac);color:var(--tx);}
+.nav-btn.on{background:var(--ac);border-color:var(--ac);color:#fff;}
+
+/* VIEW */
+.view{display:none;overflow:hidden;flex-direction:column;}.view.on{display:flex!important;flex-direction:column;flex:1;overflow:hidden;}.view.on{display:flex!important;flex-direction:column;flex:1;overflow:hidden;}.view.on{display:flex!important;flex-direction:column;flex:1;overflow:hidden;}
+.view.on{display:flex !important;flex:1;overflow:hidden;flex-direction:column;}
+
+/* ═══════════════ SE ORDER VIEW ═══════════════ */
+.se-body{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* SUMMARY HEADER TABLE */
+.summary-wrap{background:var(--sur);border-bottom:2px solid var(--bd2);overflow-x:auto;flex-shrink:0;}
+.sum-tbl{border-collapse:collapse;width:100%;min-width:900px;}
+.sum-tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.sum-tbl td{padding:5px 4px;border-right:1px solid var(--bd);white-space:nowrap;vertical-align:middle;}
+.sum-tbl td:first-child{background:var(--sur2);border-right:2px solid var(--bd2);padding-right:10px;}
+#bud-row td{background:#0e1322;}
+#bud-row td:first-child{background:var(--sur2);}
+#fc-row td{background:#0b141e;}
+#fc-row td:first-child{background:var(--sur2);}
+#mfc-row td{background:#08100a;}
+#mo-bud-row td{background:#0a0f1a;}
+#mo-bud-row td:first-child{background:var(--sur2);}
+#mo-pct-row td{background:#06080c;}
+#mfc-row td:first-child{background:var(--sur2);}
+.tbl-area{flex:1;overflow-y:auto;overflow-x:auto;background:var(--bg);}
+.dtbl{border-collapse:collapse;width:100%;table-layout:fixed;min-width:750px;}
+.dtbl thead th{position:sticky;top:0;z-index:5;background:var(--sur);border-bottom:2px solid var(--bd2);border-right:1px solid var(--bd2);padding:5px 4px;text-align:left;font-size:10px;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.3px;cursor:pointer;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dtbl thead th:hover{color:var(--tx);}
+.dtbl thead th.srt{color:var(--ac2);}
+.dtbl tbody tr{border-bottom:1px solid var(--bd);cursor:pointer;transition:background .08s;}
+.dtbl tbody tr:hover{background:var(--sur2);}
+.dtbl tbody tr.hi{background:#172040;}
+.dtbl tbody tr.edited{background:#1a1500!important;border-left:3px solid var(--ylw2)!important;}
+.dtbl td{padding:5px 4px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid var(--bd);}
+.trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;width:100%;cursor:default;}
+
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;padding:2px 5px;border-radius:99px;font-size:9px;font-weight:600;white-space:nowrap;}
+.bst-actual{background:#0d2116;color:var(--grn);}
+.bst-actual-unmap{background:#0d1a0d;color:#86efac;border:1px dashed #4ade80;}
+.bst-billed{background:#1a1500;color:var(--ylw2);}
+.bst-backlog{background:#271a00;color:var(--ylw2);}
+.bst-ordered{background:#082f49;color:#7dd3fc;}
+.bst-spfwd{background:#1a1030;color:var(--pur);}
+.bst-offer{background:#2a0c14;color:#fda4af;}
+.bst-cn{background:#3b0a0a;color:#f87171;}
+.bst-not-found{background:#1a1500;color:#fbbf24;border:1px dashed #fbbf24;}
+.fad-tag{margin-left:0;margin-top:4px;}
+.fad-matched{background:#0b2a16;color:#4ade80;}
+.fad-unmatched{background:#2a1a00;color:#fbbf24;}
+.fad-netzero{background:#1f172a;color:#c4b5fd;}
+.bip-sc-comp{background:#0a1d12;color:#22c55e;}
+.bip-sc-wait{background:#201800;color:#f59e0b;}
+.bip-sc-wait-pm{background:#0d2a36;color:#06b6d4;}
+.bip-sc-wait-bill{background:#36220a;color:#fb923c;}
+.bip-sc-inprog{background:#1f1200;color:#fb923c;}
+.bip-sc-cont{background:#14181f;color:var(--mu);}
+.bip-sp-bill{background:#071c28;color:var(--cyn);}
+.bip-rp-si{background:#1a0e30;color:var(--pur);}
+.bip-rp-wsi{background:#280c1c;color:#ec4899;}
+.bip-rp-proc{background:#150d2a;color:#a78bfa;}
+.tsc{background:#0f1a38;color:var(--ac2);padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;}
+.tsp{background:#071c28;color:var(--cyn);padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;}
+.co-tag{font-size:9px;background:#261500;color:#e09010;padding:1px 5px;border-radius:3px;margin-left:3px;}
+.nc-tag{font-size:9px;background:#1a0e30;color:var(--pur);padding:1px 5px;border-radius:3px;margin-left:3px;cursor:pointer;}
+
+/* STATUS BAR AT BOTTOM */
+.statusbar{display:flex;align-items:center;gap:16px;padding:5px 14px;border-top:1px solid var(--bd);background:var(--sur);font-size:11px;color:var(--mu);flex-shrink:0;}
+.sb-item{display:flex;align-items:center;gap:5px;}
+.sb-dot{width:7px;height:7px;border-radius:50%;}
+
+/* ═══════════════ DETAIL PANEL ═══════════════ */
+.dp-overlay{position:fixed;inset:0;background:#00000090;z-index:300;display:none;align-items:flex-start;justify-content:center;padding:20px 12px;overflow-y:auto;}
+.dp-overlay.open{display:flex;}
+.dp{width:min(900px,96vw);background:var(--sur);border:1px solid var(--bd2);border-radius:12px;display:flex;flex-direction:column;box-shadow:0 24px 80px #000000bb;overflow:hidden;margin:auto;}
+.dp-hd{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--bd);background:var(--sur2);flex-shrink:0;}
+.dp-hd h3{font-size:14px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dp-x{background:none;border:none;color:var(--mu);cursor:pointer;font-size:20px;line-height:1;padding:0 4px;flex-shrink:0;}
+.dp-x:hover{color:var(--tx);}
+.dp-body{display:flex;flex-direction:column;overflow:hidden;}
+.dp-sec{background:var(--sur2);border:1px solid var(--bd);border-radius:8px;overflow:hidden;}
+.dp-sec-t{font-size:10px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;padding:8px 12px;background:var(--sur3);border-bottom:1px solid var(--bd);}
+.dp-subtabs{display:flex;gap:2px;padding:6px 10px 0;border-bottom:1px solid var(--bd2);margin-bottom:12px;flex-shrink:0;}
+.dp-subtab{padding:7px 14px;font-size:12px;font-weight:500;color:var(--mu2);border:none;background:transparent;border-bottom:2px solid transparent;cursor:pointer;font-family:var(--font);white-space:nowrap;}
+.dp-subtab.on{color:var(--ac2);border-bottom-color:var(--ac2);font-weight:600;}
+.dp-subpane{display:none;min-height:420px;}
+.dp-subpane.on{display:block;}
+.dp-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.dp-cell{padding:8px 12px;border-bottom:1px solid var(--bd);border-right:1px solid var(--bd);}
+.dp-cell:nth-child(2n){border-right:none;}
+.dp-cell.full{grid-column:1/-1;border-right:none;}
+.dp-lbl{font-size:10px;color:var(--mu);margin-bottom:2px;}
+.dp-v{font-size:12px;color:var(--tx);word-break:break-word;}
+.dp-v.mono{font-family:var(--mono);}
+.dp-v.lg{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--grn);}
+.dp-v.lg.zero{color:var(--mu);}
+.co-box{padding:8px 12px;background:#1e1200;border-top:1px solid #5c3200;font-size:11px;color:#f0a030;}
+
+/* SP PARTS TABLE */
+.parts-tbl{width:100%;border-collapse:collapse;min-width:620px;}
+.parts-tbl th{padding:6px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--mu);background:var(--sur3);border-bottom:1px solid var(--bd);white-space:nowrap;}
+.parts-tbl td{padding:6px 10px;font-size:11px;border-bottom:1px solid var(--bd);vertical-align:top;}
+.parts-tbl tr:last-child td{border-bottom:none;}
+.parts-tbl tr:hover td{background:#161c28;}
+
+/* ═══════════════ BUD VS FORECAST ═══════════════ */
+.bvf-wrap{flex:1;overflow:auto;padding:20px 24px;-webkit-overflow-scrolling:touch;}
+.bvf-title{font-size:17px;font-weight:700;margin-bottom:3px;}
+.bvf-sub{font-size:11px;color:var(--mu);margin-bottom:20px;}
+.bsec{font-size:10px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.9px;padding:5px 12px;margin-bottom:10px;background:var(--sur2);border-radius:5px;border-left:3px solid var(--ac);}
+.bvf-tbl-wrap{overflow-x:auto;margin-bottom:22px;-webkit-overflow-scrolling:touch;}
+.bvftbl{border-collapse:collapse;width:100%;min-width:900px;background:var(--sur);}
+.bvftbl th{background:var(--sur2);padding:7px 10px;font-size:10px;font-weight:600;color:var(--mu);border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap;}
+.bvftbl th.tl{text-align:left;min-width:100px;}
+.bvftbl td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--bd);font-family:var(--mono);font-size:12px;}
+.bvftbl td.tl{text-align:left;font-family:var(--font);font-weight:600;}
+.bvftbl td.tc{text-align:center;font-size:10px;color:var(--mu);width:44px;}
+.bvftbl tr.sub td{background:var(--sur2);font-weight:600;}
+.bvftbl tr.tot td{background:#14203a;font-weight:700;color:var(--ac2);}
+.bvftbl td.pos{color:var(--grn);}
+.bvftbl td.neg{color:var(--red);}
+.bvftbl th.cur,.bvftbl td.cur{background:#101a30;}
+.bvftbl th.cur{color:var(--ac2);}
+.bvftbl tr.team-sp td{background:#0c1420;color:var(--cyn);font-size:11px;}
+.bvftbl tr.team-sc td{background:#0c1420;color:var(--ac2);font-size:11px;}
+.bvf-toggle{display:inline-flex;align-items:center;gap:6px;margin-bottom:14px;padding:4px 12px;border-radius:6px;border:1px solid var(--bd2);background:var(--sur2);color:var(--mu2);cursor:pointer;font-size:11px;font-family:var(--font);transition:all .15s;}
+.bvf-toggle:hover{border-color:var(--ac);color:var(--tx);}
+.bvf-toggle.on{border-color:var(--cyn);color:var(--cyn);background:#071c28;}
+.sum-team-row td{background:#08101a!important;font-size:10px;color:var(--mu2)!important;border-top:none!important;}
+.sum-team-row td:first-child{color:var(--mu)!important;font-size:10px;padding-left:18px!important;}
+.sum-expand-btn{cursor:pointer;font-size:9px;margin-left:5px;opacity:.6;}
+
+.bvf-team-toggle{display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:20px;border:1px solid var(--bd2);background:transparent;color:var(--mu2);cursor:pointer;font-family:var(--font);font-size:11px;transition:all .15s;}
+.bvf-team-toggle:hover{border-color:var(--ac2);color:var(--tx);}
+.bvf-team-toggle.on{background:rgba(59,123,255,.15);border-color:var(--ac);color:var(--ac2);}
+.bvftbl tr.tm-row td{background:#0a1020!important;font-size:11px;}
+/* ─── TEAM EXPAND ─── */
+.sum-expand-lbl{cursor:pointer;user-select:none;}
+.sum-expand-lbl:hover{color:#fff;}
+.sum-expand-lbl .arrow{font-size:8px;margin-left:4px;display:inline-block;transition:transform .15s;vertical-align:middle;}
+.sum-expand-lbl.open .arrow{transform:rotate(90deg);}
+.sum-tm-row{display:none;}
+.sum-tm-row.vis{display:table-row;}
+.sum-tm-row td{font-size:10px!important;padding:3px 4px!important;}
+.sum-tm-row td:first-child{padding-left:16px!important;color:var(--mu2)!important;font-size:10px!important;}
+.bvftbl tr.tm-row td.tl{color:var(--mu2);padding-left:20px!important;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px;}
+.empty{padding:40px;text-align:center;color:var(--mu);}
+#ld{display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:12px;}
+.spin{width:28px;height:28px;border:3px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* ═══════════════ IP PILLS (Quick Filter) ═══════════════ */
+.ip-pill{padding:3px 10px;border-radius:12px;border:1px solid var(--bd2);background:transparent;color:var(--mu);cursor:pointer;font-family:var(--font);font-size:10px;white-space:normal;text-align:center;line-height:1.3;font-weight:500;transition:all .12s;}
+.ip-pill:hover{border-color:var(--ac2);color:var(--tx);}
+.ip-pill.on{border-width:1.5px;font-weight:600;}
+.ip-actual{border-color:var(--grn);color:#52b788;}
+.ip-actual.on{background:rgba(52,211,153,.12);border-color:var(--grn);color:var(--grn);}
+.ip-all{border-color:var(--ac2);color:var(--ac2);}
+.ip-billed{border-color:#4ade80;color:#4ade80;background:rgba(74,222,128,.08);}
+.ip-billed.on{background:rgba(74,222,128,.18);border-color:#22c55e;color:#bbf7d0;font-weight:700;}
+.ip-all.on{background:rgba(59,130,246,.15);border-color:var(--ac);color:#93c5fd;font-weight:700;}
+.ip-backlog{border-color:var(--ylw);color:var(--ylw2);background:rgba(245,158,11,.08);}
+.ip-backlog.on{background:rgba(245,158,11,.12);border-color:var(--ylw);color:var(--ylw2);}
+.ip-ordered{border-color:#0ea5e9;color:#7dd3fc;background:rgba(14,165,233,.08);}
+.ip-ordered.on{background:rgba(14,165,233,.14);border-color:#38bdf8;color:#bae6fd;}
+.ip-spf-ord{border-color:#7c3aed;color:#c4b5fd;background:rgba(124,58,237,.12);}
+.ip-spf-ord.on{background:#4a2090;color:#c4b5fd;}
+.ip-spf-proc{border-color:#6d28d9;color:#ddd6fe;background:rgba(109,40,217,.1);}
+.ip-spf-proc.on{background:#2d1b69;color:#b794f4;}
+.ip-pend{border-color:#dc2626;color:#fca5a5;background:rgba(220,38,38,.08);}
+.ip-pend.on{background:rgba(239,68,68,.14);border-color:#ef4444;color:#fecaca;}
+
+/* co-box: Carry On warning */
+.co-box{background:#1a1200;border:1px solid #7a5a00;border-radius:5px;padding:6px 10px;margin-bottom:10px;font-size:11px;color:#f6ad55;}
+
+/* ═══════════════ FILTER BAR ═══════════════ */
+.filterbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 16px;background:var(--sur);border-bottom:1px solid var(--bd);font-size:12px;}
+.flbl{color:var(--mu);font-size:11px;white-space:nowrap;}
+.fsel{background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--font);cursor:pointer;outline:none;}
+.fsel:focus{border-color:var(--ac);}
+.fb-div{flex:1;min-width:8px;}
+.fb-break{width:100%;height:0;}
+.flbl-qf{color:var(--mu);font-size:10px;white-space:nowrap;text-transform:uppercase;letter-spacing:.5px;}
+
+/* ═══ HDR BUTTONS ═══ */
+.hdr-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--font);cursor:pointer;white-space:nowrap;transition:background .15s;}
+.hdr-btn:hover{background:var(--sur3);}
+.hdr-btn-upload{border-color:#3b82f6;color:#60a5fa;}
+.hdr-btn-upload:hover{background:#0d1f3c;}
+.cfg-tab-btn{padding:10px 18px;border:none;background:transparent;color:var(--mu2);cursor:pointer;font-family:var(--font);font-size:12px;font-weight:500;border-bottom:2px solid transparent;transition:all .15s;}
+.cfg-tab-btn:hover{color:var(--tx);}
+.cfg-tab-on{color:var(--tx)!important;border-bottom-color:var(--ac)!important;font-weight:700!important;}
+.hdr-btn-export{border-color:#22c55e;color:#4ade80;}
+.hdr-btn-export:hover{background:#0a1f10;}
+
+/* ═══ SALES OVERVIEW ═══ */
+.so-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden;height:100%;}
+.so-title{font-size:15px;font-weight:700;color:var(--tx);}
+.so-sub{font-size:11px;color:var(--mu);margin-top:2px;}
+.so-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+/* card */
+.so-card{background:var(--sur2);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:0;}
+.so-card-name{font-size:13px;font-weight:700;color:var(--tx);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--bd);letter-spacing:.2px;}
+/* hero row: Actual FAD big */
+.so-hero{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;}
+.so-hero-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--grn);}
+.so-hero-val{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--grn);line-height:1;}
+/* progress bar */
+.so-prog-wrap{margin-bottom:8px;}
+.so-prog-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.so-prog-lbl{font-size:9px;color:var(--mu2);}
+.so-prog-pct{font-size:11px;font-weight:700;font-family:var(--mono);}
+.so-prog-bar{height:5px;border-radius:3px;background:var(--bd);overflow:hidden;}
+.so-prog-fill-act{height:100%;border-radius:3px;background:var(--grn);transition:width .4s;}
+.so-prog-fill-rev{height:100%;border-radius:3px;background:var(--ac);transition:width .4s;}
+/* stat rows */
+.so-stats{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;margin-top:6px;padding-top:6px;border-top:1px solid var(--bd);}
+.so-stat{display:flex;flex-direction:column;}
+.so-stat-lbl{font-size:9px;color:var(--mu);line-height:1.2;}
+.so-stat-val{font-size:11px;font-family:var(--mono);font-weight:600;color:var(--tx);line-height:1.4;}
+.so-bar-cell{padding:7px 10px;border-bottom:1px solid var(--bd);}
+.so-bar-wrap{display:flex;align-items:center;gap:6px;}
+.so-bar-bg{flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden;}
+.so-bar-fg{height:100%;border-radius:3px;}
+.so-bar-pct{font-size:10px;color:var(--mu);min-width:34px;text-align:right;font-family:var(--mono);}
+
+/* ═══ UPLOAD MODAL ═══ */
+.ul-overlay{position:fixed;inset:0;background:#00000090;z-index:400;display:none;align-items:center;justify-content:center;}
+.ul-overlay.open{display:flex;}
+.ul-box{background:var(--sur);border:1px solid var(--bd2);border-radius:12px;width:min(520px,95vw);padding:24px;box-shadow:0 20px 60px #000a;}
+.ul-title{font-size:14px;font-weight:700;margin-bottom:16px;color:var(--tx);}
+.ul-sheet-list{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;}
+.ul-sheet-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--sur2);border:1px solid var(--bd);border-radius:6px;font-size:12px;}
+.ul-sheet-icon{font-size:14px;}
+.ul-sheet-name{flex:1;font-weight:600;}
+.ul-sheet-status{font-size:10px;color:var(--mu);font-family:var(--mono);}
+.ul-sheet-ok{color:var(--grn);}
+.ul-sheet-err{color:var(--red);}
+.ul-actions{display:flex;gap:8px;justify-content:flex-end;}
+.ul-btn{padding:6px 16px;border-radius:6px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:12px;cursor:pointer;}
+.ul-btn-primary{background:#1d4ed8;border-color:#3b82f6;color:#fff;}
+.ul-btn-primary:hover{background:#2563eb;}
+.ul-progress{font-size:11px;color:var(--mu);margin-top:10px;text-align:center;}
+
+.ul-input{background:var(--sur2);border:1px solid var(--bd2);border-radius:5px;padding:5px 8px;color:var(--tx);font-size:11px;font-family:var(--mono);outline:none;}
+.ul-input:focus{border-color:var(--ac);}
+.ul-btn-browse{background:var(--sur2);border:1px solid var(--bd2);border-radius:6px;padding:7px;color:var(--tx);font-size:12px;margin-top:4px;}
+.ul-btn-browse:hover{background:var(--sur3);}
+
+/* ── RESPONSIVE ── */
+@media (max-width:640px){
+
+  #mob-nav{display:flex !important;}
+  #mob-kpi{display:flex !important;flex-direction:column;overflow-y:auto;height:calc(100vh - 148px);}
+  #mob-fc{display:none !important;}
+  #mob-tbl{display:block !important;}
+  .hdr-btn{display:none !important;}
+  .sep{display:none;}
+  .nav-btn{display:none;}
+  .topbar{padding:0 12px;gap:8px;height:40px;min-height:40px;}
+  .logo{font-size:12px;}
+  #ver-stamp{padding:1px 5px;font-size:9px;}
+  #app{padding-bottom:54px;}
+  table.data-tbl{display:none !important;}
+  .filterbar{padding:6px 8px;gap:5px;flex-wrap:wrap;}
+  .flbl{font-size:10px;}
+  .fsel,.fpill{font-size:11px;}
+  .statusbar{font-size:10px;padding:3px 8px;}
+  /* Summary table small */
+  .sum-wrap{overflow-x:auto;}
+  .sum-tbl td,.sum-tbl th{font-size:9px;padding:3px 4px;white-space:nowrap;}
+
+  /* BvF mobile */
+  .bvf-wrap{padding:10px 0 !important;}
+  .bvf-title{font-size:14px;padding:0 10px;}
+  .bvf-sub{font-size:10px;padding:0 10px;margin-bottom:12px !important;}
+  .bvf-tbl-wrap{margin-bottom:14px !important;}
+  .bvftbl{font-size:9px;min-width:750px;}
+  .bvftbl th,.bvftbl td{padding:5px 6px !important;}
+  .bsec{font-size:9px;padding:0 10px;}
+}
+@media (min-width:641px) and (max-width:1024px){
+  .topbar{gap:8px;}
+  .hdr-btn{font-size:11px;padding:4px 9px;}
+}
+
+
+/* ── Contract & Pipeline shared styles ── */
+.sp-tab{padding:7px 14px;font-size:12px;font-weight:600;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--mu2);cursor:pointer;font-family:var(--font);}
+.sp-tab.on{color:var(--tx);border-bottom:2px solid #7c6fe0;}
+.sp-filters{display:flex;gap:6px;align-items:center;padding:7px 16px;background:var(--sur);border-bottom:1px solid var(--bd);flex-wrap:nowrap;overflow-x:auto;}
+.sp-filters select,.sp-filters input[type=text]{background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--font);cursor:pointer;outline:none;}
+.sp-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.sp-tbl th{text-align:left;font-size:11px;color:var(--mu);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--bd);cursor:pointer;white-space:nowrap;}
+.sp-tbl td{padding:7px 8px;border-bottom:1px solid var(--bd);vertical-align:middle;}
+.sp-tbl tr:hover td{background:var(--sur2);}
+.sp-badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;}
+.sp-bH{background:#3c3089;color:#b8b0ff;}
+.sp-bM{background:#3b2a08;color:#f59e0b;}
+.sp-bL{background:#1e293b;color:#94a3b8;}
+.sp-days-r{color:#ef4444;font-weight:600;}
+.sp-days-y{color:#f59e0b;font-weight:600;}
+.sp-days-g{color:#22c55e;font-weight:600;}
+.sp-empty{text-align:center;padding:40px;color:var(--mu);font-size:13px;}
+.sp-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.sp-kcard{background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;}
+.sp-kcard .lbl{font-size:11px;color:var(--mu);margin-bottom:4px;}
+.sp-kcard .num{font-size:22px;font-weight:700;}
+.sp-kcard .sub{font-size:11px;color:var(--mu);margin-top:2px;}
+.sp-pipe{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.sp-pcard{background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;}
+.sp-pcard .plbl{font-size:11px;font-weight:600;margin-bottom:6px;}
+.sp-pcard .pnum{font-size:20px;font-weight:700;}
+.sp-pcard .psub{font-size:12px;color:var(--mu);margin-top:2px;}
+.sp-sort::after{content:' ↕';opacity:.4;font-size:10px;}
+.sp-sort.asc::after{content:' ↑';opacity:1;}
+.sp-sort.desc::after{content:' ↓';opacity:1;}
+.sp-sec{font-size:12px;font-weight:700;color:var(--mu);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+#sp-pane-install .ib-grid,#cp-pane-install .ib-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;}
+#sp-pane-install .ib-card,#cp-pane-install .ib-card{background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:12px;}
+#sp-pane-install .ib-card .lbl,#cp-pane-install .ib-card .lbl{font-size:11px;color:var(--mu);margin-bottom:4px;}
+#sp-pane-install .ib-card .num,#cp-pane-install .ib-card .num{font-size:20px;font-weight:700;}
+
+/* ════════════════ LIGHT THEME — class overrides (วางท้ายสุด เพื่อชนะ !important ต้นฉบับ) ════════════════ */
+/* ═══ LIGHT overrides (comma-safe · ครบทุก dark rule) ═══ */
+html[data-theme="light"] #bud-row td{background:#e6e9f5 !important;}
+html[data-theme="light"] #fc-row td{background:#e5edf5 !important;}
+html[data-theme="light"] #mfc-row td{background:#e7f3ea !important;}
+html[data-theme="light"] #mo-bud-row td{background:#e5eaf5 !important;}
+html[data-theme="light"] #mo-pct-row td{background:#e7ebf3 !important;}
+html[data-theme="light"] .dtbl tbody tr.hi{background:#e5e8f6 !important;}
+html[data-theme="light"] .dtbl tbody tr.edited{background:#f7f3e3 !important;}
+html[data-theme="light"] .bst-actual{background:#e5f5ec !important;color:#116329 !important;}
+html[data-theme="light"] .bst-actual-unmap{background:#e7f3e7 !important;color:#149944 !important;}
+html[data-theme="light"] .bst-billed{background:#f7f3e3 !important;color:#6f4e00 !important;}
+html[data-theme="light"] .bst-backlog{background:#f7f0e3 !important;color:#953800 !important;}
+html[data-theme="light"] .bst-ordered{background:#e3eff7 !important;color:#0474a9 !important;}
+html[data-theme="light"] .bst-spfwd{background:#eae4f6 !important;color:#6639ba !important;}
+html[data-theme="light"] .bst-offer{background:#f7e3e9 !important;color:#aa0418 !important;}
+html[data-theme="light"] .bst-cn{background:#f7e3e3 !important;color:#a50808 !important;}
+html[data-theme="light"] .bst-not-found{background:#f7f3e3 !important;color:#aa7c03 !important;}
+html[data-theme="light"] .fad-matched{background:#e3f7ea !important;color:#1b9346 !important;}
+html[data-theme="light"] .fad-unmatched{background:#f7efe3 !important;color:#aa7c03 !important;}
+html[data-theme="light"] .fad-netzero{background:#ece8f2 !important;color:#2705a9 !important;}
+html[data-theme="light"] .bip-sc-comp{background:#e4f6ec !important;color:#116329 !important;}
+html[data-theme="light"] .bip-sc-wait{background:#f7f2e3 !important;color:#a76b07 !important;}
+html[data-theme="light"] .bip-sc-wait-pm{background:#e3f1f7 !important;color:#0550ae !important;}
+html[data-theme="light"] .bip-sc-wait-bill{background:#f7eee3 !important;color:#aa4e03 !important;}
+html[data-theme="light"] .bip-sc-inprog{background:#f7efe3 !important;color:#aa4e03 !important;}
+html[data-theme="light"] .bip-sc-cont{background:#e9ecf1 !important;color:#3d444d !important;}
+html[data-theme="light"] .bip-sp-bill{background:#e3f0f7 !important;color:#0550ae !important;}
+html[data-theme="light"] .bip-rp-si{background:#eae3f7 !important;color:#6639ba !important;}
+html[data-theme="light"] .bip-rp-wsi{background:#f7e4ef !important;color:#a40e26 !important;}
+html[data-theme="light"] .bip-rp-proc{background:#e9e4f7 !important;color:#2f07a6 !important;}
+html[data-theme="light"] .tsc{background:#e3e9f7 !important;color:#0550ae !important;}
+html[data-theme="light"] .tsp{background:#e3f0f7 !important;color:#6639ba !important;}
+html[data-theme="light"] .co-tag{background:#f7eee3 !important;color:#a2680c !important;}
+html[data-theme="light"] .nc-tag{background:#eae3f7 !important;color:#6639ba !important;}
+html[data-theme="light"] .co-box{background:#f7efe3 !important;color:#a2630c !important;border-color:#a8b1ba !important;}
+html[data-theme="light"] .parts-tbl tr:hover td{background:#e8ebf2 !important;}
+html[data-theme="light"] .bvftbl tr.tot td{background:#e4eaf6 !important;}
+html[data-theme="light"] .bvftbl th.cur,html[data-theme="light"] .bvftbl td.cur{background:#e4eaf6 !important;}
+html[data-theme="light"] .bvftbl tr.team-sp td{background:#e5ecf5 !important;}
+html[data-theme="light"] .bvftbl tr.team-sc td{background:#e5ecf5 !important;}
+html[data-theme="light"] .bvf-toggle.on{background:#e3f0f7 !important;}
+html[data-theme="light"] .sum-team-row td{background:#e4ecf7 !important;}
+html[data-theme="light"] .bvftbl tr.tm-row td{background:#e4e9f6 !important;}
+html[data-theme="light"] .ip-spf-ord.on{background:#ebe3f7 !important;color:#2705a9 !important;}
+html[data-theme="light"] .ip-spf-proc.on{background:#e8e3f7 !important;color:#44109d !important;}
+html[data-theme="light"] .hdr-btn-upload:hover{background:#e3ebf7 !important;}
+html[data-theme="light"] .hdr-btn-export:hover{background:#e4f6e9 !important;}
+html[data-theme="light"] .ul-btn-primary{background:#e3e8f7 !important;color:#3d444d !important;}
+html[data-theme="light"] .sp-bH{background:#e7e5f6 !important;color:#1200ad !important;}
+html[data-theme="light"] .sp-bM{background:#f7f0e3 !important;color:#a76b07 !important;}
+html[data-theme="light"] .sp-bL{background:#e7ecf3 !important;color:#274f86 !important;}
+html[data-theme="light"] .flow-group{background:#e3ebf7 !important;}
+html[data-theme="light"] .story-prog-bar{background:#e3ebf7 !important;}
+html[data-theme="light"] .db-tbl tr.row-total td{background:#f7f1e3 !important;}
+html[data-theme="light"] .db-tbl tr.row-total td:first-child{background:#f1e9e9 !important;color:#a50808 !important;}
+html[data-theme="light"] .db-tbl tr.mdtbl-total td{background:#e3eaf7 !important;}
+html[data-theme="light"] .db-tbl tr.mdtbl-total td:first-child{background:#e3eaf7 !important;}
+html[data-theme="light"] .db-tbl tr.mdtbl-check td{background:#f7f3e3 !important;border-color:#a8b1ba !important;}
+html[data-theme="light"] .db-tbl tr.mdtbl-check td:first-child{background:#f7f3e3 !important;}
+html[data-theme="light"] .mdedit-input{background:#e8ecf2 !important;color:#275a86 !important;}
+html[data-theme="light"] .mdtgl{background:#ebedef !important;}
+html[data-theme="light"] .filterbar select option{background:#e7ecf3 !important;color:#275086 !important;}
+html[data-theme="light"] #sp-i-ctype option{background:#e7ecf3 !important;color:#275086 !important;}
+html[data-theme="light"] .sp-fc-chip.on{background:#e7e5f6 !important;color:#1200ad !important;}
+html[data-theme="light"] .sp-fc-chip.on-m{background:#f7f0e3 !important;color:#a76b07 !important;}
+html[data-theme="light"] .sp-fc-chip.on-won{background:#e5f6e5 !important;}
+html[data-theme="light"] .sp-fc-chip.on-l{background:#e3eff7 !important;color:#0676a8 !important;}
+html[data-theme="light"] #sp-fc-table th.fc-left-th{background:#e5eaf6 !important;border-color:#a8b1ba !important;}
+html[data-theme="light"] #sp-fc-table td.fc-info{background:#e6eaf4 !important;border-color:#a8b1ba !important;}
+html[data-theme="light"] #sp-fc-table td.fc-info:hover{background:#e6ebf4 !important;}
+html[data-theme="light"] #sp-fc-table tr.fc-qf-row td.fc-qf-cell{background:#f7f1e3 !important;color:#aa7c03 !important;border-color:#a8b1ba !important;}
+html[data-theme="light"] #sp-fc-table tr.fc-qf-row td.fc-qf-label{background:#e7ecf3 !important;color:#aa7c03 !important;border-color:#a8b1ba !important;}
+html[data-theme="light"] .sp-fc-bar.fc-sc{background:#e7e5f6 !important;color:#1200ad !important;}
+html[data-theme="light"] .sp-fc-bar.fc-sp{background:#f7f0e3 !important;color:#a76b07 !important;}
+html[data-theme="light"] .sp-fc-bar.fc-won{background:#e5f6e5 !important;}
+html[data-theme="light"] .sp-fc-bar.fc-low{background:#f7f0e3 !important;color:#aa7c03 !important;}
+html[data-theme="light"] #sp-fc-table .sp-fc-tot-row td{background:#e5eaf6 !important;border-color:#a8b1ba !important;}
+html[data-theme="light"] #sp-fc-table .sp-fc-tot-val{background:#e5eaf6 !important;}
+html[data-theme="light"] #sp-fc-table .sp-fc-tot-empty{background:#e5eaf6 !important;}
+html[data-theme="light"] .sp-fc-bar.fc-sc.fc-manual{background:#e6f4e9 !important;color:#1b9346 !important;}
+html[data-theme="light"] .sp-fc-bar.fc-sp.fc-manual{background:#f7f1e3 !important;color:#aa7c03 !important;}
+html[data-theme="light"] .fc-info-manual{background:#e4f7ec !important;}
+/* ═══════════ LIGHT: ตาราง grid ชัด + zebra + hover (อ่านง่าย) ═══════════ */
+/* ตารางข้อมูล — zebra + hover เต็ม */
+html[data-theme="light"] .dtbl,
+html[data-theme="light"] .db-tbl,
+html[data-theme="light"] .iss-tbl,
+html[data-theme="light"] .parts-tbl,
+html[data-theme="light"] table.data,
+html[data-theme="light"] .sp-tbl{border:1px solid var(--bd);}
+html[data-theme="light"] .dtbl th,
+html[data-theme="light"] .db-tbl th,
+html[data-theme="light"] .iss-tbl th,
+html[data-theme="light"] .parts-tbl th,
+html[data-theme="light"] table.data th,
+html[data-theme="light"] .sp-tbl th{border-bottom:2px solid var(--bd2) !important;border-right:1px solid var(--bd);}
+html[data-theme="light"] .dtbl td,
+html[data-theme="light"] .db-tbl td,
+html[data-theme="light"] .iss-tbl td,
+html[data-theme="light"] .parts-tbl td,
+html[data-theme="light"] table.data td,
+html[data-theme="light"] .sp-tbl td{border-bottom:1px solid var(--bd) !important;border-right:1px solid var(--bd);}
+/* zebra แถวคู่ */
+html[data-theme="light"] .dtbl tbody tr:nth-child(even) td,
+html[data-theme="light"] .db-tbl tbody tr:nth-child(even) td,
+html[data-theme="light"] .iss-tbl tbody tr:nth-child(even) td,
+html[data-theme="light"] .parts-tbl tbody tr:nth-child(even) td,
+html[data-theme="light"] table.data tbody tr:nth-child(even) td,
+html[data-theme="light"] .sp-tbl tbody tr:nth-child(even) td{background:var(--sur2);}
+/* hover */
+html[data-theme="light"] .dtbl tbody tr:hover td,
+html[data-theme="light"] .db-tbl tbody tr:hover td,
+html[data-theme="light"] .iss-tbl tbody tr:hover td,
+html[data-theme="light"] .parts-tbl tbody tr:hover td,
+html[data-theme="light"] table.data tbody tr:hover td,
+html[data-theme="light"] .sp-tbl tbody tr:hover td{background:#ddf4ff !important;}
+/* ตารางพิเศษ (sum-tbl, sp-fc-table) — เส้นชัดอย่างเดียว ไม่ zebra (กันตีกับสี cell เดิม) */
+html[data-theme="light"] .sum-tbl{border:1px solid var(--bd);}
+html[data-theme="light"] .sum-tbl td{border-right:1px solid var(--bd);}
+html[data-theme="light"] #sp-fc-table{border:1px solid var(--bd);}
+html[data-theme="light"] #sp-fc-table th,
+html[data-theme="light"] #sp-fc-table td{border-color:var(--bd) !important;}
+
+/* ══ [V471] LIGHT — contrast fix รอบสอง: text สีอ่อนที่ยังหลุด strategy B ══ */
+/* [V474] ตัวอักษรดำ→เทาเข้ม #343b43 (ลดจ้า/สะท้อนบนจอ projector) */
+/* [V473] ปรับทั้งชุดให้เข้มขึ้น: --tx เกือบดำ, --bd/--bd2 เข้ม (เส้นตารางชัด), palette ทุกสีเข้มขึ้น 1 ขั้น — ค่าถูกแทนที่ทั่วโซน light */
+/* ขาว/เทาอ่อน (เฉพาะที่ไม่มี bg ของตัวเอง — กันชนปุ่มพื้นสีตัวอักษรขาว) */
+html[data-theme="light"] [style*="color:#fff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e6edf3"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#e5e7eb"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"] [style*="color:#cfe0ff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#343b43 !important;}
+html[data-theme="light"] [style*="color:#e8ebf0"]{color:#343b43 !important;}
+/* เทา muted อ่อน → เทาเข้ม */
+html[data-theme="light"] [style*="color:#8a98a8"],
+html[data-theme="light"] [style*="color:#9ca3af"],
+html[data-theme="light"] [style*="color:#8494b2"],
+html[data-theme="light"] [style*="color:#7f879a"],
+html[data-theme="light"] [style*="color:#888"]{color:#424a53 !important;}
+/* เหลืองอ่อน → เหลืองเข้ม GitHub */
+html[data-theme="light"] [style*="color:#facc15"],
+html[data-theme="light"] [style*="color:#f5c400"],
+html[data-theme="light"] [style*="color:#fde68a"],
+html[data-theme="light"] [style*="color:#e6b35e"]{color:#6f4e00 !important;}
+/* เขียวอ่อน → เขียวเข้ม */
+html[data-theme="light"] [style*="color:#34d399"],
+html[data-theme="light"] [style*="color:#3ddc84"],
+html[data-theme="light"] [style*="color:#10b981"],
+html[data-theme="light"] [style*="color:#6ee7b7"],
+html[data-theme="light"] [style*="color:#7ee2b8"],
+html[data-theme="light"] [style*="color:#86efac"],
+html[data-theme="light"] [style*="color:#bbf7d0"],
+html[data-theme="light"] [style*="color:#9fe0c1"],
+html[data-theme="light"] [style*="color:#7fd6b0"],
+html[data-theme="light"] [style*="color:#0f0"]{color:#116329 !important;}
+/* ฟ้า/cyan อ่อน → ฟ้าเข้ม */
+html[data-theme="light"] [style*="color:#22d3ee"],
+html[data-theme="light"] [style*="color:#38d3e0"],
+html[data-theme="light"] [style*="color:#9cc0ff"],
+html[data-theme="light"] [style*="color:#58a6ff"],
+html[data-theme="light"] [style*="color:#5b98ff"],
+html[data-theme="light"] [style*="color:#3b82f6"],
+html[data-theme="light"] [style*="color:#a5b4fc"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#0550ae !important;}
+/* แดงอ่อน → แดงเข้ม */
+html[data-theme="light"] [style*="color:#ff5252"],
+html[data-theme="light"] [style*="color:#fecaca"],
+html[data-theme="light"] [style*="color:#fda4af"],
+html[data-theme="light"] [style*="color:#e69aa0"]{color:#a40e26 !important;}
+/* ส้มอ่อน → ส้มเข้ม */
+html[data-theme="light"] [style*="color:#ff9d3c"],
+html[data-theme="light"] [style*="color:#fdba74"]{color:#953800 !important;}
+/* ชมพูอ่อน → ชมพูเข้ม */
+html[data-theme="light"] [style*="color:#f9a8d4"],
+html[data-theme="light"] [style*="color:#f472b6"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#99286e !important;}
+/* ม่วงอ่อน → ม่วงเข้ม */
+html[data-theme="light"] [style*="color:#7c6fe0"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]){color:#6639ba !important;}
+
+
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* [V479.25] Display Config Levels — Contrast 1/2/3 + Font Size 1/2/3 */
+/* default = 2 (ถ้าไม่มี attribute ก็ใช้ค่าที่ทำมา = ปานกลาง) */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* ── CONTRAST LEVEL 1 (อ่อน) — ตัวอักษรอ่อนลง (ใกล้ต้นฉบับ ไม่จ้าตา) ── */
+html[data-theme="light"][data-contrast="1"]{
+  --tx:#3a424b;--mu:#525a63;--mu2:#454d56;
+}
+/* level 1: ลดความเข้มของ override ตัวอักษรจาง (ให้เทากลางแทนดำ) */
+html[data-theme="light"][data-contrast="1"] td:not([style*="background:#0"]):not([style*="background:#1"]){ color:#3a424b !important; }
+html[data-theme="light"][data-contrast="1"] thead th:not([style*="background:#0"]):not([style*="background:#1"]){ color:#2a323b !important; background:#e0e5ea !important; }
+
+/* ── CONTRAST LEVEL 2 (ปานกลาง — DEFAULT) ── */
+/* ใช้ค่าที่ทำมาแล้ว (V479.19-24) — ไม่ต้องเพิ่ม */
+
+/* ── CONTRAST LEVEL 3 (เข้มสุด) — ตัวอักษรดำสนิท + หนาขึ้น ── */
+html[data-theme="light"][data-contrast="3"]{
+  --tx:#000000;--mu:#14181d;--mu2:#0a0d10;
+  --bg:#d2d8df;--sur:#e8ecf1;
+}
+html[data-theme="light"][data-contrast="3"] td:not([style*="background:#0"]):not([style*="background:#1"]){ color:#000 !important; font-weight:600 !important; }
+html[data-theme="light"][data-contrast="3"] thead th:not([style*="background:#0"]):not([style*="background:#1"]){ color:#000 !important; background:#c4ccd4 !important; border-bottom-width:2.5px !important; }
+html[data-theme="light"][data-contrast="3"] table,
+html[data-theme="light"][data-contrast="3"] th,
+html[data-theme="light"][data-contrast="3"] td{ border-color:#6b747e !important; }
+/* level 3: ตัวอักษรจางทั้งหมด → ดำสนิท */
+html[data-theme="light"][data-contrast="3"] [style*="color:#64748b"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"][data-contrast="3"] [style*="color:#94a3b8"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]),
+html[data-theme="light"][data-contrast="3"] .flbl,
+html[data-theme="light"][data-contrast="3"] .flbl-qf{ color:#000 !important; font-weight:700 !important; }
+
+/* ══════════════ FONT SIZE LEVELS ══════════════ */
+/* ทำงานทั้ง dark + light (ขยายทั้งระบบ) — คูณ scale ที่ root */
+
+/* ── FONT SIZE 1 (ปกติ) ── */
+/* ค่าเดิม ไม่ต้องเพิ่ม */
+
+/* ── FONT SIZE 2 (ใหญ่ — DEFAULT สำหรับ present) ── */
+html[data-fontsize="2"] td,
+html[data-fontsize="2"] th,
+html[data-fontsize="2"] .flbl,
+html[data-fontsize="2"] .flbl-qf,
+html[data-fontsize="2"] button{ font-size:110% !important; }
+html[data-fontsize="2"] [style*="font-size:9px"]{ font-size:11px !important; }
+html[data-fontsize="2"] [style*="font-size:10px"]{ font-size:12px !important; }
+html[data-fontsize="2"] [style*="font-size:11px"]{ font-size:13px !important; }
+html[data-fontsize="2"] [style*="font-size:12px"]{ font-size:14px !important; }
+html[data-fontsize="2"] [style*="font-size:13px"]{ font-size:15px !important; }
+
+/* ── FONT SIZE 3 (ใหญ่สุด — จอไกล) ── */
+html[data-fontsize="3"] td,
+html[data-fontsize="3"] th,
+html[data-fontsize="3"] .flbl,
+html[data-fontsize="3"] .flbl-qf,
+html[data-fontsize="3"] button{ font-size:125% !important; }
+html[data-fontsize="3"] [style*="font-size:9px"]{ font-size:13px !important; }
+html[data-fontsize="3"] [style*="font-size:10px"]{ font-size:14px !important; }
+html[data-fontsize="3"] [style*="font-size:11px"]{ font-size:15px !important; }
+html[data-fontsize="3"] [style*="font-size:12px"]{ font-size:16px !important; }
+html[data-fontsize="3"] [style*="font-size:13px"]{ font-size:17px !important; }
+html[data-fontsize="3"] [style*="font-size:14px"]{ font-size:18px !important; }
+html[data-fontsize="3"] [style*="font-size:24px"]{ font-size:30px !important; }
+html[data-fontsize="3"] [style*="font-size:26px"]{ font-size:32px !important; }
+html[data-fontsize="3"] [style*="font-size:28px"]{ font-size:36px !important; }
+
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* [V479.26] FIX ตัวอักษรจาง/ขาว บนปุ่ม-chip พื้นอ่อน (มองไม่เห็นตอน present) */
+/* ปัญหา: guard เดิมกันทุก background → ปุ่มพื้นอ่อน (var(--sur2)/transparent) ไม่ถูก override */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* ปุ่ม/chip พื้น var() หรือ transparent → ตัวอักษรเข้มตามโทนสีเดิม */
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#60a5fa"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#38bdf8"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#7dd3fc"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#60a5fa"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#38bdf8"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#7dd3fc"]{ color:#0757b8 !important; }
+
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#4ade80"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#22c55e"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#34d399"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#4ade80"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#22c55e"]{ color:#0b7a2e !important; }
+
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#a78bfa"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#c4b5fd"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#b8b0ff"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#a78bfa"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#c4b5fd"]{ color:#5b32b0 !important; }
+
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fbbf24"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#f59e0b"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#facc15"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fbbf24"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#f59e0b"]{ color:#8a5a00 !important; }
+
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#f87171"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#ef4444"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#f87171"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#ef4444"]{ color:#b01226 !important; }
+
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fb923c"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fb923c"]{ color:#a8480a !important; }
+
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#94a3b8"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#64748b"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#94a3b8"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#64748b"]{ color:#1f262d !important; }
+
+/* ── ปุ่ม/chip พื้นสีอ่อน (rgba โปร่ง / hex อ่อน #d,#e,#f) → ตัวอักษรเข้ม ── */
+html[data-theme="light"] button[style*="background:rgba"],
+html[data-theme="light"] [style*="background:rgba"][style*="border-radius"]{ font-weight:700 !important; }
+
+/* ── ตัวอักษรสีขาว (#fff/#ffffff) บนพื้นอ่อน → เข้ม (ห้ามขาวบนขาว!) ── */
+html[data-theme="light"] [style*="color:#fff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]):not([style*="background:#4"]):not([style*="background:#5"]):not([style*="background:#6"]):not([style*="background:#7"]):not([style*="background:#8"]):not([style*="background:#9"]):not([style*="background:#a"]):not([style*="background:#b"]):not([style*="background:rgb"]),
+html[data-theme="light"] [style*="color:#ffffff"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]):not([style*="background:#4"]):not([style*="background:#5"]):not([style*="background:#6"]):not([style*="background:#7"]):not([style*="background:#8"]):not([style*="background:#9"]):not([style*="background:#a"]):not([style*="background:#b"]):not([style*="background:rgb"]),
+html[data-theme="light"] [style*="color:white"]:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]):not([style*="background:rgb"]){ color:#12181f !important; }
+
+/* ── ปุ่ม disabled/จาง (opacity ต่ำ) → เพิ่มความชัด ── */
+html[data-theme="light"] button[style*="opacity:0.4"],
+html[data-theme="light"] button[style*="opacity:0.5"],
+html[data-theme="light"] button[style*="opacity:.4"],
+html[data-theme="light"] button[style*="opacity:.5"],
+html[data-theme="light"] button[style*="opacity:0.6"],
+html[data-theme="light"] button[style*="opacity:.6"]{ opacity:0.85 !important; }
+
+/* ── ปุ่ม class-based (hdr-btn, chip ฯลฯ) ── */
+html[data-theme="light"] button:not([style*="background:#0"]):not([style*="background:#1"]):not([style*="background:#2"]):not([style*="background:#3"]):not([style*="background:rgb(1"]):not([style*="background:rgb(2"]):not([style*="background:rgb(3"]){
+  font-weight:700 !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* [V479.26b] ครอบทุกสีสว่างบนพื้นอ่อน (rgba / transparent / var(--sur)) */
+/* 52 combo ที่สแกนพบ — chips, ปุ่ม filter, badge พื้นโปร่ง = ต้องอ่านได้ */
+/* ═══════════════════════════════════════════════════════════════ */
+
+html[data-theme="light"] [style*="background:rgba"][style*="color:#38bdf8"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#38bdf8"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#38bdf8"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#7dd3fc"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#7dd3fc"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#7dd3fc"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#60a5fa"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#60a5fa"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#60a5fa"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#67e8f9"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#67e8f9"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#67e8f9"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#3b82f6"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#3b82f6"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#3b82f6"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#58a6ff"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#58a6ff"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#58a6ff"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#5b98ff"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#5b98ff"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#5b98ff"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#9cc0ff"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#9cc0ff"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#9cc0ff"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#22d3ee"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#22d3ee"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#22d3ee"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#38d3e0"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#38d3e0"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#38d3e0"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#cfe0ff"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#cfe0ff"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#cfe0ff"]{ color:#0757b8 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#4ade80"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#4ade80"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#4ade80"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#22c55e"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#22c55e"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#22c55e"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#34d399"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#34d399"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#34d399"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#3ddc84"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#3ddc84"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#3ddc84"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#6ee7b7"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#6ee7b7"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#6ee7b7"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#7ee2b8"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#7ee2b8"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#7ee2b8"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#86efac"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#86efac"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#86efac"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#bbf7d0"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#bbf7d0"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#bbf7d0"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#9fe0c1"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#9fe0c1"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#9fe0c1"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#7fd6b0"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#7fd6b0"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#7fd6b0"]{ color:#0b7a2e !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#a78bfa"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#a78bfa"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#a78bfa"]{ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#c4b5fd"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#c4b5fd"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#c4b5fd"]{ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#b8b0ff"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#b8b0ff"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#b8b0ff"]{ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#8b5cf6"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#8b5cf6"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#8b5cf6"]{ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#7c6fe0"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#7c6fe0"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#7c6fe0"]{ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#7c3aed"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#7c3aed"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#7c3aed"]{ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#a5b4fc"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#a5b4fc"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#a5b4fc"]{ color:#5b32b0 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#fbbf24"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fbbf24"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fbbf24"]{ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#facc15"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#facc15"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#facc15"]{ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#f59e0b"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#f59e0b"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#f59e0b"]{ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#fcd34d"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fcd34d"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fcd34d"]{ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#fde68a"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fde68a"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fde68a"]{ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#f5c400"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#f5c400"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#f5c400"]{ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#e6b35e"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#e6b35e"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#e6b35e"]{ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#d9952a"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#d9952a"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#d9952a"]{ color:#8a5a00 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#fb923c"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fb923c"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fb923c"]{ color:#a8480a !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#fdba74"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fdba74"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fdba74"]{ color:#a8480a !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#ff9d3c"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#ff9d3c"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#ff9d3c"]{ color:#a8480a !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#f97316"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#f97316"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#f97316"]{ color:#a8480a !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#f87171"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#f87171"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#f87171"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#ef4444"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#ef4444"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#ef4444"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#e8344a"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#e8344a"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#e8344a"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#ff5252"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#ff5252"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#ff5252"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#fca5a5"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fca5a5"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fca5a5"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#fecaca"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fecaca"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fecaca"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#f9a8d4"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#f9a8d4"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#f9a8d4"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#f472b6"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#f472b6"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#f472b6"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#fda4af"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#fda4af"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#fda4af"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#e69aa0"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#e69aa0"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#e69aa0"]{ color:#b01226 !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#94a3b8"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#94a3b8"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#94a3b8"]{ color:#1f262d !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#64748b"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#64748b"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#64748b"]{ color:#1f262d !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#cbd5e1"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#cbd5e1"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#cbd5e1"]{ color:#1f262d !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#8a98a8"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#8a98a8"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#8a98a8"]{ color:#1f262d !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#e2e8f0"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#e2e8f0"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#e2e8f0"]{ color:#1f262d !important; }
+html[data-theme="light"] [style*="background:rgba"][style*="color:#d8dee4"],
+html[data-theme="light"] [style*="background:transparent"][style*="color:#d8dee4"],
+html[data-theme="light"] [style*="background:var(--sur"][style*="color:#d8dee4"]{ color:#1f262d !important; }
+
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* [V479.27] FIX QUICK FILTER chips + ปุ่มพื้นดำ (Alert) — present ต้องอ่านได้ */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* ── QUICK FILTER chips: พื้นโปร่ง rgba + border สี → ตัวอักษรเข้ม + border เข้ม + weight หนา ── */
+/* chips ใช้ pattern: background:rgba(สี,.1x); color:สีเดียวกัน; border:1px solid สี */
+html[data-theme="light"] [style*="background:rgba"][style*="border-radius:999px"],
+html[data-theme="light"] [style*="background:rgba"][style*="border-radius:20px"],
+html[data-theme="light"] [style*="background:rgba"][style*="border-radius:16px"],
+html[data-theme="light"] [style*="background:rgba"][style*="border-radius:14px"],
+html[data-theme="light"] [style*="background:rgba"][style*="border-radius:12px"]{
+  font-weight:800 !important;
+  border-width:1.5px !important;
+}
+
+/* chip ทุกอันที่พื้นโปร่ง → เพิ่มพื้นให้ทึบขึ้นนิด (อ่านง่ายบน projector) */
+html[data-theme="light"] button[style*="background:rgba(56,189,248"],
+html[data-theme="light"] button[style*="background:rgba(34,197,94"],
+html[data-theme="light"] button[style*="background:rgba(167,139,250"],
+html[data-theme="light"] button[style*="background:rgba(251,146,60"],
+html[data-theme="light"] button[style*="background:rgba(251,191,36"],
+html[data-theme="light"] button[style*="background:rgba(239,68,68"],
+html[data-theme="light"] button[style*="background:rgba(248,113,113"],
+html[data-theme="light"] button[style*="background:rgba(148,163,184"],
+html[data-theme="light"] button[style*="background:rgba(74,222,128"],
+html[data-theme="light"] button[style*="background:rgba(124,58,237"],
+html[data-theme="light"] button[style*="background:rgba(52,211,153"],
+html[data-theme="light"] button[style*="background:rgba(250,204,21"],
+html[data-theme="light"] button[style*="background:rgba(245,158,11"],
+html[data-theme="light"] button[style*="background:rgba(249,168,212"]{
+  background:#e4e9ef !important;   /* พื้นเทาอ่อนทึบ — ไม่โปร่งจนจาง */
+  font-weight:800 !important;
+  border-width:1.5px !important;
+}
+
+/* ── ปุ่ม/select พื้นดำ-เข้ม (หน้า Alert: ทุกผู้แทน / ทุกประเภทสัญญา / ต้องติดตาม) ── */
+/* พื้นดำใน light mode → เปลี่ยนเป็นพื้นอ่อน + ตัวอักษรดำ (ไม่ใช่ดำบนดำ) */
+html[data-theme="light"] select[style*="background:#0"],
+html[data-theme="light"] select[style*="background:#1"],
+html[data-theme="light"] select[style*="background:#000"],
+html[data-theme="light"] button[style*="background:#000"],
+html[data-theme="light"] [style*="background:#0f172a"],
+html[data-theme="light"] [style*="background:#0d1525"],
+html[data-theme="light"] [style*="background:#111827"],
+html[data-theme="light"] [style*="background:#0b1220"],
+html[data-theme="light"] [style*="background:#0a0f1a"]{
+  background:#e8ecf1 !important;
+  color:#0f141a !important;
+  border-color:#6b747e !important;
+}
+/* ตัวอักษรใน element พื้นดำที่ถูกเปลี่ยนเป็นอ่อน → บังคับดำ */
+html[data-theme="light"] select[style*="background:#0"] option,
+html[data-theme="light"] [style*="background:#0f172a"] *,
+html[data-theme="light"] [style*="background:#0d1525"] *,
+html[data-theme="light"] [style*="background:#111827"] *{
+  color:#0f141a !important;
+}
+
+/* ── ปุ่มกรอบดำหนา (ต้องติดตาม — ภาพ 6) ── */
+html[data-theme="light"] [style*="border:2px solid #000"],
+html[data-theme="light"] [style*="border:1px solid #000"],
+html[data-theme="light"] [style*="border:2px solid #0"]{
+  border-color:#1a1f26 !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* [V479.27b] QUICK FILTER chips (.ip-*) — class-based ไม่ใช่ inline → ต้อง override ที่ class */
+/* ต้นตอ: .ip-billed{color:#4ade80} .ip-ordered{color:#7dd3fc} ฯลฯ = สีอ่อน มองไม่เห็นบนพื้นขาว */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* base chip: พื้นทึบอ่อน + ตัวอักษรเข้ม + หนา */
+html[data-theme="light"] .ip-pill{
+  background:#e4e9ef !important;
+  color:#1a1f26 !important;
+  border:1.5px solid #8a95a1 !important;
+  font-weight:700 !important;
+  font-size:11px !important;
+}
+html[data-theme="light"] .ip-pill:hover{ border-color:#0757b8 !important; color:#000 !important; }
+html[data-theme="light"] .ip-pill.on{ border-width:2px !important; font-weight:800 !important; }
+
+/* แต่ละสี → เข้มตามโทน (พื้นอ่อนทึบ + ตัวอักษรเข้ม + border สีเข้ม) */
+html[data-theme="light"] .ip-actual,
+html[data-theme="light"] .ip-actual.on{ background:#d8ebdf !important; color:#0b4d20 !important; border-color:#0b7a2e !important; }
+
+html[data-theme="light"] .ip-billed,
+html[data-theme="light"] .ip-billed.on{ background:#d4ead9 !important; color:#0b4d20 !important; border-color:#0b7a2e !important; }
+
+html[data-theme="light"] .ip-all,
+html[data-theme="light"] .ip-all.on{ background:#d6e4f5 !important; color:#043d84 !important; border-color:#0757b8 !important; }
+
+html[data-theme="light"] .ip-backlog,
+html[data-theme="light"] .ip-backlog.on{ background:#f0e6cc !important; color:#5a3f00 !important; border-color:#8a5a00 !important; }
+
+html[data-theme="light"] .ip-ordered,
+html[data-theme="light"] .ip-ordered.on{ background:#d6e8f5 !important; color:#043d84 !important; border-color:#0757b8 !important; }
+
+html[data-theme="light"] .ip-spf-ord,
+html[data-theme="light"] .ip-spf-ord.on{ background:#e2dcf2 !important; color:#3d1f7a !important; border-color:#5b32b0 !important; }
+
+html[data-theme="light"] .ip-spf-proc,
+html[data-theme="light"] .ip-spf-proc.on{ background:#e2dcf2 !important; color:#3d1f7a !important; border-color:#5b32b0 !important; }
+
+html[data-theme="light"] .ip-pend,
+html[data-theme="light"] .ip-pend.on{ background:#f2dcdf !important; color:#7a0d1a !important; border-color:#b01226 !important; }
+
+/* chip ที่ active (on) → พื้นเข้มขึ้น ตัวอักษรขาว (contrast สูงสุด) */
+html[data-theme="light"] .ip-pill.on.ip-all{ background:#0757b8 !important; color:#fff !important; }
+html[data-theme="light"] .ip-pill.on.ip-billed{ background:#0b7a2e !important; color:#fff !important; }
+html[data-theme="light"] .ip-pill.on.ip-ordered{ background:#0757b8 !important; color:#fff !important; }
+html[data-theme="light"] .ip-pill.on.ip-pend{ background:#b01226 !important; color:#fff !important; }
+html[data-theme="light"] .ip-pill.on.ip-spf-ord,
+html[data-theme="light"] .ip-pill.on.ip-spf-proc{ background:#5b32b0 !important; color:#fff !important; }
+html[data-theme="light"] .ip-pill.on.ip-backlog{ background:#8a5a00 !important; color:#fff !important; }
+html[data-theme="light"] .ip-pill.on.ip-actual{ background:#0b7a2e !important; color:#fff !important; }
+
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* [V479.27c] FIX ปุ่ม/select พื้นดำ หน้า Alert (JS set inline style ทับ CSS) */
+/* .cd-tab ถูก set ด้วย JS: b.style.background='var(--sur2,#1a2230)' → ต้อง !important สู้ */
+/* ═══════════════════════════════════════════════════════════════ */
+
+/* ── cd-tab (ต้องติดตาม / รายงานสรุป) ── */
+html[data-theme="light"] .cd-tab{
+  background:#e4e9ef !important;
+  color:#1a1f26 !important;
+  border:1.5px solid #8a95a1 !important;
+  font-weight:700 !important;
+}
+/* tab ที่ active → พื้นน้ำเงินเข้ม ตัวขาว (เห็นชัด) */
+html[data-theme="light"] .cd-tab[style*="background: var(--sur2"],
+html[data-theme="light"] .cd-tab[style*="background:var(--sur2"]{
+  background:#0757b8 !important;
+  color:#fff !important;
+  border-color:#043d84 !important;
+  font-weight:800 !important;
+}
+
+/* ── select .fsel (ทุกผู้แทน / ทุกประเภทสัญญา) ── */
+html[data-theme="light"] select.fsel,
+html[data-theme="light"] select[style*="background:var(--sur2"],
+html[data-theme="light"] select[style*="background: var(--sur2"]{
+  background:#eef1f5 !important;
+  color:#0f141a !important;
+  border:1.5px solid #6b747e !important;
+  font-weight:700 !important;
+}
+html[data-theme="light"] select.fsel option{
+  background:#fff !important;
+  color:#0f141a !important;
+}
+
+/* ── ทุก select ใน light → พื้นอ่อน ตัวเข้ม (กันพื้นดำหลุด) ── */
+html[data-theme="light"] select{
+  background:#eef1f5 !important;
+  color:#0f141a !important;
+  border-color:#6b747e !important;
+}
+html[data-theme="light"] select option{ background:#fff !important; color:#0f141a !important; }
+
+/* ── ปุ่มที่ JS set สีเข้ม (var(--sur2,#xxx) fallback เข้ม) ── */
+html[data-theme="light"] button[style*="var(--sur2,#1a2230)"],
+html[data-theme="light"] button[style*="var(--sur2,#1e293b)"],
+html[data-theme="light"] button[style*="var(--tx,#e6edf3)"],
+html[data-theme="light"] button[style*="var(--tx,#e2e8f0)"]{
+  background:#e4e9ef !important;
+  color:#0f141a !important;
+}
+
+/* ── input (ค้นหา) พื้นอ่อน ตัวเข้ม ── */
+html[data-theme="light"] input[type="text"],
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]){
+  background:#fff !important;
+  color:#0f141a !important;
+  border-color:#8a95a1 !important;
+}
+html[data-theme="light"] input::placeholder{ color:#5a636d !important; }
+</style>

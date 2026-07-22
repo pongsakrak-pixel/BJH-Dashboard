@@ -1,0 +1,2521 @@
+<script></script>
+
+<style id="v51-override-style">
+#mob-nav,#mob-kpi,#mob-fc,#mob-filter,#mob-tbl{display:none !important;}
+@media (max-width:640px){#mob-nav,#mob-kpi,#mob-fc,#mob-filter,#mob-tbl{display:none !important;}#app{padding-bottom:0 !important;}html,body{overflow:hidden !important;}}
+</style>
+<script id="v51-override-script">
+(function(){
+  var CUR_YR = window.CUR_YR||(new Date().getFullYear()), CUR_MO = window.CUR_MO||(new Date().getMonth()+1), SP_FIXED_FC = 5000000;
+  var BACKLOG_SB = ['ปริ้นบิลเรียบร้อย','รับบิลเรียบร้อย','คืนบิล CFD','คืนบิลเรียบร้อย','รอดำเนินการออกบิล'];
+  var ORDERED_SB = ['Requested Bill','รอ Delegrate งาน','รอ Delegate งาน'];
+  var OFFER_SC = ['รอใบสั่งจ้าง/รอทำสัญญา','รอใบสั่งจ้าง','รอทำสัญญา','อยู่ระหว่างทำสัญญา','ส่งเอกสารให้ลูกค้า','เอกสารรอส่งลูกค้า','มอบอำนาจ/BG'];
+  function ym(y,m){ return Number(y||0)*100 + Number(m||0); }
+  function isPast(y,m){ return ym(y,m) < ym(CUR_YR,CUR_MO); }
+  function isCurrent(y,m){ return Number(y||0)===CUR_YR && Number(m||0)===CUR_MO; }
+  function isFuture(y,m){ return ym(y,m) > ym(CUR_YR,CUR_MO); }
+  function pickMonthYearFromBill(r){
+    var d = (typeof etlDate==='function') ? etlDate(r.bd) : (r.bd ? new Date(r.bd) : null);
+    if(d && !isNaN(d.getTime())) return {mo:d.getMonth()+1, yr:d.getFullYear()};
+    return {mo:Number(r.mo||r.rbmo||r.fmo||CUR_MO), yr:Number(r.yr||r.rbyr||r.fyr||CUR_YR)};
+  }
+  function pickSourceMonthYear(r){
+    var mo = Number(r.carry_from_mo||r.rbmo||r.om||r.fmo||r.fm||r.mo||0);
+    var yr = Number(r.carry_from_yr||r.rbyr||r.oy||r.fyr||r.fy||r.yr||0);
+    if(!mo || !yr){ mo = Number(r.mo||CUR_MO); yr = Number(r.yr||CUR_YR); }
+    return {mo:mo, yr:yr};
+  }
+  function isOfferStatus(v){ v = normStatusText ? normStatusText(v) : String(v||'').trim(); return OFFER_SC.indexOf(v)>=0; }
+  // [v207] no-bill ÷4: เรียกตอน render (af/getStats) ที่ window._jsupSC พร้อม; flag _nbDiv4 กันซ้ำ
+  // [v209] estimate adjust: (1) no-bill SC px÷4, (2) force ธ.ค. (no-bill SC + SP Prospect t=SP/Offer + Low), (3) mark estimate
+  window._applyNoBillDiv4 = function(){
+    var _raw = window._jsupSC;
+    if(!Array.isArray(_raw) || _raw.length===0) return;
+    var _nbS = window._scBillQnSet;
+    if(!_nbS){ try{ _nbS={}; for(var _i=0;_i<_raw.length;_i++){ var _q=_raw[_i]&&_raw[_i].QH_DOC_NUMBER?String(_raw[_i].QH_DOC_NUMBER).trim():''; if(_q)_nbS[_q]=1; } window._scBillQnSet=_nbS; }catch(e){ _nbS=null; } }
+    if(!_nbS || !window.D) return;
+    window.D.forEach(function(r){
+      if(!r || r.st!=='Offer') return;
+      var _qn=String(r.qn||'').trim();
+      var _isNb = (r.t==='SC') && _qn && !_nbS[_qn];
+      if(_isNb && !r._isLow && !r._nbDiv4){ r.px=Number(r.px||0)/4; r._nbDiv4=true; }
+      var _toDec = _isNb || (r.t==='SP') || r._isLow;
+      if(_toDec && !r._estMo){ r._origMo=r.mo; r._origYr=r.yr; r.mo=12; r.yr=(window.CUR_YR||r.yr); r.fmo=12; r.fyr=r.yr; r.fm=12; r.fy=r.yr; r._estMo=true; } // [v377] sync fmo/fyr — เดิม MFC (อ่าน fmo) ยังนับเดือนเก่า
+      if(_isNb || r._isLow){ r._isEstimate=true; }
+    });
+  };
+  function normalizeStatusV51(r){
+    // Forecast SP records (sp_fix) — ห้าม normalize, เก็บ st='Forecast SP' ไว้เดิม
+    if(r && (r.st==='Forecast SP' || Number(r.is_sp_fix||0)===1)){
+      r.fmo=r.mo; r.fyr=r.yr; r.fm=r.mo; r.fy=r.yr;
+      return r;
+    }
+    var sb = String(r.sb||'').trim();
+    var sc = String(r.sc||'').trim();
+    var sn = String(r.sn||'').trim();
+    var src = pickSourceMonthYear(r);
+    var bill = pickMonthYearFromBill(r);
+    r.qs = r.qs || '';
+    r.carry_from_mo = src.mo; r.carry_from_yr = src.yr;
+    r.om = src.mo; r.oy = src.yr;
+    r.display_month_label = (MO[src.mo]||src.mo) + ' ' + src.yr;
+
+    if(r.st === 'Excluded' || /Excluded/i.test(r.ip||'') || (r.t==='SC' && (String(r.sc||'').trim()==='ยกเลิกสัญญา' || String(r.sb||'').trim()==='Bill Not Print'))){
+      r.st='Excluded';
+      r.mo = src.mo; r.yr = src.yr;
+      return r;
+    }
+
+    if(r.t==='SC'){
+      if(_hasHMStage(r)){
+        if(r.bn){
+          var _dOff3=r.bd?new Date(r.bd):null;
+          if(_dOff3&&!isNaN(_dOff3)){ r.mo=_dOff3.getMonth()+1; r.yr=_dOff3.getFullYear(); r.fmo=r.mo; r.fyr=r.yr; }
+          r.st='Billed'; r.ip='SC Pending';
+        } else { r.st='Offer'; r.ip=(sn==='Completed')?'PM Completed':(sn==='Canceled')?'Cancel PM':'Waiting PM';
+          if(isPast(src.yr, src.mo)){ r.mo = CUR_MO; r.yr = CUR_YR; } else { r.mo = src.mo; r.yr = src.yr; }
+        }
+      }else if(r.bn || BACKLOG_SB.indexOf(sb)>=0 || r.st==='Backlog' || r.st==='Billed' || r.st==='Actual FAD' || r.st==='Actual FAD (CN)' || r.st==='Actual FAD (Not Found)'){
+        if(r._excel_mapped) return r; // excel mapped → ไม่แตะ
+
+        if(r.bn && _hasHMStage(r)){
+          r.st='SC Offer'; r.ip=(sn==='Completed')?'PM Completed':(sn==='Canceled')?'Cancel PM':'Waiting PM';
+          if(isPast(src.yr, src.mo)){ r.mo=CUR_MO; r.yr=CUR_YR; }
+          else { r.mo=src.mo; r.yr=src.yr; }
+          return r;
+        }
+        r.st = r.bn ? 'Billed' : 'Backlog';
+        if(r.bn && r.bd){ r.mo = bill.mo; r.yr = bill.yr; }
+        else if(!r.bn){ r.mo = CUR_MO; r.yr = CUR_YR; } // ไม่มีเลขบิล → CUR_MO
+        else if(!r.mo || !r.yr){ r.mo = src.mo; r.yr = src.yr; }
+        // [v357] Bill Merge → จัดการใน post-pass _bjhApplyMergeBilled (หลัง D ครบ + map พร้อม)
+        if(!r.ip || /FAD|Actual|Bill Confirmed|Await FAD|Await Billing|SC Billed|SC Billing/i.test(r.ip)){
+          r.ip = (sb==='รอดำเนินการออกบิล') ? 'SC Billing' : (r.bn ? 'SC Billed' : 'SC Billing');
+        }
+      }else if(ORDERED_SB.indexOf(sb)>=0 || r.st==='Ordered' || r.st==='Carry On'){
+        r.mo = src.mo; r.yr = src.yr;
+        if(isPast(src.yr, src.mo)){
+          if(sn==='Completed'){
+            r.st='SC Carry';
+            r.ip='Waiting Bill';
+          }else{
+            r.st='SC Carry (Pending)';
+            r.ip=(sn==='Canceled')?'Cancel PM':'Waiting PM';
+          }
+          r.mo = CUR_MO; r.yr = CUR_YR;
+        }else{
+          r.st='SC Ordered';
+          r.ip=(sn==='Completed')?'Waiting Bill':(sn==='Canceled'?'Cancel PM':'Waiting PM');
+        }
+      }else if(!r.st || r.st==='Actual' || r.st==='SP Forward'){
+        r.st = 'Data Issue';
+        if(!r.ip) r.ip = 'SC:Data Issue';
+        r.mo = src.mo; r.yr = src.yr;
+      } } else {
+
+      if(r.is_sp_fix===1 || r.ip==='SP Forecast'){
+        r.fmo=r.mo; r.fyr=r.yr; r.fm=r.mo; r.fy=r.yr;
+        return r;
+      }
+      if(r.st==='Backlog' || r.st==='Billed' || r.st==='Actual FAD' || /^36\d+/.test(normBill(r.bn||'')) || (r.sb && r.bd)){
+        if(r._excel_mapped) return r; // excel mapped → ไม่แตะ
+        r.st = r.bn ? 'Billed' : 'Backlog';
+        r.mo = bill.mo; r.yr = bill.yr;
+        if(!r.ip || (/FAD|Bill Confirmed|Await FAD|SP Billed|SP Billing/i.test(r.ip) && r.ip!=='Bill Merge')){
+          r.ip = (r.sb==='รอดำเนินการออกบิล') ? 'SP Billing' : 'SP Billed';
+        }
+      } else if(String(r.st||'').indexOf('SP Forward')===0||String(r.st||'').indexOf('SP Ordered')===0){
+        r.mo = src.mo; r.yr = src.yr;
+        if(r.ip==='RP:Stock In' || r.ip==='RP:Wait Stock-In') r.st='SP Ordered (Ordering)';
+        else r.st='SP Ordered (Pending)';
+      } else if(r.st==='Excluded'){
+        r.mo = src.mo; r.yr = src.yr;
+      } else if(r.st==='Prospect'){
+        // [v370] fix regression v369 — 'Prospect' (Customer Accept, ยังไม่มี PO) เคยตกไป else 'Data Issue'
+        r.mo = src.mo; r.yr = src.yr;
+      } else {
+        r.st = 'Data Issue';
+        if(!r.ip) r.ip = 'SP:Data Issue';
+        r.mo = src.mo; r.yr = src.yr;
+      }
+    }
+    r.fmo = r.mo; r.fyr = r.yr; r.fm = r.mo; r.fy = r.yr;
+    r.is_carry = (r.st==='SC Carry' || r.st==='SC Carry (Pending)') ? 1 : 0;
+    r.co_ready = (r.st==='SC Carry') ? 1 : 0;
+
+    var SKIP_OD=['Backlog','Billed','Actual FAD','Actual FAD (CN)','Actual FAD (Not Found)','Excluded','Data Issue','CN'];
+    if(SKIP_OD.indexOf(r.st)<0 && r.mo && r.yr && isPast(r.yr, r.mo)){
+      r.overdue_mo = r.mo; r.overdue_yr = r.yr;  // เก็บเดือนเดิมไว้แสดง
+      r.mo = CUR_MO; r.yr = CUR_YR;
+      r.fmo = CUR_MO; r.fyr = CUR_YR; r.fm = CUR_MO; r.fy = CUR_YR;
+      r.overdue = 1;
+    } else {
+      r.overdue = 0;
+    }
+    return r;
+  }
+
+  stCls = function(s){
+    if(s==='Backlog') return 'bst-backlog';
+    if(s==='SC Ordered' || s==='Ordered' || s==='SC Carry' || s==='SC Carry (Pending)') return 'bst-ordered';
+    if(s==='SP Ordered (Ordering)' || s==='SP Ordered (Pending)' || s==='SP Forward (Ordering)' || s==='SP Forward (Pending Order)') return 'bst-spfwd';
+    if(s==='Excluded' || s==='Data Issue') return 'bst-backlog';
+    return 'bst-offer';
+  };
+
+  periodLabel = function(r){
+    // ── Prospect (Offer) ที่ยังไม่มีงวดบิลใน RAW_SC_BILL → "ยังไม่มีกำหนดงวดบิล" ──
+    // (แค่ข้อความ ไม่กระทบการคำนวณยอด)
+    if(r && (r.st==='Offer'||r.st==='SC Offer') && !r._isLow){
+      try{
+        // สร้าง Set ของ qn ที่มีงวดใน RAW_SC_BILL ครั้งเดียว (cache)
+        if(!window._scBillQnSet || window._scBillQnSetSrc!==window._jsupSC){
+          var _set={}; var _arr=window._jsupSC||[];
+          for(var _i=0;_i<_arr.length;_i++){
+            var _q=_arr[_i]&&_arr[_i].QH_DOC_NUMBER?String(_arr[_i].QH_DOC_NUMBER).trim():'';
+            if(_q) _set[_q]=1;
+          }
+          window._scBillQnSet=_set; window._scBillQnSetSrc=window._jsupSC;
+        }
+        var _qn=String(r.qn||'').trim();
+        if(_qn && !window._scBillQnSet[_qn]){
+          return '<span style="color:var(--mu);font-size:11px;font-style:italic">ยังไม่มีกำหนดงวดบิล</span>';
+        }
+      }catch(e){}
+    }
+    // Low Prospect — แสดง "Low Prospect → ธ.ค. 2026" สีเหลือง
+    if(r&&r._isLow){
+      var _lMo=Number(r.mo||0), _lYr=Number(r.yr||0);
+      var _lNowD=new Date(), _lNowMo=_lNowD.getMonth()+1, _lNowYr=_lNowD.getFullYear();
+      var _lKey=_lYr*12+_lMo, _lNowKey=_lNowYr*12+_lNowMo;
+      var _lShift='', _lOrig='';
+      if(_lMo && _lKey<_lNowKey){ _lOrig=(MO[_lMo]||_lMo)+' '+(_lYr||''); _lShift=r._manual_edit?'manual':'logic'; _lMo=_lNowMo; _lYr=_lNowYr; }
+      else if(r._manual_edit && _lMo){ _lShift='manual'; _lOrig=(r._orig_mo?(MO[r._orig_mo]||r._orig_mo)+' '+(r._orig_yr||_lYr):''); }
+      var _moLblL=_lMo?((MO[_lMo]||_lMo)+' '+(_lYr||'')):'';
+      var _lOut='<span style="color:#fbbf24;font-weight:600">Low</span>';
+      if(_moLblL){
+        _lOut+='<span style="color:var(--mu);font-size:10px">&nbsp;&nbsp;</span>';
+        if(_lShift){
+          var _lIco=_lShift==='logic'?'🔄':'✋';
+          var _lShCol=_lShift==='logic'?'#fbbf24':'#4ade80';
+          _lOut+='<span title="'+(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_lIco+' </span>';
+          if(_lOrig) _lOut+='<span style="color:var(--mu);font-size:11px">'+_lOrig+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
+          _lOut+='<span style="color:'+_lShCol+';font-weight:600">'+_moLblL+'</span>';
+        } else { _lOut+='<span style="color:var(--ac2);font-weight:600">'+_moLblL+'</span>'; }
+      }
+      return _lOut;
+    }
+    // High/Medium Prospect — เช็คทั้ง r.sc (สัญญา) และ r.qs (ใบเสนอราคา)
+    if(r && (r.st==='Offer' || r.st==='SP Ordered (Pending)') && (r.sc||r.qs)){
+      var _hmMapX=(window._FC_HM_STATUS_LOCAL||{});
+      var _scKeyX=String(r.sc||'').trim();
+      var _qsKeyX=String(r.qs||'').trim();
+      var _hmStgX=(_scKeyX?_hmMapX[_scKeyX]:null)||(_qsKeyX?_hmMapX[_qsKeyX]:null)||null;
+      if(_hmStgX==='H'||_hmStgX==='M'){
+        var _hmColX=_hmStgX==='H'?'#f87171':'#fb923c';
+        var _hmLblX=_hmStgX==='H'?'High':'Medium';
+        var _hmMoX=Number(r.rbmo||r.carry_from_mo||r.om||r.mo||0);
+        var _hmYrX=Number(r.rbyr||r.carry_from_yr||r.oy||r.yr||0);
+        var _nowDX=new Date(); var _nowMoX=_nowDX.getMonth()+1, _nowYrX=_nowDX.getFullYear();
+        var _hmKeyX=_hmYrX*12+_hmMoX, _nowKeyX=_nowYrX*12+_nowMoX;
+        var _shiftX='', _origX='';
+        if(_hmMoX && _hmKeyX<_nowKeyX){ _origX=(MO[_hmMoX]||_hmMoX)+' '+(_hmYrX||''); _shiftX=r._manual_edit?'manual':'logic'; _hmMoX=_nowMoX; _hmYrX=_nowYrX; }
+        else if(r._manual_edit && _hmMoX){ _shiftX='manual'; _origX=(r._orig_mo?(MO[r._orig_mo]||r._orig_mo)+' '+(r._orig_yr||_hmYrX):''); }
+        var _moHMX=_hmMoX?((MO[_hmMoX]||_hmMoX)+' '+(_hmYrX||'')):'';
+        var _outX='<span style="color:'+_hmColX+';font-weight:600">'+_hmLblX+'</span>';
+        if(_moHMX){
+          _outX+='<span style="color:var(--mu);font-size:10px">&nbsp;&nbsp;</span>';
+          if(_shiftX){
+            var _icoX=_shiftX==='logic'?'🔄':'✋';
+            var _shColX=_shiftX==='logic'?'#fbbf24':'#4ade80';
+            _outX+='<span title="'+(_shiftX==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_icoX+' </span>';
+            if(_origX) _outX+='<span style="color:var(--mu);font-size:11px">'+_origX+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
+            _outX+='<span style="color:'+_shColX+';font-weight:600">'+_moHMX+'</span>';
+          } else { _outX+='<span style="color:var(--ac2);font-weight:600">'+_moHMX+'</span>'; }
+        }
+        return _outX;
+      }
+    }
+    if(r._noDate) return '\u2014'; // inject จาก RAW_Quotation ยังไม่มีงวดบิล
+    var mo = Number(r.mo||0), yr = Number(r.yr||0);
+    if(!mo) return '—';
+    var base = (MO[mo]||mo)+' '+(yr||'');
+
+    if(r.t==='SP' && (r.st==='SP Ordered (Pending)' || r.st==='SP Ordered (Ordering)' || r.st==='Backlog' || r.st==='Billed' || r.st==='Actual FAD' || r.st==='Actual FAD (CN)' || r.st==='Actual FAD (Not Found)')){
+      var _dlvRawX=r.delivery||'';
+      if(_dlvRawX){
+      var _dd=null;
+      var _s=String(_dlvRawX).trim();
+      try {
+        if(/^\d{4}-\d{1,2}-\d{1,2}/.test(_s)){
+          _dd = new Date(_s);
+        } else if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(_s)){
+          var _p=_s.split(/[\/\-\s]/);
+          var _dy=parseInt(_p[0],10), _mo=parseInt(_p[1],10), _yr=parseInt(_p[2],10);
+          if(_yr>2400) _yr-=543;
+          _dd = new Date(_yr, _mo-1, _dy);
+        } else {
+          _dd = new Date(_s);
+        }
+      } catch(e){ _dd=null; }
+      if(_dd && !isNaN(_dd.getTime())){
+      var _today=new Date(); _today.setHours(0,0,0,0);
+      _dd.setHours(0,0,0,0);
+      var _diff=Math.floor((_dd-_today)/(1000*60*60*24));
+      // สีเตือน: แดง=เลยกำหนดเท่านั้น, เหลือง=เดือนนี้+เดือนถัดไป, เทา=เกินกว่านั้น
+      // ยกเว้น: ถ้า Billed + bill date (bd) ≤ delivery → ไม่แดง (ออกบิลทัน)
+      var _dKey=_dd.getFullYear()*12+_dd.getMonth();
+      var _tKey=_today.getFullYear()*12+_today.getMonth();
+      var _isWarnMo=(_dKey===_tKey || _dKey===_tKey+1);
+      var _billOnTime=false;
+      if(r.st==='Billed' && r.bd){
+        try {
+          var _bdS=String(r.bd).trim(), _bdD=null;
+          if(/^\d{4}-\d{1,2}-\d{1,2}/.test(_bdS)) _bdD=new Date(_bdS);
+          else if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(_bdS)){
+            var _bp=_bdS.split(/[\/\-\s]/);
+            var _by=parseInt(_bp[2],10); if(_by>2400) _by-=543;
+            _bdD=new Date(_by, parseInt(_bp[1],10)-1, parseInt(_bp[0],10));
+          } else _bdD=new Date(_bdS);
+          if(_bdD && !isNaN(_bdD.getTime())){
+            _bdD.setHours(0,0,0,0);
+            if(_bdD.getTime() <= _dd.getTime()) _billOnTime=true;
+          }
+        } catch(e){}
+      }
+      var _col=(_diff<0 && !_billOnTime)?'var(--red)':_isWarnMo?'var(--ylw2)':'#64748b';
+      var _dlvLbl=_dd.getDate()+' '+(MO[_dd.getMonth()+1]||(_dd.getMonth()+1))+' '+String(_dd.getFullYear());
+      if(_dd.getMonth()+1===mo && _dd.getFullYear()===yr){
+        return '<span style="color:'+_col+';font-weight:600">'+_dlvLbl+'</span>';
+      }
+      return '<span style="color:'+_col+';font-weight:600">'+_dlvLbl+'</span>'
+        +'<span style="color:var(--mu);font-size:10px"> → </span>'
+        +'<span style="color:var(--ac2);font-weight:600">'+base+'</span>';
+      }
+      }
+    }
+
+    if(r.overdue && r.overdue_mo && r.overdue_yr){
+      var fromLbl=(MO[r.overdue_mo]||r.overdue_mo)+' '+r.overdue_yr;
+      return '<span style="color:var(--red);font-weight:600">'+fromLbl+' → '+base+'</span>';
+    }
+    var om = Number(r.om||r.carry_from_mo||0), oy = Number(r.oy||r.carry_from_yr||0);
+    var isCarry = (r.st==='SC Carry'||r.st==='SC Carry (Pending)');
+    var isOfferPast = (r.st==='Offer' && om && oy && (oy*100+om) < (yr*100+mo));
+    if((isCarry||isOfferPast) && om && oy && (om!==mo||oy!==yr)){
+      return (MO[om]||om)+' '+(oy||'')+' → '+base;
+    }
+
+    if(r.t==='SC' && r.st==='Backlog' && r.rbmo && r.rbyr){
+      var rbKey=(Number(r.rbyr)*100)+Number(r.rbmo);
+      var moKey=(yr*100)+mo;
+      if(mo && yr && rbKey!==moKey){
+        return (MO[r.rbmo]||r.rbmo)+' '+r.rbyr+' → '+(MO[mo]||mo)+' '+yr;
+      }
+      return (MO[r.rbmo]||r.rbmo)+' '+r.rbyr;
+    }
+    if(r.t==='SP' && (r.st==='SP Ordered (Pending)'||r.st==='SP Ordered (Ordering)') && (!r.delivery||r.delivery==='')){
+      return '<span style="color:var(--mu);font-size:10px">รอกำหนดส่งมอบ → </span><span style="color:var(--ac2);font-weight:600">'+base+'</span>';
+    }
+    return base;
+  };
+
+  function includeInQuarterlyForecast(r){
+    return includeInMonthlyForecast(r);
+  }
+  function includeInMonthlyForecast(r){
+    var mo = Number(r.mo||0), yr = Number(r.yr||0);
+    if(yr!==CUR_YR || mo<1 || mo>12) return false;
+    if(isPast(yr,mo)) return r.st==='Backlog';
+    if(isCurrent(yr,mo)) return ['Backlog','SC Ordered','Ordered','SC Carry','SP Ordered (Ordering)','SP Forward (Ordering)'].indexOf(r.st)>=0;
+    if(Number(r.is_sp_fix||0)===1) return true;
+    return ['SC Ordered','Ordered','SP Ordered (Pending)','SP Forward (Pending Order)'].indexOf(r.st)>=0;
+  }
+
+  buildSummary = function(){
+    var MOS_TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    var QMO=[[0,1,2],[3,4,5],[6,7,8],[9,10,11]];
+    var TMS=['Service 1','Service 2','Service 3'];
+    var budMo=[];
+    for(var mi=0;mi<12;mi++){
+      var v=0; TMS.forEach(function(t){ v += (BUD[t].SP[mi] + BUD[t].SC[mi]) * 1000; }); budMo.push(v);
+    }
+    var qb=QMO.map(function(q){ return q.reduce(function(s,i){ return s+budMo[i]; },0); });
+    // [v183] Budget รายคน = budMo / N sales (เท่ากันทุกคน) — Revenue Summary ตรงกับ Budget Sales tab
+    // ใช้ local override เฉพาะใน buildSummary (ไม่แตะ window.SA_BUD_MO global เพื่อกัน save flow)
+    var SA_BUD_MO;
+    try{
+      var _saN=(window._SA_NAMES||(window.parent&&window.parent._SA_NAMES)||['จีรนันท์','ธนาวุฒิ','ประเสริฐ','เจนจิรา','พงษ์ศักดิ์']);
+      var _saNN=_saN.length||5;
+      var _perK=budMo.map(function(v){ return (v/1000)/_saNN; });
+      var _sbm={}; _saN.forEach(function(nm){ _sbm[nm]=_perK.slice(); });
+      SA_BUD_MO=_sbm;
+    }catch(_e){ SA_BUD_MO=window.SA_BUD_MO; }
+    var totBud=qb.reduce(function(a,b){ return a+b; },0);
+
+    var moMFC=new Array(12).fill(0);
+    var moBL=new Array(12).fill(0);
+    var moBilled=new Array(12).fill(0);
+    var moBilling=new Array(12).fill(0);
+    // sync state จาก dropdown ก่อนใช้
+    var _sumModeEl=document.getElementById('f-sum-mode');
+    if(_sumModeEl) window._sumBySales=(_sumModeEl.value==='bysales');
+    var _saFilt=window._sumBySales?((document.getElementById('f-sales')||{}).value||''):'';
+    D.forEach(function(r){
+      if(_saFilt && r.sa!==_saFilt) return;
+      if(/^QSP23/i.test(String(r.qn||''))) return; // [v377] sync ตาราง — af (v259) ซ่อน QSP23 แต่ MFC เดิมยังนับ
+      var mo=Number(r.fmo||r.mo||0), yr=Number(r.fyr||r.yr||0);
+      if(yr!==CUR_YR || mo<1 || mo>12) return;
+      var _shouldInclude=false;
+      var _rip=r.ip||'';
+      var _isActualFAD=(r.st==='Actual FAD'||r.st==='Actual FAD (Not Found)'||r.st==='Actual FAD (CN)');
+      var _isBilled=(r.st==='Billed');
+      var _isBL=(r.st==='Backlog'&&(_rip==='SC Billing'||_rip==='SP Billing'));
+      var _isSCOrd=(r.st==='SC Ordered'||r.st==='Ordered');
+      var _isSCCarry=(r.st==='SC Carry');
+      if(mo<CUR_MO){
+        _shouldInclude = _saFilt ? _isBilled : _isActualFAD;
+      } else if(mo===CUR_MO){
+
+        if(typeof _mfcFilter!=='undefined'&&_mfcFilter&&_mfcFilter.length){
+          _MFC_PILLS.forEach(function(p){
+            if(_mfcFilter.indexOf(p.id)<0) return;
+            var stMatch=p.st&&p.st.indexOf(r.st)>=0;
+            var ipMatch=p.ip&&p.ip.indexOf(_rip)>=0;
+            // Backlog (Confirmed) ข้าม ip check
+            if(r.st==='Backlog (Confirmed)'){ if(stMatch) _shouldInclude=true; }
+            else if(p.ip){ if(stMatch&&ipMatch) _shouldInclude=true; }
+            else { if(stMatch) _shouldInclude=true; }
+          });
+          // Chip 'fcsp' toggle (AND): ถ้า fcsp OFF → ตัด Forecast SP records ออกแม้ chip อื่นจะ ON
+          var _isFcSPRec = (r.st==='Forecast SP' || Number(r.is_sp_fix||0)===1);
+          if (_isFcSPRec && _mfcFilter.indexOf('fcsp')<0) _shouldInclude=false;
+        } else {
+          _shouldInclude=_isActualFAD||_isBilled||_isBL||_isSCOrd||_isSCCarry||r.st==='Backlog (Confirmed)';
+        } } else {
+        if(typeof _mfcFilter!=='undefined'&&_mfcFilter&&_mfcFilter.length){
+          _MFC_PILLS.forEach(function(p){
+            if(_mfcFilter.indexOf(p.id)<0) return;
+            var stMatch=p.st&&p.st.indexOf(r.st)>=0;
+            var ipMatch=p.ip&&p.ip.indexOf(_rip)>=0;
+            // Backlog (Confirmed) ข้าม ip check
+            if(r.st==='Backlog (Confirmed)'){ if(stMatch) _shouldInclude=true; }
+            else if(p.ip){ if(stMatch&&ipMatch) _shouldInclude=true; }
+            else { if(stMatch) _shouldInclude=true; }
+          });
+          // Chip 'fcsp' toggle (AND): ถ้า fcsp OFF → ตัด Forecast SP records ออกแม้ chip อื่นจะ ON
+          var _isFcSPRec2 = (r.st==='Forecast SP' || Number(r.is_sp_fix||0)===1);
+          if (_isFcSPRec2 && _mfcFilter.indexOf('fcsp')<0) _shouldInclude=false;
+        } else { _shouldInclude=includeInMonthlyForecast(r); }
+      }
+      if(_shouldInclude) moMFC[mo-1] += Number(r._sp_fix_exvat||exVat(r.px||0)||0);
+
+      if(r.st==='Actual FAD'){
+        moBilled[mo-1]+=Number(exVat(r.px||0)||0);
+        moBL[mo-1]+=Number(exVat(r.px||0)||0);
+      } else if(r.st==='Billed'){
+        moBilled[mo-1]+=Number(exVat(r.px||0)||0);
+        moBL[mo-1]+=Number(exVat(r.px||0)||0);
+      } else if(r.st==='Backlog'){
+        var exv=Number(exVat(r.px||0)||0);
+        moBL[mo-1]+=exv;
+        if(_rip==='SC Billing'||_rip==='SP Billing') moBilling[mo-1]+=exv;
+      }
+    });
+    var qf=QMO.map(function(q){ return q.reduce(function(s,i){ return s+moMFC[i]; },0); });
+
+    var _dbBilled=D.filter(function(r){ return r.st==='Billed'&&Number(r.fmo||r.mo||0)===4&&Number(r.fyr||r.yr||0)===CUR_YR; });
+    var _dbActual=D.filter(function(r){ return r.st==='Actual FAD'&&Number(r.fmo||r.mo||0)===4&&Number(r.fyr||r.yr||0)===CUR_YR; });
+    var totFC=moMFC.reduce(function(a,b){ return a+b; },0);
+    var totMFC=totFC;
+
+    function fM2(v){ return (v===0)?'0.00M':((v||0)/1e6).toFixed(2)+'M'; }
+    function pct(a,b){ return b ? Math.round(a/b*100)+'%' : ''; }
+
+    document.getElementById('bud-row').innerHTML = '<td style="font-size:11px;font-weight:600;color:var(--cyn);text-align:right;padding-right:10px;white-space:nowrap">Quarterly Budget</td>' +
+      qb.map(function(v){ return '<td colspan="3" style="text-align:center;padding:5px 8px;border-right:2px solid var(--bd2);font-family:var(--mono);font-size:13px;font-weight:700;color:var(--cyn)">'+Math.round(v).toLocaleString('th-TH')+'</td>'; }).join('') +
+      '<td style="text-align:right;padding:5px 10px;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--cyn)">'+Math.round(totBud).toLocaleString('th-TH')+'</td>';
+
+    document.getElementById('fc-row').innerHTML = '<td style="font-size:11px;font-weight:600;color:var(--ylw2);text-align:right;padding-right:10px;white-space:nowrap">Quarterly Forecast</td>' +
+      qf.map(function(v,i){ return '<td colspan="2" style="text-align:right;padding:5px 6px;font-family:var(--mono);font-size:12px;color:var(--ylw2)">'+Math.round(v).toLocaleString('th-TH')+'</td><td style="text-align:center;padding:5px 4px;font-size:10px;color:var(--mu);border-right:2px solid var(--bd2)">'+pct(v,qb[i])+'</td>'; }).join('') +
+      '<td style="text-align:right;padding:5px 10px;font-family:var(--mono);font-size:12px;color:var(--ylw2);font-weight:700">'+Math.round(totFC).toLocaleString('th-TH')+'</td>';
+
+    var _af2 = {};
+
+    if(typeof _billingMapCache_moNet!=='undefined'&&_billingMapCache_moNet&&Object.keys(_billingMapCache_moNet).length){
+      Object.keys(_billingMapCache_moNet).forEach(function(moKey){
+        var parts=moKey.split('-');
+        var yr=parseInt(parts[0]), mo=parseInt(parts[1]);
+        if(yr===CUR_YR&&mo>=1&&mo<=12){
+          _af2[mo-1]=_billingMapCache_moNet[moKey];
+        }
+      });
+    } else {
+
+      D.forEach(function(r){
+        if(r.st!=='Actual FAD'&&r.st!=='Actual FAD (Not Found)'&&r.st!=='Actual FAD (CN)') return;
+        var _mo=Number(r.fmo||r.mo||0), _yr=Number(r.fyr||r.yr||0);
+        if(_yr!==CUR_YR||_mo<1||_mo>12) return;
+        var _val=r._net_excel!==undefined?Number(r._net_excel||0):Number(exVat(r.px||0)||0);
+        _af2[_mo-1]=(_af2[_mo-1]||0)+_val;
+      });
+    }
+
+    if(!_saFilt){ for(var ai=0;ai<12;ai++){if(_af2[ai]!==undefined)moMFC[ai]=_af2[ai];} }
+
+    if(typeof ACTUAL_FIXED!=='undefined'){
+      for(var afi=0;afi<12;afi++){
+        if(!_saFilt && _af2[afi]===undefined && ACTUAL_FIXED[afi]!==undefined && ACTUAL_FIXED[afi]>0){
+          moMFC[afi]=ACTUAL_FIXED[afi];
+          _af2[afi]=ACTUAL_FIXED[afi]; // ให้ isAct ถูก mark ด้วย
+        }
+      }
+    }
+    totMFC=moMFC.reduce(function(a,b){return a+b;},0);
+    totFC=totMFC;
+    qf=QMO.map(function(q){return q.reduce(function(s,i){return s+moMFC[i];},0);});
+    var _saFiltMFC=window._sumBySales?((document.getElementById('f-sales')||{}).value||''):'';
+    var mfc = '<td style="font-size:11px;font-weight:600;color:var(--grn);text-align:right;padding-right:10px;white-space:nowrap">Monthly Forecast</td>';
+    for(var i=0;i<12;i++){
+      var isCur=(i===CUR_MO-1), isAct=(_af2[i]!==undefined);
+      var rbdr=(i===2||i===5||i===8||i===11)?'border-right:2px solid var(--bd2);':'border-right:1px solid var(--bd);';
+      var bgx=isCur?'background:#091a0d;':(isAct?'background:#081a09;':'');
+      var cox=isCur?'color:var(--ac2);font-weight:700;':(isAct?'color:#4ade80;font-weight:600;':'color:var(--grn);');
+      // [v162] เดือนที่กรอก actual (filter เลือก sales) -> ใช้ actual แทน moMFC
+      var _saActMo=null;
+      if(_saFilt){ var _amap=(window._saActData&&window._saActData[_saFilt])||{}; var _av=_amap[i+1]; if(_av!=null&&_av!=='') _saActMo=Number(_av)||0; }
+      var _cellVal=(_saActMo!=null)?_saActMo:moMFC[i];
+      var _cellCol=(_saActMo!=null)?'color:#22d3ee;font-weight:700;':cox;
+      mfc += '<td style="text-align:center;padding:4px 2px;'+bgx+rbdr+'">';
+      mfc += '<div style="font-family:var(--mono);font-size:11px;'+_cellCol+';cursor:pointer" onclick="openMFCFilter()" title="คลิกเพื่อเลือก Status">'+fM2(_cellVal)+'</div>';
+      if(_saActMo!=null) mfc+='<div style="font-size:8px;color:#22d3ee;opacity:0.85;margin-top:1px">(Actual)</div>';
+      if(isAct&&!_saFilt)mfc+='<div style="font-size:8px;color:#4ade80;opacity:0.8;margin-top:1px">(Actual FAD)</div>';
+
+      if(i < CUR_MO-1){
+        if(moBilled[i]>0) mfc+='<div style="font-size:8px;color:#4ade80;margin-top:1px;opacity:0.9">(Billed '+fM2(moBilled[i])+')</div>';
+        if(moBilling[i]>0) mfc+='<div style="font-size:8px;color:var(--ylw2);margin-top:1px;opacity:0.9">(BL '+fM2(moBilling[i])+')</div>';
+      }
+
+      if(isCur){
+        if(moBilled[i]>0) mfc+='<div style="font-size:8px;color:#4ade80;margin-top:1px;opacity:0.9">(Billed '+fM2(moBilled[i])+')</div>';
+        if(moBilling[i]>0) mfc+='<div style="font-size:8px;color:var(--ylw2);margin-top:1px;opacity:0.9">(BL '+fM2(moBilling[i])+')</div>';
+      }
+      mfc += '</td>';
+    }
+    var _totBudForAchieve=totBud;
+    if(_saFilt&&typeof SA_BUD_MO!=='undefined'&&SA_BUD_MO[_saFilt]&&SA_BUD_MO[_saFilt].length){
+      _totBudForAchieve=SA_BUD_MO[_saFilt].reduce(function(s,v){return s+(parseFloat(v)||0)*1000;},0);
+    }
+    mfc += '<td style="text-align:right;padding:5px 10px;font-family:var(--mono);font-size:12px;color:var(--grn);font-weight:700">'+fM2(totMFC)+'<div style="font-size:10px;color:var(--mu);margin-top:2px">'+pct(totMFC,_totBudForAchieve)+' Achieve 2026</div></td>';
+    document.getElementById('mfc-row').innerHTML = mfc;
+
+
+    window._saH1Badge=''; window._saH2Badge='';
+    // ── [v160] % Achieve H1/H2 ที่แถว Quarterly Budget (Q2/Q4) — เฉพาะ filter เลือก sales ──
+    // กติกา: เดือนผ่านแล้ว = actual กรอก > moBilled(Ex.VAT) · เดือนปัจจุบัน/อนาคต = actual กรอก > moMFC(Ex.VAT, ตาม status ที่เลือก)
+    try{
+      if(_saFilt && typeof SA_BUD_MO!=='undefined' && SA_BUD_MO[_saFilt] && SA_BUD_MO[_saFilt].length){
+        // โหลด actual จาก Sheet ครั้งแรก แล้ว rebuild
+        if(!window._saActSumLoaded && typeof google!=='undefined' && google.script && google.script.run){
+          window._saActSumLoaded=true;
+          google.script.run.withSuccessHandler(function(res){
+            try{ var r=typeof res==='string'?JSON.parse(res):res;
+              if(r&&r.ok){
+                window._saActData=r.data||{};
+                try{ if(window._bootMark) window._bootMark('actual'); }catch(e){} // [V479.44] Actual FAD พร้อม
+                try{ buildSummary(); }catch(e){}
+                // [V479.43] FIX ตัวเลขสลับไปมา: _saActData โหลด async → Dashboard (Story card) ยังใช้ Billed
+                //   เดิมเรียกแค่ buildSummary() → Story card ไม่ re-render → Actual = Billed (23.17M)
+                //   จนกว่าจะกด filter → ค่อยใช้ FAD (24.51M) → user เห็นเลขต่างกันตามจังหวะโหลด
+                try{ if(typeof window.dbRender==='function') window.dbRender(); }catch(e){}
+                try{ if(typeof window.homeRender==='function' && window._homeLastD) window.homeRender(window._homeLastD); }catch(e){}
+              }
+            }catch(e){}
+          }).withFailureHandler(function(){
+            try{ if(window._bootMark) window._bootMark('actual'); }catch(e){} // [V479.44] โหลดไม่ได้ก็ปล่อยผ่าน (กันค้าง)
+          }).loadSalesActual(CUR_YR);
+        }
+        var _actMapS=(window._saActData&&window._saActData[_saFilt])||{};
+        var _effS=function(i){
+          var a=_actMapS[i+1];
+          if(a!=null&&a!=='') return Number(a)||0;
+          return (i<CUR_MO-1)?(moBilled[i]||0):(moMFC[i]||0);
+        };
+        var _mkBadge=function(from,to,lbl,col){
+          var act=0,bud=0;
+          for(var i=from;i<=to;i++){ act+=_effS(i); bud+=(parseFloat(SA_BUD_MO[_saFilt][i])||0)*1000; }
+          if(!bud) return '';
+          var p=act/bud*100, g=bud-act;
+          return '<span style="display:inline-block;white-space:nowrap;font-size:11px;font-weight:700;color:'+col+';margin-left:8px;vertical-align:middle">'+lbl+' '+p.toFixed(0)+'%</span>';
+        };
+        // [v164] เก็บ badge ไว้ใน window — ฝังจริงที่ budRowEl2 (ตัว set สุดท้าย) กัน rebuild ทับ
+        window._saH1Badge=_mkBadge(0,5,'H1','#fbbf24');
+        window._saH2Badge=_mkBadge(6,11,'H2','#fb923c');
+      } else {
+        // [v195] All: badge H1/H2 ใช้ actual รวม (Billed/MFC) ÷ budMo รวม
+        var _afAll=(typeof _billingMapCache_moNet!=='undefined'&&_billingMapCache_moNet)||{};
+        var _effA=function(i){
+          var a=_afAll[i];
+          if(a!=null&&a!=='') return Number(a)||0;
+          return (i<CUR_MO-1)?(moBilled[i]||0):(moMFC[i]||0);
+        };
+        var _mkBadgeAll=function(from,to,lbl,col){
+          var act=0,bud=0;
+          for(var i=from;i<=to;i++){ act+=_effA(i); bud+=(budMo[i]||0); }
+          if(!bud) return '';
+          var p=act/bud*100;
+          return '<span style="display:inline-block;white-space:nowrap;font-size:11px;font-weight:700;color:'+col+';margin-left:8px;vertical-align:middle">'+lbl+' '+p.toFixed(0)+'%</span>';
+        };
+        window._saH1Badge=_mkBadgeAll(0,5,'H1','#fbbf24');
+        window._saH2Badge=_mkBadgeAll(6,11,'H2','#fb923c');
+      }
+    }catch(_e){}
+
+    // ── Monthly Budget row ──
+    var moBudEl = document.getElementById('mo-bud-row');
+    if (moBudEl) {
+      var _saFiltB=window._sumBySales?((document.getElementById('f-sales')||{}).value||''):'';
+      var budMoDisp=budMo.slice();
+      if(_saFiltB && SA_BUD_MO && SA_BUD_MO[_saFiltB]){
+        budMoDisp=SA_BUD_MO[_saFiltB].map(function(v){ return (v||0)*1000; });
+      }
+      var mbHtml = '<td style="font-size:11px;font-weight:600;color:var(--cyn);text-align:right;padding-right:10px;white-space:nowrap">Monthly Budget</td>';
+      for (var mbi=0; mbi<12; mbi++) {
+        var mbrdr2=(mbi===2||mbi===5||mbi===8||mbi===11)?'border-right:2px solid var(--bd2);':'border-right:1px solid var(--bd);';
+        mbHtml+='<td style="text-align:center;padding:4px 2px;'+mbrdr2+'">';
+        var _budMoV = budMoDisp[mbi]||0;
+        mbHtml+='<div style="color:var(--mu2);font-size:9px;margin-bottom:1px;white-space:nowrap">'+MOS_TH[mbi]+'</div>';
+        mbHtml+='<div style="font-family:var(--mono);font-size:11px;color:var(--cyn)">'+fM2(budMoDisp[mbi]);
+        var _pMo=budMoDisp[mbi]>0?Math.round(moMFC[mbi]/budMoDisp[mbi]*100):0;
+        if(_pMo>0) mbHtml+='<span style="font-size:9px;color:var(--mu);margin-left:3px">'+_pMo+'%</span>';
+        mbHtml+='</div>';
+        mbHtml+='</td>';
+      }
+      mbHtml+='<td style="text-align:right;padding:5px 10px;font-family:var(--mono);font-size:12px;color:var(--cyn);font-weight:700">'+fM2(budMoDisp.reduce(function(a,b){return a+b;},0))+'</td>';
+      moBudEl.innerHTML = mbHtml;
+    }
+
+    var fcRowEl2=document.getElementById('fc-row');
+    if(fcRowEl2){
+      var _bySales2=window._sumBySales||false;
+      var _saFilter=((document.getElementById('f-sales')||{}).value)||'';
+      var _qbDisp4fc=qb.slice();
+      if(_bySales2&&_saFilter&&SA_BUD_MO&&SA_BUD_MO[_saFilter]){
+        var _moArr4fc=SA_BUD_MO[_saFilter];
+        _qbDisp4fc=[[0,1,2],[3,4,5],[6,7,8],[9,10,11]].map(function(q){ return q.reduce(function(s,i){ return s+(_moArr4fc[i]||0)*1000; },0); });
+      }
+      var fcRowNew='<td style="font-size:11px;font-weight:600;color:var(--ylw2);text-align:right;padding-right:10px;white-space:nowrap">Quarterly Forecast</td>';
+      for(var q3=0;q3<4;q3++){
+        fcRowNew+='<td colspan="2" style="text-align:right;padding:5px 6px;font-family:var(--mono);font-size:12px;color:var(--ylw2)">'+fM2(qf[q3])+'</td>';
+        fcRowNew+='<td style="text-align:center;padding:5px 4px;font-size:10px;color:var(--mu);border-right:2px solid var(--bd2)">'+pct(qf[q3],_qbDisp4fc[q3])+'</td>';
+      }
+      fcRowNew+='<td style="text-align:right;padding:5px 10px;font-family:var(--mono);font-size:12px;color:var(--ylw2);font-weight:700">'+fM2(totMFC)+'</td>';
+      fcRowEl2.innerHTML=fcRowNew;
+    }
+    var budRowEl2=document.getElementById('bud-row');
+    if(budRowEl2){
+      var _bySales3=window._sumBySales||false;
+      var _saFilter2=((document.getElementById('f-sales')||{}).value)||'';
+      var qbDisp=qb.slice(), totBudDisp=totBud;
+      if(_bySales3 && _saFilter2 && SA_BUD_MO && SA_BUD_MO[_saFilter2]){
+        var moArr2=SA_BUD_MO[_saFilter2];
+        var QMO3=[[0,1,2],[3,4,5],[6,7,8],[9,10,11]];
+        qbDisp=QMO3.map(function(q){ return q.reduce(function(s,i){ return s+(moArr2[i]||0)*1000; },0); });
+        totBudDisp=qbDisp.reduce(function(a,b){ return a+b; },0);
+      }
+      var bRowNew='<td style="font-size:11px;font-weight:600;color:var(--cyn);text-align:right;padding-right:10px;white-space:nowrap">Quarterly Budget</td>';
+      for(var q4=0;q4<4;q4++){
+        var _qBadge=(q4===1?(window._saH1Badge||''):(q4===3?(window._saH2Badge||''):''));  // [v164] H1->Q2, H2->Q4
+        bRowNew+='<td colspan="3" style="text-align:center;padding:5px 8px;border-right:2px solid var(--bd2);font-family:var(--mono);font-size:13px;font-weight:700;color:var(--cyn);white-space:nowrap">'+Math.round(qbDisp[q4]).toLocaleString('th-TH')+_qBadge+'</td>';
+      }
+      bRowNew+='<td style="text-align:right;padding:5px 10px;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--cyn)">'+Math.round(totBudDisp).toLocaleString('th-TH')+'</td>';
+      budRowEl2.innerHTML=bRowNew;
+    }
+  };
+
+  renderStatusBar = function(){
+    var order=['Backlog','SC Ordered','SC Carry','SP Ordered (Ordering)','SP Ordered (Pending)','SC Carry (Pending)','Offer','Excluded','Data Issue','Ordered','SP Forward (Ordering)','SP Forward (Pending Order)'];
+    var colors={'Backlog':'var(--ylw)','SC Ordered':'#38bdf8','Ordered':'#38bdf8','SC Carry':'#38bdf8','SP Ordered (Ordering)':'var(--pur)','SP Ordered (Pending)':'#7c3aed','SP Forward (Ordering)':'var(--pur)','SP Forward (Pending Order)':'#7c3aed','SC Carry (Pending)':'#fb923c','Offer':'var(--red)','Excluded':'#94a3b8','Data Issue':'#ef4444'};
+    var tot=FD.length;
+
+    var _pillAll2=(typeof _pillAll!=='undefined')?_pillAll:true;
+    var _pillSt2=(typeof pillSt!=='undefined')?pillSt:null;
+    var _pillIp2=(typeof pillIp!=='undefined')?pillIp:null;
+
+    var FD_PILL=FD;
+    var totFiltered=FD_PILL.length;
+    var fMoN2=((document.getElementById('f-mo')||{}).value||'');
+    var fYrN2=parseInt(((document.getElementById('f-yr')||{}).value||'2026'));
+    var fSales2=((document.getElementById('f-sales')||{}).value||'');
+    var fType2=((document.getElementById('f-type')||{}).value||'');
+    var fTeam2=(((document.getElementById('f-team')||{}).value)||'');
+
+    var totInvat=0, totExvat=0;
+    var _moKey2=fMoN2?((fYrN2||2026)+'-'+String(parseInt(fMoN2)).padStart(2,'0')):'';
+    var _hasMonet=(_moKey2&&!fSales2&&!fType2&&!fTeam2&&typeof _billingMapCache_moNet!=='undefined'&&_billingMapCache_moNet&&_billingMapCache_moNet[_moKey2]!=null);
+
+    totInvat=FD_PILL.reduce(function(s,r){
+      if(r.st==='Actual FAD (CN)'||r.is_cn) return s; // CN หักแยก
+      if(r._net_excel!=null&&r._net_excel!==0) return s+Number(r._net_excel||0)*1.07;
+      return s+(Number(r.px)||0);
+    },0);
+
+    if(_hasMonet){
+
+      var _posFD=FD.filter(function(r){ return (r.st==='Actual FAD'||r.st==='Actual FAD (Not Found)')&&r._net_excel!=null; })
+        .reduce(function(s,r){ return s+Number(r._net_excel||0); },0);
+      var _posFDpx=FD.filter(function(r){ return (r.st==='Actual FAD'||r.st==='Actual FAD (Not Found)')&&r._net_excel==null; })
+        .reduce(function(s,r){ return s+Number(r.px||0)/1.07; },0);
+      var _cnDeduct=(_billingMapCache_moNet[_moKey2]-_posFD-_posFDpx)*1.07;
+      totInvat+=_cnDeduct;
+    } else {
+
+      D.forEach(function(r){
+        if(r.st!=='Actual FAD (CN)'&&!r.is_cn) return;
+        if(fSales2&&r.sa!==fSales2) return;
+        var _rmo2=Number(r.fmo||r.mo||0), _ryr2=Number(r.fyr||r.yr||0);
+        if(fMoN2&&_rmo2!==parseInt(fMoN2)) return;
+        if(fYrN2&&_ryr2!==fYrN2) return;
+        if(fType2&&r.t!==fType2) return;
+        if(fTeam2&&getTeam(r)!==fTeam2) return;
+        var v=r._net_excel!=null?Number(r._net_excel)*1.07:0;
+        totInvat+=v;
+      });
+    }
+    totExvat=totInvat/1.07;
+    var h='<span style="font-weight:600">'+(_pillAll2?tot:totFiltered)+' รายการ</span> <span style="color:var(--mu)">·</span> <span>In.VAT <b style="color:var(--ylw2);font-family:var(--mono)">&#3647;'+fmt000(totInvat)+'</b> <span style="color:var(--mu);padding:0 3px">|</span> Ex.VAT <b style="color:var(--ac2);font-family:var(--mono)">&#3647;'+fmt000(totExvat)+'</b></span><span style="flex:1"></span>';
+    order.forEach(function(st){
+      var rows=FD.filter(function(r){ return r.st===st; });
+      if(!rows.length) return;
+      var inv=rows.reduce(function(s,r){ return s+(Number(r.px)||0); },0);
+
+      if(st==='Backlog' && (typeof _pillAll!=='undefined'&&_pillAll)){
+        var billedRows=rows.filter(function(r){ return r.ip==='SC Billed'||r.ip==='SP Billed'; });
+        var billingRows=rows.filter(function(r){ return r.ip==='SC Billing'||r.ip==='SP Billing'; });
+        var billedInv=billedRows.reduce(function(s,r){return s+(Number(r.px)||0);},0);
+        var billingInv=billingRows.reduce(function(s,r){return s+(Number(r.px)||0);},0);
+        if(billedRows.length){
+          h+='<span class="sb-item"><span class="sb-dot" style="background:#4ade80"></span><span>Billed: <b style="color:var(--tx)">'+billedRows.length+'</b> · <span style="font-family:var(--mono)">&#3647;'+fmt000(billedInv)+'</span></span></span>';
+        }
+        if(billingRows.length){
+          h+='<span class="sb-item"><span class="sb-dot" style="background:var(--ylw)"></span><span>Backlog: <b style="color:var(--tx)">'+billingRows.length+'</b> · <span style="font-family:var(--mono)">&#3647;'+fmt000(billingInv)+'</span></span></span>';
+        }
+        return;
+      }
+      h += '<span class="sb-item"><span class="sb-dot" style="background:'+colors[st]+'"></span><span>'+st+': <b style="color:var(--tx)">'+rows.length+'</b> · <span style="font-family:var(--mono)">&#3647;'+fmt000(inv)+'</span></span></span>';
+    });
+
+    var byIp={}, byIpInv={};
+    FD.forEach(function(r){
+      var ip=r.ip||'—';
+      if(!byIp[ip]){ byIp[ip]=0; byIpInv[ip]=0; }
+      byIp[ip]++; byIpInv[ip]+=(Number(r.px)||0);
+    });
+    var ipKeys=Object.keys(byIp).filter(function(k){ return byIp[k]>0; });
+    ipKeys.sort(function(a,b){ return byIpInv[b]-byIpInv[a]; });
+    // ── HM aggregation (Prospect: High/Medium/Low/ไม่ระบุ) ── [v188]
+    var byHM={'H':0,'M':0,'L':0,'_':0}, byHMInv={'H':0,'M':0,'L':0,'_':0};
+    var _hmMapQ=(window._FC_HM_STATUS_LOCAL||{});
+    FD.forEach(function(r){
+      var _sk=String(r.sc||'').trim(), _qk=String(r.qs||'').trim();
+      var stg=(_sk?_hmMapQ[_sk]:null)||(_qk?_hmMapQ[_qk]:null)||null;
+      // [v190] Low Prospect (r._isLow) = L แม้ config map ไม่มี (ตรงกับตาราง)
+      var key;
+      if(r._isLow){ key='L'; }
+      else { key=(stg==='H'||stg==='M'||stg==='L')?stg:'_'; }
+      byHM[key]++; byHMInv[key]+=(Number(r.px)||0);
+    });
+    var _HM_LBL={'H':'High','M':'Medium','L':'Low','_':'ไม่ระบุงวด'};
+    var _HM_COL={'H':'#f87171','M':'#fb923c','L':'#94a3b8','_':'var(--mu)'};
+    var _HM_ORDER=['H','M','L','_'];
+    var _isProspectPill=(typeof activePill!=='undefined' && activePill==='pend');
+    if(_isProspectPill){
+      // [v188] Prospect -> HM breakdown (High/Medium/Low/ไม่ระบุ)
+      h+='<span style="width:1px;height:24px;background:var(--bd2);margin:0 8px;flex-shrink:0"></span>';
+      h+='<span style="font-size:10px;color:var(--mu2);margin-right:4px;flex-shrink:0">HM:</span>';
+      h+='<span style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">';
+      _HM_ORDER.forEach(function(k){
+        if(byHM[k]<=0) return;
+        var exv=byHMInv[k]/1.07;
+        h+='<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;background:var(--sur2);border:1px solid var(--bd);flex-shrink:0">';
+        h+='<span style="font-size:9px;color:'+_HM_COL[k]+';font-weight:600">'+_HM_LBL[k]+'</span>';
+        h+='<span style="font-size:9px;color:var(--mu)">'+byHM[k]+'</span>';
+        if(byHMInv[k]>0) h+='<span style="font-size:9px;font-family:var(--mono);color:var(--cyn)">'+fM(exv,2)+'</span>';
+        h+='</span>';
+      });
+      h+='</span>';
+    } else if(ipKeys.length>0 && !(typeof _pillAll!=='undefined'&&_pillAll)){
+      h+='<span style="width:1px;height:24px;background:var(--bd2);margin:0 8px;flex-shrink:0"></span>';
+      h+='<span style="font-size:10px;color:var(--mu2);margin-right:4px;flex-shrink:0">IP:</span>';
+      h+='<span style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">';
+      ipKeys.forEach(function(ip){
+        var inv=byIpInv[ip]; var exv=inv/1.07;
+        var isCN=(ip==='CN Bill');
+        var ipCol=isCN?'#f87171':'var(--cyn)';
+        h+='<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;background:var(--sur2);border:1px solid var(--bd);flex-shrink:0">';
+        h+='<span style="font-size:9px;color:var(--mu2);font-weight:600">'+esc(ip)+'</span>';
+        h+='<span style="font-size:9px;color:var(--mu)">'+byIp[ip]+'</span>';
+        if(exv>0) h+='<span style="font-size:9px;font-family:var(--mono);color:'+ipCol+'">'+fM(exv,2)+'</span>';
+        h+='</span>';
+      });
+      h+='</span>';
+    }
+    document.getElementById('statusbar').innerHTML = h;
+
+    var _pillCountMap={};
+    // SP Ordered (Pending) ที่มี HM stage → นับเป็น Prospect แทน
+    var _spHmProspectCnt=0, _spPendingRemainCnt=0;
+    // ⏳⚠️ ETA Issue: นับ SP records ที่ ETA หาย หรือ ETA หลังกำหนดส่ง
+    var _etaIssueCnt=0;
+    FD.forEach(function(r){
+      if(r.st==='SP Ordered (Pending)'){
+        if(_hasHMStage(r)) _spHmProspectCnt++;
+        else _spPendingRemainCnt++;
+      } else {
+        _pillCountMap[r.st]=(_pillCountMap[r.st]||0)+1;
+      }
+      if(r.t==='SP' && (r._eta_missing || r._eta_late)) _etaIssueCnt++;
+    });
+    // assign back: SP Ordered (Pending) = ที่ไม่มี HM stage เท่านั้น
+    _pillCountMap['SP Ordered (Pending)']=_spPendingRemainCnt;
+    function _updatePill(id,label,sts){
+      var el=document.getElementById(id); if(!el) return;
+      var cnt=0;
+      (Array.isArray(sts)?sts:[sts]).forEach(function(s){ cnt+=_pillCountMap[s]||0; });
+      // [v172] ใช้ custom label จาก Quick Filter config ถ้ามี (ไม่ให้ count update ทับชื่อที่แก้)
+      var _qfc=window._QF_CFG||{}; var _ck=id.replace(/^pill-/,'');
+      var _clab=_qfc['qf_'+_ck+'_label']; if(_clab && String(_clab).trim()) label=String(_clab).trim();
+      el.innerHTML=label+(cnt>0?' <span style="opacity:.6;font-size:10px">('+cnt+')</span>':'');
+      // [v251] pill-data (Data Issue): แสดงเฉพาะเมื่อมีรายการ (มี Data Issue = ต้องตรวจสอบ)
+      if(id==='pill-data'){ el.style.display = cnt>0 ? '' : 'none'; }
+    }
+    _updatePill('pill-actual','Actual FAD',['Actual FAD','Actual FAD (Not Found)','Actual FAD (CN)']);
+    _updatePill('pill-billed','Billed',['Billed']);
+    _updatePill('pill-backlog','Backlog',['Backlog','Forecast SP']);
+    _updatePill('pill-backlog-conf','Backlog Confirmed',['Backlog (Confirmed)']);
+    _updatePill('pill-ordered','SC Ordered',['SC Ordered','Ordered']);
+    _updatePill('pill-co-ready','SC Carry (Bill Pending)',['SC Carry']);
+    _updatePill('pill-co-notready','SC Carry (PM Pending)',['SC Carry (Pending)']);
+    _updatePill('pill-spf-ord','SP Ordered',['SP Ordered (Ordering)','SP Forward (Ordering)']);
+    _updatePill('pill-spf-proc','SP Ordered Processing',['SP Ordered (Pending)','SP Forward (Pending Order)']);
+    // pill-pend (Prospect): Offer + SP HM-stage records
+    var _prosEl=document.getElementById('pill-pend');
+    if(_prosEl){
+      var _prosCnt=(_pillCountMap['Offer']||0)+(_pillCountMap['Prospect']||0)+_spHmProspectCnt; // [v372] รวม st='Prospect' (v369) ด้วย
+      var _qfcP=window._QF_CFG||{}; var _pLab=(_qfcP['qf_pend_label']&&String(_qfcP['qf_pend_label']).trim())?String(_qfcP['qf_pend_label']).trim():'Prospect';
+      _prosEl.innerHTML=_pLab+(_prosCnt>0?' <span style="opacity:.6;font-size:10px">('+_prosCnt+')</span>':'');
+    }
+    _updatePill('pill-excluded','Excluded',['Excluded']);
+    _updatePill('pill-data','Data Issue',['Data Issue']);
+    // ⏳⚠️ ETA Issue pill
+    var _etaPillEl = document.getElementById('pill-eta-issue');
+    if(_etaPillEl){
+      _etaPillEl.innerHTML = '⏳⚠️ ETA Issue';
+      _etaPillEl.style.display = _etaIssueCnt>0 ? '' : 'none'; // ซ่อนถ้าไม่มี
+    }
+
+};
+
+// ── Detail Modal Sub-tabs helper ──────────────────────
+// สร้าง HTML ของ sub-tabs + 3 panes
+// tabs = [{key,label,icon,html}, ...]
+function dpBuildSubtabs(tabs){
+  var nav = '<div class="dp-subtabs">';
+  var panes = '';
+  tabs.forEach(function(t, i){
+    nav += '<button class="dp-subtab'+(i===0?' on':'')+'" onclick="dpSwitchSub(this,\''+t.key+'\')">'
+      + (t.icon?'<span style="margin-right:5px">'+t.icon+'</span>':'') + esc(t.label) + '</button>';
+    panes += '<div class="dp-subpane'+(i===0?' on':'')+'" data-subpane="'+t.key+'">'+t.html+'</div>';
+  });
+  nav += '</div>';
+  return nav + panes;
+}
+function dpSwitchSub(btn, key){
+  var root = btn.closest('.dp-body');
+  if(!root) return;
+  root.querySelectorAll('.dp-subtab').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  root.querySelectorAll('.dp-subpane').forEach(function(p){
+    p.classList.toggle('on', p.getAttribute('data-subpane')===key);
+  });
+}
+window.dpSwitchSub = dpSwitchSub;
+
+// ── ดึงข้อมูลสัญญา จาก RAW_CONTRACT (match qn / CON_ID) ──
+function dpGetContractInfo(r){
+  var L = (typeof _buildBMLookup==='function') ? null : null;
+  var contractArr = window._jsupContract || [];
+  if(!Array.isArray(contractArr) || !contractArr.length) return null;
+  var qn = String(r.qn||'').trim();
+  var conId = String(r.sr||'').trim();
+  var found = null;
+  for(var i=0;i<contractArr.length;i++){
+    var c = contractArr[i];
+    if(!c) continue;
+    var cQn = String(c.QUOTATION_NO||c.QH_DOC_NUMBER_CREATE||'').trim();
+    var cId = String(c.CON_ID||'').trim();
+    if((qn && cQn===qn) || (conId && cId===conId)){ found=c; break; }
+  }
+  return found;
+}
+
+// ── ดึงรายการงวดบิล จาก RAW_SC_BILL (match qn) ──
+function dpGetBillRounds(r){
+  var billArr = window._jsupSC || [];
+  if(!Array.isArray(billArr) || !billArr.length) return [];
+  var qn = String(r.qn||'').trim();
+  var conId = String(r.sr||'').trim();
+  if(!qn && !conId) return [];
+  var rows = billArr.filter(function(b){
+    if(!b) return false;
+    var bQn = String(b.QH_DOC_NUMBER||'').trim();
+    // มี QN → จับคู่ด้วย QN เท่านั้น (กัน SR/CON_ID ไปชนสัญญาลูกค้าอื่น)
+    if(qn) return bQn===qn;
+    // ไม่มี QN → fallback ใช้ CON_ID
+    var bId = String(b.CON_ID||'').trim();
+    return conId && bId===conId;
+  });
+  // เรียงตาม BILL_ROUND
+  rows.sort(function(a,b){
+    return (Number(a.BILL_ROUND||0)) - (Number(b.BILL_ROUND||0));
+  });
+  return rows;
+}
+
+// ── ดึงข้อมูลใบเสนอราคา จาก RAW_Quotation (match DOC_NUMBER) ──
+function dpGetQuotationInfo(r){
+  // [v314] SP → หาใน RAW_Quotation_SP (_jsupQuoSP) ; SC → RAW_Quotation (_jsupQuo)
+  //   เดิมหา _jsupQuo อย่างเดียว → SP (qn=QSP) ไม่เจอ/match QSC ผิดใบ → qu null → _quv crash BRAND_NAME
+  var qn = String(r.qn||'').trim();
+  if(!qn) return null;
+  var isSP = (r.t==='SP') || qn.slice(0,3).toUpperCase()==='QSP';
+  var quoArr = isSP ? (window._jsupQuoSP || []) : (window._jsupQuo || []);
+  if(!Array.isArray(quoArr) || !quoArr.length) return null;
+  var found = null;
+  for(var i=0;i<quoArr.length;i++){
+    var q = quoArr[i];
+    if(!q) continue;
+    var k = String(q.DOC_NUMBER||q.QH_DOC_NUMBER||'').trim();
+    if(k===qn){ found=q; break; }
+  }
+  return found;
+}
+
+// ── ดึงรายการอะไหล่ จาก RAW_SpareParts (match QH_DOC_NUMBER) ──
+function dpGetSpareParts(r){
+  var partsArr = window._jsupParts || [];
+  if(!Array.isArray(partsArr) || !partsArr.length) return [];
+  var qn = String(r.qn||'').trim();
+  if(!qn) return [];
+  return partsArr.filter(function(p){
+    if(!p) return false;
+    return String(p.QH_DOC_NUMBER||'').trim()===qn;
+  });
+}
+
+// ── format วันที่ไทย (รับ string/date) ──
+function dpFmtDate(v){
+  if(!v) return '—';
+  var s = String(v).trim();
+  if(!s || s==='nan' || s==='null' || s==='None') return '—';
+  var d = null;
+  try {
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)) d = new Date(s);
+    else if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)){
+      var parts = s.split(/[\/\s]/);
+      d = new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+    } else d = new Date(s);
+  } catch(e){ return s; }
+  if(!d || isNaN(d.getTime())) return s;
+  var MO_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return d.getDate()+' '+MO_TH[d.getMonth()]+' '+(d.getFullYear()+543).toString().slice(-2);
+}
+
+  renderSCDetail = function(r){
+    function pxHtml(px){
+      if(!px) return '<span class="dp-v lg zero">—</span>';
+      return '<span class="dp-v lg">฿'+Number(px).toLocaleString('th-TH')+'</span>'
+        +'<span style="font-size:10px;color:var(--mu);margin-left:8px">Ex.VAT ฿'+(Number(px)/1.07).toLocaleString('th-TH',{maximumFractionDigits:2})+'</span>';
+    }
+    function stBox(icon,lbl,val,sub,color){
+      var c=color||'var(--tx)';
+      return '<div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:10px;min-width:0">'
+        +'<div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">'+icon+' '+lbl+'</div>'
+        +'<div style="font-size:12px;font-weight:600;color:'+c+';line-height:1.3">'+esc(val||'—')+'</div>'
+        +(sub?'<div style="font-size:10px;color:var(--mu2);margin-top:3px;word-break:break-all;font-family:var(--mono)">'+esc(sub)+'</div>':'')
+        +'</div>';
+    }
+    function row2(l1,v1,l2,v2){
+      return '<div class="dp-cell"><div class="dp-lbl">'+l1+'</div><div class="dp-v">'+v1+'</div></div>'
+            +'<div class="dp-cell"><div class="dp-lbl">'+l2+'</div><div class="dp-v">'+v2+'</div></div>';
+    }
+    var h='';
+
+    var billColor = r.sb&&r.sb.indexOf('คืน')>=0?'var(--grn)':r.sb?'var(--ylw2)':'var(--mu)';
+    var jobColor  = r.sn==='Completed'?'var(--grn)':'var(--ylw2)';
+
+    function stGrid2(lblL,valL,colorL, lblR,valR,colorR, badgeL, badgeR){
+      var dispL=badgeL||('<div style="font-size:12px;font-weight:600;color:'+(colorL||'var(--tx)')+'">'+esc(valL||'—')+'</div>');
+      var dispR=badgeR||('<div style="font-size:12px;font-weight:600;color:'+(colorR||'var(--tx)')+'">'+esc(valR||'—')+'</div>');
+      return '<div style="padding:8px 12px;border-bottom:1px solid var(--bd2);border-right:1px solid var(--bd)">'
+        +'<div style="font-size:10px;color:var(--tx);margin-bottom:3px;font-weight:600">'+lblL+'</div>'
+        +dispL
+        +'</div>'
+        +'<div style="padding:8px 12px;border-bottom:1px solid var(--bd2)">'
+        +'<div style="font-size:10px;color:var(--tx);margin-bottom:3px;font-weight:600">'+lblR+'</div>'
+        +dispR
+        +'</div>';
+    }
+    // ─── Tab 1: สถานะ (เดิม — เฉพาะส่วนสถานะ) ───
+    var tab1='';
+    tab1+='<div class="dp-sec"><div class="dp-sec-t">🔍 สถานะ</div>';
+    tab1+='<div style="display:grid;grid-template-columns:1fr 1fr">';
+    tab1+=stGrid2('เลขที่ใบเสนอราคา', r.qn||'—', 'var(--ac2)',
+               'สถานะ ใบเสนอราคา',  r.qs||'—', 'var(--tx)');
+    tab1+=stGrid2('เลขที่สัญญา / PO', r.pn||'—', 'var(--tx)',
+               'สถานะ สัญญา',       r.sc_contract||r.sc||'—', 'var(--tx)');
+    tab1+=stGrid2('เลขที่บิล'+(r.bd?' · '+r.bd:''), r.bn||'—', 'var(--mu2)',
+               'สถานะ บิล', r.sb||'—', billColor);
+    tab1+=stGrid2('เลขที่ SR', r.sr||'—', 'var(--mu2)',
+               'สถานะ งาน', r.sn||'—', jobColor);
+    tab1+=stGrid2('Status','','','Internal Process','','',
+      '<span class="bdg '+(r.is_cn||r.ip==="CN Bill"?"bst-cn":stCls(r.st))+'">'+((r.is_cn||r.ip==="CN Bill")?"CN Bill":esc((window._stLbl?window._stLbl(r.st):r.st)))+'</span>',
+      '<span class="bdg '+ipCls(r.ip)+'">'+esc(r.ip||'—')+'</span>');
+    // ─── Manual Override row (เฉพาะเมื่อ _manual_edit=1) ───
+    if(r._manual_edit && r._orig_st){
+      var _MO_TH_SC=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      var _origMoSc=Number(r._orig_mo||r._orig_fmo||0), _origYrSc=Number(r._orig_yr||r._orig_fyr||0);
+      var _origPdSc=(_origMoSc&&_origYrSc)?(_MO_TH_SC[_origMoSc]+' '+_origYrSc):'';
+      var _curMoSc=Number(r.mo||r.fmo||0), _curYrSc=Number(r.yr||r.fyr||0);
+      var _curPdSc=(_curMoSc&&_curYrSc)?(_MO_TH_SC[_curMoSc]+' '+_curYrSc):'';
+      tab1+='<div style="padding:10px 12px;border-bottom:1px solid var(--bd2);grid-column:1/-1;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.3);border-radius:6px;margin:6px 12px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:10px;color:var(--mu);margin-bottom:5px">Status เดิม (ก่อน override)</div>'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px">'
+        +'<span class="bdg '+stCls(r._orig_st)+'">'+esc(r._orig_st)+'</span>'
+        +(_origPdSc?'<span style="color:var(--mu2)">'+esc(_origPdSc)+'</span>':'')
+        +'<span style="color:var(--mu);font-size:13px">→</span>'
+        +'<span class="bdg '+stCls(r.st)+'">'+esc(r.st)+'</span>'
+        +(_curPdSc?'<span style="color:var(--ac2);font-weight:600">'+esc(_curPdSc)+'</span>':'')
+        +'</div>'
+        +'</div>'
+        +'<button onclick="cancelManualEdit(\''+esc(r.id||'')+'\')" style="background:transparent;border:1px solid #f59e0b;color:#fbbf24;font-size:11px;padding:5px 10px;border-radius:5px;cursor:pointer;font-family:inherit;white-space:nowrap">↩ กลับไป Status เดิม</button>'
+        +'</div>'
+        +'</div>';
+    }
+    tab1+='</div></div>';
+
+    // ─── Tab 2: ข้อมูลสัญญา = RAW_SC_BILL (record แรกของ qn) ───
+    var tab2='';
+    var bills2 = dpGetBillRounds(r);
+    var b0 = bills2.length ? bills2[0] : null;
+    if(b0){
+      function _bv(k){ var v=b0[k]; if(v==null) return '—'; var s=String(v).trim(); var l=s.toLowerCase(); return (l==='nan'||l==='none'||l==='null'||!s)?'—':s; }
+      tab2+='<div class="dp-sec"><div class="dp-sec-t">📄 ข้อมูลสัญญา (RAW_SC_BILL)</div>';
+      tab2+='<div style="display:grid;grid-template-columns:1fr 1fr">';
+      tab2+=stGrid2('ลูกค้า', _bv('CUSTOMER_NAME'), 'var(--tx)',
+                 'Sales', _bv('SALES_SERVICE_NAME'), 'var(--tx)');
+      tab2+=stGrid2('ชื่อโครงการ (PROJECT_NAME)', _bv('PROJECT_NAME'), 'var(--tx)',
+                 'เลขโครงการ (PROJECT_NUMBER)', _bv('PROJECT_NUMBER'), 'var(--mu2)');
+      tab2+=stGrid2('สินค้า (PRODUCT_NAME)', _bv('PRODUCT_NAME'), 'var(--tx)',
+                 'ทีม (TEAM_BILL)', _bv('TEAM_BILL'), 'var(--tx)');
+      tab2+=stGrid2('ประเภทสัญญา (CONTRACT_TYPE_NAME)', _bv('CONTRACT_TYPE_NAME'), 'var(--tx)',
+                 'ชนิดสัญญา (CON_TYPE_TYPE)', _bv('CON_TYPE_TYPE'), 'var(--tx)');
+      tab2+=stGrid2('วันเริ่มสัญญา (CON_START_DATE)', dpFmtDate(b0.CON_START_DATE), 'var(--grn)',
+                 'วันสิ้นสุดสัญญา (CON_END_DATE)', dpFmtDate(b0.CON_END_DATE), '#f87171');
+      tab2+='</div></div>';
+    } else {
+      tab2+='<div style="padding:24px 20px;text-align:center;color:var(--mu);font-size:12px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">— ไม่พบข้อมูลใน RAW_SC_BILL —</div>';
+    }
+
+    // ─── Tab 3: รายการงวดบิล (RAW_SC_BILL) ───
+    var tab3='';
+    var bills = dpGetBillRounds(r);
+    if(bills.length){
+      tab3+='<div class="dp-sec"><div class="dp-sec-t">🧾 รายการงวดบิล ('+bills.length+' งวด)</div>';
+      tab3+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+      tab3+='<thead><tr style="border-bottom:1px solid var(--bd2)">'
+        +'<th style="text-align:left;padding:6px 8px;color:var(--mu)">งวด</th>'
+        +'<th style="text-align:left;padding:6px 8px;color:var(--mu)">เดือนบิล</th>'
+        +'<th style="text-align:left;padding:6px 8px;color:var(--mu)">เลขที่บิล</th>'
+        +'<th style="text-align:left;padding:6px 8px;color:var(--mu)">สถานะบิล</th>'
+        +'<th style="text-align:left;padding:6px 8px;color:var(--mu)">สถานะงาน</th>'
+        +'<th style="text-align:right;padding:6px 8px;color:var(--mu)">มูลค่า</th>'
+        +'</tr></thead><tbody>';
+      var MO_TH_B = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      bills.forEach(function(b){
+        var moL = (MO_TH_B[Number(b.BILL_MONTH)]||'') + ' ' + (b.BILL_YEAR||'');
+        var bn = String(b.BILL_NUMBER||'').trim();
+        var bnDisp = bn ? '<span style="font-family:var(--mono)">'+esc(bn)+'</span>' : '<span style="color:var(--mu)">—</span>';
+        var bstColor = b.BILL_STATUS_NAME ? 'var(--grn)' : 'var(--mu)';
+        var price = b.BILL_PRICE!=null ? Number(b.BILL_PRICE).toLocaleString('th-TH') : '—';
+        tab3+='<tr style="border-bottom:1px solid var(--bd)">'
+          +'<td style="padding:6px 8px">'+esc(String(b.BILL_ROUND||'—'))+'</td>'
+          +'<td style="padding:6px 8px">'+esc(moL.trim()||'—')+'</td>'
+          +'<td style="padding:6px 8px">'+bnDisp+'</td>'
+          +'<td style="padding:6px 8px"><span style="color:'+bstColor+'">'+esc(b.BILL_STATUS_NAME||'—')+'</span></td>'
+          +'<td style="padding:6px 8px">'+esc(b.JOB_STATUS||'—')+'</td>'
+          +'<td style="padding:6px 8px;text-align:right;font-family:var(--mono)">'+price+'</td>'
+          +'</tr>';
+      });
+      tab3+='</tbody></table></div></div>';
+    } else {
+      tab3+='<div style="padding:30px 20px;text-align:center;color:var(--mu);font-size:12px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">— ไม่พบรายการงวดบิลใน RAW_SC_BILL —</div>';
+    }
+
+    h = dpBuildSubtabs([
+      {key:'status',   label:'สถานะ',        icon:'🔍', html:tab1},
+      {key:'contract', label:'ข้อมูลสัญญา',   icon:'📄', html:tab2},
+      {key:'bills',    label:'รายการงวดบิล',  icon:'🧾', html:tab3}
+    ]);
+
+    document.getElementById('dp-body').innerHTML=h;
+  };
+
+  // [v233] เบิกอะไหล่ทั้งใบ → ส่งเมลถึง Admin (ย้ายมาจาก Daily Sales)
+  window._dpCurReq = null;
+  window.dpReqEmail = function(mode){
+    var d = window._dpCurReq;
+    if(!d || !d.parts || !d.parts.length){ alert('ไม่มีรายการอะไหล่ในใบนี้'); return; }
+    // [v242] อ่านจาก config (section email_req) — fallback = default เดิม
+    var DEF = (window.EMAIL_REQ_DEFAULT) || {
+      to:'MDGroupAdminServiceSupport@bjc.co.th',
+      cc:'MDGroupServiceCommercial@bjc.co.th; MDGroupService@bjc.co.th',
+      do_subject:'เบิกอะไหล่ (DO) : [เลขใบเสนอราคา]', do_intro:'รบกวนเบิกสินค้า โดยออก DO ให้ด้วยครับ', do_note:'',
+      bill_subject:'เบิกอะไหล่พร้อมเปิดบิล : [เลขใบเสนอราคา]', bill_intro:'รบกวนเบิกสินค้าพร้อมเปิดบิลให้ด้วยครับ', bill_note:'หมายเหตุ : แนบให้ Operation Service เปิดบิลในวันซ่อม',
+      billonly_subject:'เปิดบิล : [เลขใบเสนอราคา]', billonly_intro:'รบกวนเปิดบิลให้ด้วยครับ', billonly_note:'',
+      email_signature:'Best regards,' // [v430]
+    };
+    var C = window.EMAIL_REQ_CFG || {};
+    function cfg(k){ return (C[k]!=null&&C[k]!=='')?C[k]:(DEF[k]||''); }
+    function tpl(s){ return String(s||'')
+      .replace(/\[ชื่อลูกค้า\]/g, d.cu||'—').replace(/\[เลขใบเสนอราคา\]/g, d.qn||'').replace(/\[Brand\]/g, d.brand||'—')
+      .replace(/\{cu\}/g, d.cu||'—').replace(/\{qn\}/g, d.qn||'').replace(/\{brand\}/g, d.brand||'—'); }
+    var MAIL_TO = cfg('to'), MAIL_CC = cfg('cc'), subj, intro, note;
+    if(mode==='bill'){ subj=tpl(cfg('bill_subject')); intro=tpl(cfg('bill_intro')); note=tpl(cfg('bill_note')); }
+    else if(mode==='billonly'){ subj=tpl(cfg('billonly_subject')); intro=tpl(cfg('billonly_intro')); note=tpl(cfg('billonly_note')); }
+    else { subj=tpl(cfg('do_subject')); intro=tpl(cfg('do_intro')); note=tpl(cfg('do_note')); }
+    var L = [];
+    L.push('เรียน Admin');
+    if(intro) L.push(intro);
+    L.push('');
+    L.push('เลขที่ใบเสนอราคา : ' + d.qn);
+    L.push('ชื่อลูกค้า : ' + (d.cu || '—'));
+    L.push('Brand : ' + (d.brand || '—'));
+    L.push('');
+    L.push('รายการอะไหล่ (' + d.parts.length + ') :');
+    d.parts.forEach(function(p,i){
+      var ln = (i+1) + '. ' + (p.parts_name || '—');
+      if(p.mat_no) ln += ' · Mat: ' + p.mat_no;
+      if(p.qty)    ln += ' · จำนวน ' + p.qty;
+      L.push(ln);
+    });
+    if(note){ L.push(''); L.push(note); }
+    // ── ลายเซ็น (ชื่อจาก login + ตำแหน่ง fix + เบอร์จาก config ตามชื่อ) ──
+    var uname = (window._currentUser && window._currentUser.name) || '';
+    var uphone = String(C['phone_'+uname] || '');
+    L.push('');
+    L.push(cfg('email_signature')); // [v430] แก้ได้จาก Config
+    if(uname) L.push(uname);
+    L.push('Service Commercial');
+    if(uphone) L.push('โทร. ' + uphone);
+    var body = L.join('\n');
+    var url = 'mailto:' + encodeURIComponent(MAIL_TO)
+            + '?cc=' + encodeURIComponent(MAIL_CC)
+            + '&subject=' + encodeURIComponent(subj)
+            + '&body=' + encodeURIComponent(body);
+    window.location.href = url;
+  };
+
+  renderSPDetail = function(r){
+    var parts=PARTS[r.qn]||[];
+    function pxHtml(px){
+      if(!px) return '<span class="dp-v lg zero">—</span>';
+      return '<span class="dp-v lg">฿'+Number(px).toLocaleString('th-TH')+'</span>'
+        +'<span style="font-size:10px;color:var(--mu);margin-left:8px">Ex.VAT ฿'+(Number(px)/1.07).toLocaleString('th-TH',{maximumFractionDigits:2})+'</span>';
+    }
+    function stBox(icon,lbl,val,sub,color){
+      var c=color||'var(--tx)';
+      return '<div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:10px;min-width:0">'
+        +'<div style="font-size:9px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">'+icon+' '+lbl+'</div>'
+        +'<div style="font-size:12px;font-weight:600;color:'+c+';line-height:1.3">'+esc(val||'—')+'</div>'
+        +(sub?'<div style="font-size:10px;color:var(--mu2);margin-top:3px;word-break:break-all;font-family:var(--mono)">'+esc(sub)+'</div>':'')
+        +'</div>';
+    }
+    function row2(l1,v1,l2,v2){
+      return '<div class="dp-cell"><div class="dp-lbl">'+l1+'</div><div class="dp-v">'+v1+'</div></div>'
+            +'<div class="dp-cell"><div class="dp-lbl">'+l2+'</div><div class="dp-v">'+v2+'</div></div>';
+    }
+    var h='';
+
+    var billColor = r.sb&&r.sb.indexOf('คืน')>=0?'var(--grn)':r.sb?'var(--ylw2)':'var(--mu)';
+    function stGrid2(lblL,valL,colorL, lblR,valR,colorR, badgeL, badgeR){
+      var dispL=badgeL||('<div style="font-size:12px;font-weight:600;color:'+(colorL||'var(--tx)')+'">'+esc(valL||'—')+'</div>');
+      var dispR=badgeR||('<div style="font-size:12px;font-weight:600;color:'+(colorR||'var(--tx)')+'">'+esc(valR||'—')+'</div>');
+      return '<div style="padding:8px 12px;border-bottom:1px solid var(--bd2);border-right:1px solid var(--bd)">'
+        +'<div style="font-size:10px;color:var(--tx);margin-bottom:3px;font-weight:600">'+lblL+'</div>'
+        +dispL
+        +'</div>'
+        +'<div style="padding:8px 12px;border-bottom:1px solid var(--bd2)">'
+        +'<div style="font-size:10px;color:var(--tx);margin-bottom:3px;font-weight:600">'+lblR+'</div>'
+        +dispR
+        +'</div>';
+    }
+    // resolve brand/model จาก Install Base (priority สูงสุด)
+    var spBM = (typeof resolveBM==='function') ? resolveBM(r) : {br:r.br||'',ml:r.ml||''};
+
+    // ─── Tab 1: สถานะ (เฉพาะส่วนสถานะ) ───
+    var tab1='';
+    tab1+='<div class="dp-sec"><div class="dp-sec-t">🔍 สถานะ</div>';
+    tab1+='<div style="display:grid;grid-template-columns:1fr 1fr">';
+    tab1+=stGrid2('เลขที่ใบเสนอราคา', r.qn||'—', 'var(--ac2)',
+               'สถานะ ใบเสนอราคา',  r.qs||'—', 'var(--tx)');
+    tab1+=stGrid2('เลขที่บิล'+(r.bd?' · '+r.bd:''), r.bn||'—', 'var(--mu2)',
+               'สถานะ บิล', r.sb||'—', billColor);
+    tab1+=stGrid2('Status','','','Internal Process','','',
+      '<span class="bdg '+(r.is_cn||r.ip==="CN Bill"?"bst-cn":stCls(r.st))+'">'+((r.is_cn||r.ip==="CN Bill")?"CN Bill":esc((window._stLbl?window._stLbl(r.st):r.st)))+'</span>',
+      '<span class="bdg '+ipCls(r.ip)+'">'+esc(r.ip||'—')+'</span>');
+    // ─── Manual Override row (เฉพาะเมื่อ _manual_edit=1) ───
+    if(r._manual_edit && r._orig_st){
+      var _MO_TH_SP=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      var _origMoSp=Number(r._orig_mo||r._orig_fmo||0), _origYrSp=Number(r._orig_yr||r._orig_fyr||0);
+      var _origPdSp=(_origMoSp&&_origYrSp)?(_MO_TH_SP[_origMoSp]+' '+_origYrSp):'';
+      var _curMoSp=Number(r.mo||r.fmo||0), _curYrSp=Number(r.yr||r.fyr||0);
+      var _curPdSp=(_curMoSp&&_curYrSp)?(_MO_TH_SP[_curMoSp]+' '+_curYrSp):'';
+      tab1+='<div style="padding:10px 12px;border-bottom:1px solid var(--bd2);grid-column:1/-1;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.3);border-radius:6px;margin:6px 12px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:10px;color:var(--mu);margin-bottom:5px">Status เดิม (ก่อน override)</div>'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px">'
+        +'<span class="bdg '+stCls(r._orig_st)+'">'+esc(r._orig_st)+'</span>'
+        +(_origPdSp?'<span style="color:var(--mu2)">'+esc(_origPdSp)+'</span>':'')
+        +'<span style="color:var(--mu);font-size:13px">→</span>'
+        +'<span class="bdg '+stCls(r.st)+'">'+esc(r.st)+'</span>'
+        +(_curPdSp?'<span style="color:var(--ac2);font-weight:600">'+esc(_curPdSp)+'</span>':'')
+        +'</div>'
+        +'</div>'
+        +'<button onclick="cancelManualEdit(\''+esc(r.id||'')+'\')" style="background:transparent;border:1px solid #f59e0b;color:#fbbf24;font-size:11px;padding:5px 10px;border-radius:5px;cursor:pointer;font-family:inherit;white-space:nowrap">↩ กลับไป Status เดิม</button>'
+        +'</div>'
+        +'</div>';
+    }
+    tab1+='</div></div>';
+    // [v354] Bill Merge to box ใน modal Dashboard (เหมือน SalesProspect)
+    if(r.ip==='Bill Merge'){
+      var _ovQn=r.qn||'';
+      var _ovTgt=(window._SP_MERGE_MAP||{})[_ovQn]||'';
+      var _ovRm=(typeof window._spResolveMerge==='function')?window._spResolveMerge(_ovQn):null;
+      var _ovBox='';
+      if(_ovTgt && _ovRm && _ovRm.billed){
+        _ovBox='<div style="margin:10px 12px 0;padding:10px 12px;background:rgba(74,222,128,.08);border:1px solid #4ade80;border-radius:8px">'          +'<div style="font-size:12px;color:#4ade80;font-weight:700;margin-bottom:4px">✅ ออกบิลแล้ว (ตามบิลที่รวม)</div>'          +'<div style="font-size:11px;color:var(--mu)">ไปรวมกับ: <span style="color:#a78bfa">'+esc(_ovTgt)+'</span></div>'          +'<div style="font-size:11px;color:var(--mu)">เลขที่บิล: <span style="color:#38bdf8">'+esc(_ovRm.bn||'')+'</span>'+((_ovRm.bd)?' · วันที่: '+esc(_ovRm.bd):'')+'</div>'          +'</div>';
+      } else if(_ovTgt){
+        _ovBox='<div style="margin:10px 12px 0;padding:10px 12px;background:rgba(250,204,21,.08);border:1px solid #facc15;border-radius:8px">'          +'<div style="font-size:12px;color:#facc15;font-weight:700;margin-bottom:4px">⏳ รอปลายทางออกบิล</div>'          +'<div style="font-size:11px;color:var(--mu)">ไปรวมกับ: <span style="color:#a78bfa">'+esc(_ovTgt)+'</span> (ยังไม่ออกบิล)</div>'          +'</div>';
+      } else {
+        _ovBox='<div style="margin:10px 12px 0;padding:10px 12px;background:rgba(251,146,60,.08);border:1px solid #fb923c;border-radius:8px">'          +'<div style="font-size:12px;color:#fb923c;font-weight:700;margin-bottom:6px">📎 บิลนี้ไปรวมกับใบไหน?</div>'          +'<div style="font-size:11px;color:var(--mu);margin-bottom:8px">ยังไม่ได้แมป — ไปแมปที่หน้า Sales Prospect</div>'          +'</div>';
+      }
+      tab1+=_ovBox;
+    }
+    var tab2='';
+    var qu = dpGetQuotationInfo(r);
+    if(qu){
+      function _quv(k){ var v=qu[k]; if(v==null) return '—'; var s=String(v).trim(); var l=s.toLowerCase(); return (l==='nan'||l==='none'||l==='null'||!s)?'—':s; }
+      // [v178] หัวข้ออีเมล (SUBJECT_EMAIL) ย้ายมาต่อท้ายฝั่งซ้าย (tab1)
+      tab1+='<div style="margin-top:10px;padding:8px 12px;border-bottom:1px solid var(--bd2);background:var(--sur2);border-radius:6px">'
+        +'<div style="font-size:10px;color:var(--tx);margin-bottom:3px;font-weight:600">หัวข้ออีเมล (SUBJECT_EMAIL)</div>'
+        +'<div style="font-size:12px;font-weight:600;color:var(--tx);white-space:normal;line-height:1.5">'+esc(_quv('SUBJECT_EMAIL'))+'</div>'
+      +'</div>';
+      var _amt = Number(qu.QH_TOTAL_AMT||0);
+      var _disc = Number(qu.QH_TOTAL_DISCOUNT||0);
+      var _net = _amt - _disc;
+      var _netStr = (qu.QH_TOTAL_AMT!=null) ? ('฿'+_net.toLocaleString('th-TH')) : '—';
+      tab2+='<div class="dp-sec"><div class="dp-sec-t">📄 ข้อมูลใบเสนอราคา (RAW_Quotation)</div>';
+      tab2+='<div style="display:grid;grid-template-columns:1fr 1fr">';
+      tab2+=stGrid2('ลูกค้า', _quv('CUSTOMER_NAME'), 'var(--tx)',
+                 'เลขที่เอกสาร (DOC_NUMBER)', _quv('DOC_NUMBER'), 'var(--ac2)');
+      tab2+=stGrid2('ยี่ห้อ (BRAND_NAME)', _quv('BRAND_NAME'), 'var(--tx)',
+                 'รุ่น (MODEL_NAME)', _quv('MODEL_NAME'), 'var(--tx)');
+      // วันส่งมอบ — ดึงจาก parts (RAW_SpareParts QH_SEND_TO_DATE) เท่านั้น
+      var _dlvVal = '';
+      if(parts && parts.length){
+        for(var _ip=0;_ip<parts.length;_ip++){
+          if(parts[_ip] && parts[_ip].delivery){ _dlvVal=parts[_ip].delivery; break; }
+        }
+      }
+      // format: "14 มิ.ย. 2026" (ปีเต็ม) หรือ "รอกำหนดส่งมอบ" ถ้าไม่มีค่า
+      var _dlvDisp='รอกำหนดส่งมอบ', _dlvCol='var(--mu)';
+      if(_dlvVal){
+        var _dlvS=String(_dlvVal).trim(), _dlvD=null;
+        try {
+          if(/^\d{4}-\d{1,2}-\d{1,2}/.test(_dlvS)) _dlvD=new Date(_dlvS);
+          else if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(_dlvS)){
+            var _dlvP=_dlvS.split(/[\/\-\s]/);
+            var _dlvY=parseInt(_dlvP[2],10); if(_dlvY>2400) _dlvY-=543;
+            _dlvD=new Date(_dlvY, parseInt(_dlvP[1],10)-1, parseInt(_dlvP[0],10));
+          } else _dlvD=new Date(_dlvS);
+        } catch(e){}
+        if(_dlvD && !isNaN(_dlvD.getTime())){
+          var _dlvMO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+          _dlvDisp=_dlvD.getDate()+' '+_dlvMO[_dlvD.getMonth()]+' '+_dlvD.getFullYear();
+          _dlvCol='var(--ylw2)';
+        } else {
+          _dlvDisp=_dlvS;
+          _dlvCol='var(--ylw2)';
+        }
+      }
+      tab2+=stGrid2('ประเภทสัญญา', _quv('CONTRACT_TYPE_NAME'), 'var(--tx)',
+                 'วันส่งมอบ', _dlvDisp, _dlvCol);
+      tab2+=stGrid2('Sales', _quv('SALES_SERVICE_NAME'), 'var(--tx)',
+                 'ทีม (TEAM_NAME)', _quv('TEAM_NAME'), 'var(--tx)');
+      tab2+='<div style="padding:8px 12px;border-bottom:1px solid var(--bd2);grid-column:1/-1">'
+        +'<div style="font-size:10px;color:var(--tx);margin-bottom:3px;font-weight:600">มูลค่าสุทธิ (AMT − Discount)</div>'
+        +'<div style="font-size:12px;font-weight:600;color:var(--grn)">'+esc(_netStr)+'</div>'
+      +'</div>';
+      tab2+='</div></div>';
+    } else {
+      tab2+='<div style="padding:24px 20px;text-align:center;color:var(--mu);font-size:12px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">— ไม่พบข้อมูลใบเสนอราคาใน RAW_Quotation —</div>';
+    }
+
+    // ─── Tab 3: รายการอะไหล่ — ตาราง parts แบบเดิม ───
+    var tab3='';
+    if(parts.length){
+      var ipColor={'RP:Stock In':'#4ade80','RP:Wait Stock-In':'#fbbf24','RP:Processing':'#a78bfa'};
+      tab3+='<div class="dp-sec"><div class="dp-sec-t">📦 รายการอะไหล่ — '+parts.length+' รายการ</div>';
+      tab3+='<div style="overflow-x:auto"><table class="parts-tbl" style="min-width:640px"><thead><tr>';
+      tab3+='<th>#</th><th>Mat No</th><th>Parts Name</th><th>ยี่ห้อ-รุ่น</th><th>จำนวน</th><th>สถานะ</th><th>IP</th><th>ETA</th><th>กำหนดส่ง</th>';
+      tab3+='</tr></thead><tbody>';
+      parts.forEach(function(p,i){
+        var ipc=ipColor[p.ip]||'var(--mu2)';
+        var etaTxt = p.eta_date ? esc(p.eta_date) : '<span style="color:var(--mu);font-style:italic">ยังไม่มีกำหนด ETA</span>';
+        tab3+='<tr>'
+          +'<td style="color:var(--mu);font-size:10px">'+(i+1)+'</td>'
+          +'<td style="font-family:var(--mono);font-size:10px">'+esc(p.mat_no||'—')+'</td>'
+          +'<td>'+esc(p.parts_name||'—')+'</td>'
+          +'<td style="font-size:10px;color:var(--mu2)">'+esc(p.brand_model||'—')+'</td>'
+          +'<td style="text-align:center">'+esc(String(p.qty||''))+'</td>'
+          +'<td style="font-size:10px">'+esc(p.status||'—')+'</td>'
+          +'<td><span style="font-size:10px;font-weight:600;color:'+ipc+'">'+esc(p.ip||'—')+'</span></td>'
+          +'<td style="font-family:var(--mono);font-size:10px;color:var(--mu2)">'+etaTxt+'</td>'
+          +'<td style="font-family:var(--mono);font-size:10px;color:var(--mu2)">'+esc(p.delivery||'—')+'</td>'
+          +'</tr>';
+      });
+      tab3+='</tbody></table></div></div>';
+    } else {
+      tab3+='<div style="padding:24px 20px;text-align:center;color:var(--mu);font-size:12px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">— ไม่พบรายการอะไหล่ —</div>';
+    }
+
+    // ─── [v233] ปุ่มเบิกอะไหล่ทั้งใบ (DO / เปิดบิล) ───
+    window._dpCurReq = {
+      qn: (r.qn || ''),
+      cu: (r.cu || qu.CUSTOMER_NAME || ''),
+      brand: (qu.BRAND_NAME || (parts[0] && parts[0].brand_model) || ''),
+      parts: parts
+    };
+    var reqBtns = '';
+    if(parts.length){
+      reqBtns = '<div style="margin-top:14px;background:var(--sur2);border:1px solid var(--bd);border-radius:10px;padding:12px 14px">'
+        + '<div style="font-size:11px;color:var(--mu);margin-bottom:10px">เบิกทั้งใบ ('+parts.length+' รายการ) → ส่งเมลถึง Admin</div>'
+        + '<div style="display:grid;gap:8px">'
+        + '<button onclick="dpReqEmail(\'do\')" style="display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;background:var(--sur);border:1px solid var(--bd2);border-radius:8px;padding:12px 14px;cursor:pointer;color:var(--tx);font-family:inherit">'
+        +   '<span style="font-size:18px;line-height:1">📦</span><span><div style="font-size:13px;font-weight:700">DO เบิกสินค้า</div><div style="font-size:11px;color:var(--mu);margin-top:2px">เบิกของออกตามปกติ</div></span></button>'
+        + '<button onclick="dpReqEmail(\'bill\')" style="display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;background:var(--sur);border:1px solid var(--bd2);border-radius:8px;padding:12px 14px;cursor:pointer;color:var(--tx);font-family:inherit">'
+        +   '<span style="font-size:18px;line-height:1">🧾</span><span><div style="font-size:13px;font-weight:700">เบิกของพร้อมเปิดบิล</div><div style="font-size:11px;color:var(--mu);margin-top:2px">แนบหมายเหตุให้ Operation Service เปิดบิลในวันซ่อม</div></span></button>'
+        + '</div></div>';
+    }
+
+    // ─── Layout ใหม่: 2 คอลัมน์ (สถานะ | ใบเสนอราคา) + parts ต่อท้ายด้านล่าง ───
+    h = '<div style="max-height:calc(100vh - 140px);overflow-y:auto;padding:12px 14px">'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+      + '<div>'+tab1+'</div>'
+      + '<div>'+tab2+'</div>'
+      + '</div>'
+      + '<div>'+tab3+'</div>'
+      + reqBtns
+      + '</div>';
+
+    document.getElementById('dp-body').innerHTML=h;
+  };
+
+  af = function(){
+    try{ if(window._applyNoBillDiv4) window._applyNoBillDiv4(); }catch(e){} // [v207] no-bill ÷4
+    bindSearchBox();
+    var fSales=document.getElementById('f-sales').value;
+  var fMo=typeof _fMoSel!=='undefined'&&_fMoSel.length?_fMoSel:(document.getElementById('f-mo')?[parseInt(document.getElementById('f-mo').value||'0')].filter(Boolean):[]);
+    var fYr=document.getElementById('f-yr').value;
+    var fSt=_fStSel.length?_fStSel:null;
+    var fType=document.getElementById('f-type').value;
+    var fTeam=(document.getElementById('f-team')||{}).value||'';
+    var fSearch=((document.getElementById('f-search')||{}).value||'').toLowerCase().trim();
+    FD=D.filter(function(r){
+      if(/^QSP23/i.test(String(r.qn||''))) return false; // [v259] ซ่อน QSP23 (เก่า)
+      if(fSales&&r.sa!==fSales) return false;
+      if(fMo&&fMo.length){ var _useFmo=(typeof _pillAll!=='undefined'&&_pillAll)||(pillSt==='Billed')||(pillSt==='Actual FAD'); var _rmo2=_useFmo?(r.fmo||r.mo):(r.mo); if(fMo.indexOf(Number(_rmo2))<0) return false; }
+      if(fYr&&Number(r.yr)!==parseInt(fYr)) return false;
+      if(fSt&&fSt.indexOf(r.st)<0) return false;
+      if(fType&&r.t!==fType) return false;
+      if(fTeam&&getTeam(r)!==fTeam) return false;
+      if(pillSt&&r.st!==pillSt){
+        // Forecast SP นับรวมใน Backlog pill (Backlog Confirmed แยก chip แล้ว)
+        if(pillSt==='Backlog' && r.st==='Forecast SP'){
+          // ผ่าน
+        }
+        // Prospect pill (pillSt='Offer'): รวม SP Ordered (Pending)+HM (เดิม) และ st='Prospect' (v369, Customer Accept ไม่มี PO)
+        else if(pillSt==='Offer' && (r.st==='Prospect' || (r.st==='SP Ordered (Pending)' && _hasHMStage(r)))){
+          // ผ่าน
+        }
+        else return false;
+      }
+      // SP Ordered Processing pill: exclude SP+HM records (ย้ายไป Prospect แล้ว)
+      if((pillSt==='SP Ordered (Pending)'||pillSt==='SP Forward') && r.st==='SP Ordered (Pending)' && _hasHMStage(r)){
+        return false;
+      }
+
+      if(pillIp){
+        // Backlog (Confirmed) ข้าม pillIp check เฉพาะเมื่ออยู่ใน Backlog pill (pillSt='Backlog')
+        // เพื่อให้ Backlog (Confirmed) แสดงในปุ่ม Backlog แต่ไม่แสดงในปุ่ม Actual FAD/อื่นๆ
+        if(r.st === 'Backlog (Confirmed)' && pillSt === 'Backlog'){
+          // ผ่าน — Backlog (Confirmed) อยู่ใน Backlog pill
+        } else {
+          if(pillIp==='ACTUAL_FAD_ALL'){ if(r.st!=='Actual FAD'&&r.st!=='Actual FAD (CN)'&&r.st!=='Actual FAD (Not Found)') return false; if(r.is_sp_fix) return false; }
+          else if(pillIp==='ETA_ISSUE'){
+            // ⏳⚠️ ETA Issue: SP records ที่ ETA หาย หรือ ETA หลังกำหนดส่ง
+            if(r.t!=='SP') return false;
+            if(!(r._eta_missing || r._eta_late)) return false;
+          }
+          else if(pillIp==='EXCEL_MAPPED'){ if(!(r.ip==='SC Billed'||r.ip==='SP Billed')||!r._excel_mapped) return false; }
+          else if(pillIp==='UNMAPPED'){ if(!((r.ip==='SC Billed'||r.ip==='SP Billed')&&!r._excel_mapped)) return false; }
+          else if(pillIp==='CO:READY'){ if(!(r.st==='Ordered'&&Number(r.is_carry||0)===1&&Number(r.co_ready||0)===1)) return false; }
+          else if(pillIp==='CO:NOT_READY'){ if(!(r.st==='Ordered'&&Number(r.is_carry||0)===1&&Number(r.co_ready||0)!==1)) return false; }
+          else if(pillIp.charAt(0)==='!'){
+            var _xips=pillIp.slice(1).split('|');
+            var _xmatch=false; _xips.forEach(function(ip){ if(r.ip===ip) _xmatch=true; });
+            if(_xmatch) return false;
+          } else {
+            var _ips=pillIp.split('|');
+            var _match=false; _ips.forEach(function(ip){ if(r.ip===ip) _match=true; });
+            if(!_match) return false;
+          }
+        }
+      }
+
+      if(typeof _pillAll!=='undefined'&&_pillAll){
+        if(r.st==='Excluded') return false;
+      }
+      if(fSearch){
+        if(!r._search){ r._search=((r.qn||'')+' '+(r.cu||'')+' '+(r.br||'')+' '+(r.sa||'')+' '+(r.ip||'')).toLowerCase(); }
+        if(r._search.indexOf(fSearch)===-1) return false;
+      }
+      return true;
+    });
+    FD.sort(function(a,b){
+      var av=a[srtF]||'', bv=b[srtF]||'';
+      if(srtF==='px'){ av=Number(a.px)||0; bv=Number(b.px)||0; }
+      if(srtF==='mo'){ av=(Number(a.yr)||0)*100+(Number(a.mo)||0); bv=(Number(b.yr)||0)*100+(Number(b.mo)||0); }
+      if(srtF==='delivery'){
+        // helper: parse delivery date เป็น timestamp (ms) — SP ใช้วันส่งมอบจริง, อื่นๆ ใช้รอบบิล
+        function _dlvTs2(r){
+          if(r && r.t==='SP'){
+            var _raw=r.delivery||'';
+            if(_raw){
+              var _s=String(_raw).trim(), _d=null;
+              try {
+                if(/^\d{4}-\d{1,2}-\d{1,2}/.test(_s)) _d=new Date(_s);
+                else if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(_s)){
+                  var _p=_s.split(/[\/\-\s]/);
+                  var _y=parseInt(_p[2],10); if(_y>2400) _y-=543;
+                  _d=new Date(_y, parseInt(_p[1],10)-1, parseInt(_p[0],10));
+                } else _d=new Date(_s);
+              } catch(e){}
+              if(_d && !isNaN(_d.getTime())) return _d.getTime();
+            }
+          }
+          // fallback: ใช้ rbmo/rbyr → mo/yr (วันที่ 1 ของเดือน)
+          var _yr=(Number(r.rbyr)||Number(r.yr)||0);
+          var _mo=(Number(r.rbmo)||Number(r.mo)||0);
+          if(_yr && _mo) return new Date(_yr, _mo-1, 1).getTime();
+          return 0;
+        }
+        var ad2=_dlvTs2(a), bd2=_dlvTs2(b);
+        return srtA?ad2-bd2:bd2-ad2;
+      }
+      if(typeof av==='string') return srtA?String(av).localeCompare(String(bv),'th'):String(bv).localeCompare(String(av),'th');
+      return srtA?av-bv:bv-av;
+    });
+    renderTbl(); renderStatusBar();
+    try { var _hv=document.getElementById('v-home'); if(_hv&&_hv.style.display!=='none'&&typeof homeRender==='function') homeRender(window.D||D); } catch(e){}
+  };
+
+  // [v388] _qfPillOf(r): คืน pill Quick Filter (id+label) ที่ record ตรงกับปุ่มไหนบนตาราง Service Commercial Orders
+  //   mirror เงื่อนไขจริงใน af() ทุกตัว (เจาะจงก่อนทั่วไปเสมอ: co-ready/co-notready ก่อน ordered ทั่วไป) — 1 แถว = 1 pill
+  //   ⚠ ต้องอัปเดตคู่กันเสมอถ้าแก้เงื่อนไข af() — ไม่ได้เรียก af() ตรงๆ เพื่อไม่แตะโค้ดเดิม (ตาม instruction ห้ามแก้ส่วนที่ไม่เกี่ยว)
+  //   ⚠ spf-ord/spf-proc ใช้ st legacy 'SP Forward' ตาม tpill จริงในระบบ (known discrepancy บันทึกใน STATE.md — ไม่ได้แก้ตรงนี้)
+  window._qfPillOf = function(r){
+    if(!r) return null;
+    if(/^QSP23/i.test(String(r.qn||''))) return null; // [v259] ซ่อนเหมือน Quick Filter
+    function _lbl(id, fb){ try{ var c=(window._QF_CFG||{})['qf_'+id+'_label']; return (c&&String(c).trim())?String(c).trim():fb; }catch(e){ return fb; } }
+    if((r.st==='Actual FAD'||r.st==='Actual FAD (CN)'||r.st==='Actual FAD (Not Found)') && !r.is_sp_fix){
+      return {id:'actual', label:_lbl('actual','Actual FAD')};
+    }
+    if(r.st==='Billed') return {id:'billed', label:_lbl('billed','Billed')};
+    if(r.st==='Backlog' || r.st==='Forecast SP'){
+      if(['SC Billing','SP Billing','Bill Merge'].indexOf(r.ip)>=0) return {id:'backlog', label:_lbl('backlog','Sale Order')};
+    }
+    if(r.st==='Backlog (Confirmed)') return {id:'backlog-conf', label:_lbl('backlog-conf','Sales Confirmed')};
+    if(r.st==='Ordered' && Number(r.is_carry||0)===1 && Number(r.co_ready||0)===1) return {id:'co-ready', label:_lbl('co-ready','SC Carry (Bill Pending)')};
+    if(r.st==='Ordered' && Number(r.is_carry||0)===1 && Number(r.co_ready||0)!==1) return {id:'co-notready', label:_lbl('co-notready','SC Carry (PM Pending)')};
+    if(r.st==='Ordered') return {id:'ordered', label:_lbl('ordered','SC Ordered')};
+    if(r.st==='SP Forward'){
+      if(['RP:Stock In','RP:Wait Stock-In'].indexOf(r.ip)>=0) return {id:'spf-ord', label:_lbl('spf-ord','SP Ordered')};
+      if(r.ip==='RP:Processing') return {id:'spf-proc', label:_lbl('spf-proc','SP Ordered Processing')};
+    }
+    if(r.st==='Offer' || r.st==='Prospect' || (r.st==='SP Ordered (Pending)' && typeof _hasHMStage==='function' && _hasHMStage(r))){
+      return {id:'pend', label:_lbl('pend','Prospect')};
+    }
+    if(r.st==='Excluded') return {id:'excluded', label:_lbl('excluded','Excluded')};
+    if(r.st==='Data Issue') return {id:'data', label:_lbl('data','Data Issue')};
+    return null;
+  };
+
+  // [v357] post-pass: Bill Merge ต้นทาง → ถ้าปลายทาง (ใน D) ออกบิลแล้ว → Billed + ยืม bn/bd/mo/yr
+  //   self-contained: ใช้ D + _SP_MERGE_MAP ตรงๆ (ไม่พึ่ง _spResolveMerge ของ SalesProspect — โหลดช้ากว่า)
+  window._bjhApplyMergeBilled = function(){
+    try{
+      var map = window._SP_MERGE_MAP || {};
+      if(!D || !D.length) return 0;
+      var keys = Object.keys(map); if(!keys.length) return 0;
+      var byQn = {};
+      for(var i=0;i<D.length;i++){ var t=D[i]; if(t && t.qn && t.bn && !byQn[t.qn]) byQn[t.qn]=t; }
+      var n=0;
+      for(var j=0;j<D.length;j++){
+        var r=D[j]; if(!r || r.ip!=='Bill Merge' || r.st==='Billed') continue;
+        var tgt = map[r.qn||'']||''; if(!tgt) continue;
+        var tr = byQn[tgt];
+        if(tr && tr.bn){
+          r.st='Billed';
+          if(!r.bn) r.bn=tr.bn;
+          if(!r.bd) r.bd=tr.bd;
+          if(tr.mo) r.mo=tr.mo;
+          if(tr.yr) r.yr=tr.yr;
+          // [v358] fmo/fyr/fm/fy ก็ต้องยืมด้วย — filter pill 'Billed' เช็ค r.fmo||r.mo (ไม่ใช่ r.mo อย่างเดียว)
+          //   ถ้าไม่ยืม fmo เดิม (ตั้งจาก CUR_MO ตอน classify แรก) จะบัง mo ที่เพิ่งแก้ → โผล่ผิดเดือน
+          r.fmo=tr.fmo||r.mo; r.fyr=tr.fyr||r.yr;
+          r.fm=tr.fm||r.mo; r.fy=tr.fy||r.yr;
+          n++;
+        }
+      }
+      if(n) try{ console.log('[v357] Bill Merge → Billed:', n, 'rows'); }catch(e){}
+      return n;
+    }catch(e){ return 0; }
+  };
+  init = function(records,parts,salesArr){
+    try{
+      // [v447] ย้าย filter QSP23/24 มาที่นี่ — จุดจริงที่ init() ใช้งาน (overrides.html ทับ script_main.html เสมอ)
+      //   เดิมแก้ไว้ที่ script_main.html (V424) แต่ overrides.html ประกาศ init ทับใหม่ทั้งหมด ทำให้ filter เดิมไม่เคยทำงานเลย
+      // [v448] เพิ่ม exception list — ใบที่ติ๊ก "เอากลับมา" ไว้ใน Data Query จะไม่ถูกตัดออก
+      var _qspExc = window._QSP_EXCEPTIONS || {};
+      D=(Array.isArray(records)?records:[]).filter(function(r){
+        if(!r) return false;
+        var _qn=String(r.qn||'');
+        if(_qspExc[_qn]) return true; // ยกเว้นไว้ ไม่ตัดออก
+        return !/^QSP(23|24)/i.test(_qn);
+      }).map(function(src){ return normalizeStatusV51(Object.assign({}, src||{})); });
+      // Migration: ถ้า record เก่ามี is_sp_fix=1 แต่ st ไม่ใช่ 'Forecast SP' → fix ให้
+      D.forEach(function(r){
+        if(r && Number(r.is_sp_fix||0)===1 && r.st!=='Forecast SP'){ r.st='Forecast SP'; r.ip='SP Billing'; }
+      });
+
+      D.forEach(function(r,i){ r.id=i+1; });
+      try{ window._bjhApplyMergeBilled(); }catch(e){} // [v357] Bill Merge → Billed (ถ้า map มาแล้ว)
+      try{ if(window._spFcApplyLow) window._spFcApplyLow(); }catch(e){} // [v384] Low prospects รอด D rebuild ทุกแบบ (SWR/Update/Load สด)
+      try{ if(window._fcHealLowPx) window._fcHealLowPx(); }catch(e){} // [V479.35] บังคับ px ตรงสูตร (หารปี) — กัน record ค้างค่าเก่า
+      PARTS=parts||{}; FD=D.slice();
+      populateSales(Array.isArray(salesArr)?salesArr:[]);
+      try{ populateIP(); }catch(e){}
+      buildSummary(); af();
+      var ld=document.getElementById('ld'); if(ld) ld.style.display='none';
+      var appEl=document.getElementById('app'); if(appEl) appEl.style.display='flex';
+      try{ buildRulesV51(); }catch(e){ console.error(e); }
+      APP={ready:true,records:D.length,parts:Object.keys(PARTS||{}).length,version:'v99-loaded',lastError:''};
+      window.APP=APP; return true;
+    }catch(err){ console.error('v57 init failed',err); window.APP={ready:false,records:0,parts:0,version:'v99-init-failed',lastError:String(err&&err.message||err)}; return false; }
+  };
+
+  sv = function(v){
+    document.querySelectorAll('.view').forEach(function(el){el.classList.remove('on'); el.style.display='none';});
+    document.querySelectorAll('.nav-btn').forEach(function(el){el.classList.remove('on');}); // [v228] เอา force-show ออก -> ปล่อย _applyNavPermissions คุม
+    var target=document.getElementById('v-'+v);
+    if(target){ target.classList.add('on'); target.style.setProperty('display','flex','important'); target.style.flexDirection='column'; target.style.flex='1'; }
+    var nb=document.getElementById('nb-'+v);
+    if(nb) nb.classList.add('on');
+      if(v==='bvf') try{renderBVF();}catch(e){console.error(e);}
+      if(v==='sp')  try{spTab(window._spCurrentTab||'alert'); try{ if(typeof spApplyTabPermissions==='function') spApplyTabPermissions(); }catch(e){} }catch(e){console.error(e);}
+      if(v==='home') try{ if(typeof homeInit==='function') homeInit(window.D||D); }catch(e){console.error(e);}
+    // [v228] apply permission ทุกครั้งสลับเมนู (ปุ่มไม่มีสิทธิ์ถูกซ่อน) — เดิม overrides sv ไม่เรียก = ปุ่มโผล่หมด
+    try { if(typeof _applyNavPermissions==='function') _applyNavPermissions(); } catch(e){}
+  };
+
+  var RULES_DATA = [
+
+    {group:'RAW_SC_BILL', field:'CONTRACT_PROCESS_STATUS_NAME → sc_contract', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'CONTRACT_PROCESS_STATUS_NAME', note:'ตัดสิน Offer/Excluded/Contract Done — Contract Completed, PO Completed, ตรวจสอบเรียบร้อย, รอตรวจสอบข้อมูล = สัญญาเสร็จ | ยกเลิกสัญญา = Excluded'},
+    {group:'RAW_SC_BILL', field:'BILL_STATUS_NAME → sb', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'BILL_STATUS_NAME', note:'ปริ้นบิลเรียบร้อย/คืนบิล CFD/รับบิล/คืนบิล = Backlog | Requested Bill/รอ Delegrate = Ordered | Bill Not Print = Excluded'},
+    {group:'RAW_SC_BILL', field:'JOB_STATUS → sn', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'JOB_STATUS', note:'Completed = Carry Ready | ≠Completed = Carry On (Not Ready)'},
+    {group:'RAW_SC_BILL', field:'BILL_NUMBER → bn', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'BILL_NUMBER', note:'มีค่า = Backlog (บิลแล้ว)'},
+    {group:'RAW_SC_BILL', field:'BILL_PRINT_DATE → bd', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'BILL_PRINT_DATE', note:'กำหนด mo/yr สำหรับ Backlog'},
+    {group:'RAW_SC_BILL', field:'BILL_MONTH + BILL_YEAR → rbmo/rbyr', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'BILL_MONTH, BILL_YEAR', note:'กำหนด mo/yr สำหรับ SC Ordered / Offer / Carry'},
+    {group:'RAW_SC_BILL', field:'BILL_PRICE → px (In.VAT)', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'BILL_PRICE', note:'In.VAT — Ex.VAT = px / 1.07'},
+    {group:'RAW_SC_BILL', field:'QH_DOC_NUMBER → qn', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'QH_DOC_NUMBER', note:'Key หลัก — ไม่มี QN → ตัดออก'},
+    {group:'RAW_SC_BILL', field:'CUSTOMER_NAME → cu', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'CUSTOMER_NAME', note:'ชื่อลูกค้า'},
+    {group:'RAW_SC_BILL', field:'SALES_SERVICE_NAME → sa', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'SALES_SERVICE_NAME', note:'ชื่อ Service Sales'},
+    {group:'RAW_SC_BILL', field:'TEAM_BILL → tm', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'TEAM_BILL', note:'ใช้ค่าแรก (split comma) — 4 → Service 1, normalize → Service 1/2/3'},
+    {group:'RAW_SC_BILL', field:'SR → sr', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'SR', note:'เลขที่ Service Request — แสดงใน Detail panel ท่อน 1 เลขที่ SR'},
+    {group:'RAW_SC_BILL', field:'QUO_STATUS_NAME → qs', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'QUO_STATUS_NAME', note:'สถานะใบเสนอราคา — แสดงใน Detail panel ท่อน 1 ช่อง สถานะ ใบเสนอราคา'},
+    {group:'RAW_SC_BILL', field:'PRODUCT_NAME → ml', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'PRODUCT_NAME', note:'ชื่อสินค้า/รุ่น (ใช้แสดงใน Brand column)'},
+    {group:'RAW_SC_BILL', field:'PROJECT_NAME → pg', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'PROJECT_NAME', note:'ชื่อโปรเจกต์'},
+    {group:'RAW_SC_BILL', field:'PROJECT_NUMBER → pn', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'PROJECT_NUMBER', note:'เลขที่โปรเจกต์'},
+
+    {group:'RAW_PARTS (SP)', field:'QH_DOC_NUMBER → qn', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'QH_DOC_NUMBER', note:'Key หลัก — group by QN แล้วประเมิน IP ทั้ง QN (Worst Case)'},
+    {group:'RAW_PARTS (SP)', field:'STATUS_DT_NAME → ip', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'STATUS_DT_NAME', note:'Stock In/Parts Ready(WG2)/Admin Process = RP:Stock In | Wait Stock-In = RP:Wait Stock-In | อนุมัติสั่งซื้อ/PR Process(K2)/Requested = RP:Processing | Canceled/Rejected/Engineer Receive = Skip'},
+    {group:'RAW_PARTS (SP)', field:'QH_TOTAL_AMT → px', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'QH_TOTAL_AMT', note:'ราคาต่อ QN — ใช้จาก row แรก ไม่ sum | ถ้า 0 → ตัดออก'},
+    {group:'RAW_PARTS (SP)', field:'BILL_NUMBER → bn', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'BILL_NUMBER', note:'มีค่าใน QN → SP Backlog'},
+    {group:'RAW_PARTS (SP)', field:'BILL_PRINT_DATE → bd', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'BILL_PRINT_DATE', note:'กำหนด mo/yr สำหรับ SP Backlog'},
+    {group:'RAW_PARTS (SP)', field:'QH_SEND_TO_DATE → delivery', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'QH_SEND_TO_DATE', note:'กำหนด mo/yr สำหรับ SP Ordered (Pending) — ใช้ part แรกที่มีค่า'},
+    {group:'RAW_PARTS (SP)', field:'ETA_DATE → delivery fallback', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'ETA_DATE', note:'Fallback ถ้าไม่มี QH_SEND_TO_DATE'},
+    {group:'RAW_PARTS (SP)', field:'CUSTOMER_NAME → cu', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'CUSTOMER_NAME', note:'ชื่อลูกค้า'},
+    {group:'RAW_PARTS (SP)', field:'SALES_SERVICE_NAME → sa', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'SALES_SERVICE_NAME', note:'ชื่อ Service Sales'},
+    {group:'RAW_PARTS (SP)', field:'REQ_TEAM_SHOW → tm', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'REQ_TEAM_SHOW', note:'ทีม — 4 → Service 1, normalize → Service 1/2/3'},
+    {group:'RAW_PARTS (SP)', field:'BRAND_NAME → br', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'BRAND_NAME', note:'ยี่ห้อ'},
+    {group:'RAW_PARTS (SP)', field:'MODEL_NAME → ml', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'MODEL_NAME', note:'รุ่น'},
+    {group:'RAW_PARTS (SP)', field:'PARTS_MAT_NO, PARTS_NAME, BRAND_MODEL', file:'PARTS.mhtml', sheet:'JSON API', hdr:'—', col:'(detail panel)', note:'แสดงในหน้า Detail ของ SP — รายการอะไหล่ทุกชิ้นใน QN'},
+
+    {group:'SC Status Logic', field:'Excluded', file:'SC_BILL', sheet:'—', hdr:'—', col:'CONTRACT_PROCESS_STATUS_NAME / BILL_STATUS_NAME', note:'ไม่มีบิล + (CONTRACT_PROCESS_STATUS_NAME=ยกเลิกสัญญา หรือ BILL_STATUS_NAME=Bill Not Print) → Excluded | ถ้ามี BILL_NUMBER → Backlog เสมอ ไม่ว่าสัญญาจะยกเลิกหรือไม่'},
+    {group:'SC Status Logic', field:'Offer', file:'SC_BILL', sheet:'—', hdr:'—', col:'CONTRACT_PROCESS_STATUS_NAME', note:'รอใบสั่งจ้าง/รอทำสัญญา, อยู่ระหว่างทำสัญญา, ส่งเอกสารให้ลูกค้า, เอกสารรอส่งลูกค้า, มอบอำนาจ/BG หรือ contract ไม่ใช่ completed → mo/yr = BILL_MONTH/YEAR'},
+    {group:'SC Status Logic', field:'Backlog', file:'SC_BILL', sheet:'—', hdr:'—', col:'BILL_NUMBER / BILL_STATUS_NAME', note:'มี BILL_NUMBER → Backlog เสมอ (ไม่สนสถานะสัญญา) | หรือ BILL_STATUS_NAME = ปริ้นบิลเรียบร้อย/คืนบิล CFD/รับบิล | mo/yr = BILL_PRINT_DATE ถ้าไม่มี → CUR_MO | IP = SC Billed'},
+    {group:'SC Status Logic', field:'SC Ordered', file:'SC_BILL', sheet:'—', hdr:'—', col:'BILL_MONTH/YEAR', note:'สัญญาเสร็จ + ไม่มีบิล + BILL_MONTH/YEAR ≥ เดือนปัจจุบัน → mo/yr = BILL_MONTH/YEAR'},
+    {group:'SC Status Logic', field:'SC Carry', file:'SC_BILL', sheet:'—', hdr:'—', col:'JOB_STATUS + BILL_MONTH/YEAR', note:'สัญญาเสร็จ + ไม่มีบิล + BILL_MONTH/YEAR < ปัจจุบัน + JOB_STATUS = Completed → mo/yr = ปัจจุบัน'},
+    {group:'SC Status Logic', field:'SC Carry (Pending)', file:'SC_BILL', sheet:'—', hdr:'—', col:'JOB_STATUS + BILL_MONTH/YEAR', note:'สัญญาเสร็จ + ไม่มีบิล + BILL_MONTH/YEAR < ปัจจุบัน + JOB_STATUS ≠ Completed → mo/yr = ปัจจุบัน (ไม่นับ FC)'},
+
+    {group:'SP Forward Logic', field:'Group by QN (Worst Case)', file:'PARTS', sheet:'—', hdr:'—', col:'QH_DOC_NUMBER', note:'รวมทุก row ใน QN เดียวกัน แล้วประเมิน IP ระดับ QN ด้วย worst case'},
+    {group:'SP Forward Logic', field:'SP Backlog', file:'PARTS', sheet:'—', hdr:'—', col:'BILL_NUMBER', note:'มี BILL_NUMBER ใน QN ใดๆ → Backlog ทั้ง QN | mo/yr = BILL_PRINT_DATE | IP = SP Billed'},
+    {group:'SP Forward Logic', field:'Skip parts', file:'PARTS', sheet:'—', hdr:'—', col:'STATUS_DT_NAME', note:'Canceled, Rejected, Engineer Receive → ข้าม ไม่นับใน IP evaluation'},
+    {group:'SP Forward Logic', field:'SP Ordered (Ordering)', file:'PARTS', sheet:'—', hdr:'—', col:'STATUS_DT_NAME', note:'active parts ทั้งหมดเป็น Stock In/Parts Ready(WG2)/Wait Stock-In → mo/yr = เดือนปัจจุบัน'},
+    {group:'SP Forward Logic', field:'SP Ordered (Pending)', file:'PARTS', sheet:'—', hdr:'—', col:'QH_SEND_TO_DATE / ETA_DATE', note:'มี active part ที่ยัง pending (อนุมัติสั่งซื้อ/PR Process ฯลฯ) → mo/yr = QH_SEND_TO_DATE ของ part แรกที่มีค่า'},
+    {group:'SP Forward Logic', field:'Data Issue (SP)', file:'PARTS', sheet:'—', hdr:'—', col:'STATUS_DT_NAME', note:'QH_TOTAL_AMT = 0 หรือ มี STATUS_DT_NAME ที่ไม่รู้จัก (ไม่ใช่ Ordering/Pending/Skip)'},
+    {group:'SP Forward Logic', field:'SP Fix 5.2M (Synthetic)', file:'(hardcoded)', sheet:'—', hdr:'—', col:'—', note:'Auto-generate 1 row/เดือน เดือนถัดไป→ธ.ค. ราคา 5,200,000 Ex.VAT × 1.07 | ip=SP Fix 5.2M | tm=Service 1'},
+
+    {group:'IP Reference', field:'SC Billed', file:'—', sheet:'—', hdr:'—', col:'—', note:'SC Backlog ที่บิลแล้ว (เดิม SC Billing Pipeline)'},
+    {group:'IP Reference', field:'SP Billed', file:'—', sheet:'—', hdr:'—', col:'—', note:'SP Backlog ที่บิลแล้ว (เดิม SP Parts Pipeline)'},
+    {group:'IP Reference', field:'SC:Bill Confirmed', file:'—', sheet:'—', hdr:'—', col:'—', note:'SC Backlog มี BILL_NUMBER'},
+    {group:'IP Reference', field:'SC:Await FAD Match', file:'—', sheet:'—', hdr:'—', col:'—', note:'SC Backlog ยังไม่มี FAD ยืนยัน'},
+    {group:'IP Reference', field:'Waiting Bill', file:'—', sheet:'—', hdr:'—', col:'—', note:'SC Ordered/Carry Ready — งาน Completed Waiting Bill'},
+    {group:'IP Reference', field:'Waiting PM', file:'—', sheet:'—', hdr:'—', col:'—', note:'SC Ordered — งานยังไม่ Completed'},
+    {group:'IP Reference', field:'PM Completed', file:'—', sheet:'—', hdr:'—', col:'—', note:'SC Offer — รอสัญญา/เอกสาร/PO'},
+    {group:'IP Reference', field:'SP:Bill Confirmed', file:'—', sheet:'—', hdr:'—', col:'—', note:'SP Bill ที่มี BILL_NUMBER'},
+    {group:'IP Reference', field:'RP:Stock In', file:'—', sheet:'—', hdr:'—', col:'—', note:'SP Forward ทุกชิ้นใน QN = Stock In / Parts Ready (WG2)'},
+    {group:'IP Reference', field:'RP:Wait Stock-In', file:'—', sheet:'—', hdr:'—', col:'—', note:'SP Forward สั่งครบแล้ว มีชิ้นรอ Stock In'},
+    {group:'IP Reference', field:'RP:Processing', file:'—', sheet:'—', hdr:'—', col:'—', note:'SP Forward มีชิ้นที่ยังไม่ได้สั่ง → mo/yr = QH_SEND_TO_DATE part แรก'},
+    {group:'IP Reference', field:'SP Forecast', file:'—', sheet:'—', hdr:'—', col:'—', note:'Synthetic row forecast fix — auto-generate'},
+    {group:'IP Reference', field:'SPF:Data Issue', file:'—', sheet:'—', hdr:'—', col:'—', note:'SP Forward มี STATUS_DT_NAME ที่ไม่รู้จัก'},
+
+    {group:'Monthly Forecast', field:'เดือนที่ผ่านมา', file:'—', sheet:'—', hdr:'—', col:'—', note:'นับ: Backlog เท่านั้น'},
+    {group:'Monthly Forecast', field:'เดือนปัจจุบัน (มี.ค. 2026)', file:'—', sheet:'—', hdr:'—', col:'—', note:'นับ: Backlog + SC Ordered + Carry Ready + SP Ordered (Ordering)'},
+    {group:'Monthly Forecast', field:'เดือนอนาคต (เม.ย.–ธ.ค. 2026)', file:'—', sheet:'—', hdr:'—', col:'—', note:'นับ: SC Ordered + Carry Ready + SP Ordered (Pending) + SP Fix 5.2M'},
+
+    {group:'Budget (Hardcoded in JS)', field:'Service 1 SP Budget', file:'(hardcoded)', sheet:'BUD / BVF_TEMPLATE', hdr:'—', col:'—', note:'[2850,2850,3800,3150,3150,4200,4050,4050,5400,3750,3750,5000] K Ex.VAT รายเดือน'},
+    {group:'Budget (Hardcoded in JS)', field:'Service 1 SC Budget', file:'(hardcoded)', sheet:'BUD / BVF_TEMPLATE', hdr:'—', col:'—', note:'[9405,9405,9940,10395,10395,10960,13365,13365,14020,12375,12375,13000] K Ex.VAT'},
+    {group:'Budget (Hardcoded in JS)', field:'Service 2 SP Budget', file:'(hardcoded)', sheet:'BUD / BVF_TEMPLATE', hdr:'—', col:'—', note:'[1980,1980,2640,1980,1980,2640,1980,1980,2640,1980,1980,2640] K Ex.VAT'},
+    {group:'Budget (Hardcoded in JS)', field:'Service 2 SC Budget', file:'(hardcoded)', sheet:'BUD / BVF_TEMPLATE', hdr:'—', col:'—', note:'[1452,1452,1496,1452,1452,1496,1452,1452,1496,1452,1452,1496] K Ex.VAT'},
+    {group:'Budget (Hardcoded in JS)', field:'Service 3 SC Budget', file:'(hardcoded)', sheet:'BUD / BVF_TEMPLATE', hdr:'—', col:'—', note:'[1650,1650,1700,1650,1650,1700,1980,1980,2040,1650,1650,1700] K Ex.VAT'},
+    {group:'Budget (Hardcoded in JS)', field:'Sales Budget SA_BUD', file:'(hardcoded)', sheet:'SA_BUD', hdr:'—', col:'—', note:'จีรนันท์:42000 ธนาวุฒิ:42000 ประเสริฐ:42000 เจนจิรา:40000 พงษ์ศักดิ์:40000 ธราภัท:10000 K/ปี'},
+    {group:'Budget (Hardcoded in JS)', field:'ACTUAL_FIXED2 — Actual FAD ที่ fix ไว้', file:'(hardcoded)', sheet:'ACTUAL_FIXED2', hdr:'—', col:'—', note:'ตัวเลข Ex.VAT จริงที่ปิดไปแล้ว — index 0-based (0=ม.ค.…11=ธ.ค.) | ✅ 0: 16,743,612 ม.ค. | ✅ 1: 12,070,733 ก.พ. | ⏳ 2: มี.ค. | ⏳ 3: เม.ย. | ⏳ 4: พ.ค. | ⏳ 5: มิ.ย. | ⏳ 6: ก.ค. | ⏳ 7: ส.ค. | ⏳ 8: ก.ย. | ⏳ 9: ต.ค. | ⏳ 10: พ.ย. | ⏳ 11: ธ.ค. — เมื่อได้ตัวเลขใหม่ uncomment แล้วใส่ค่า Ex.VAT'},
+  ];
+
+  function buildRulesV51(){
+    var el=document.getElementById('rules-body'); if(!el) return;
+
+    var groups={};
+    RULES_DATA.forEach(function(r){ if(!groups[r.group]) groups[r.group]=[];  groups[r.group].push(r); });
+
+    var groupColors={
+      'RAW_SC_BILL':'#3b7bff',
+      'RAW_SP_BILL':'#0ea5e9',
+      'RAW_SpareParts':'#8b5cf6',
+      'RAW_Quotation':'#f0a500',
+      'RAW_Customer':'#1db954',
+      'SC Status Logic':'#3b7bff',
+      'SP Forward Logic':'#8b5cf6',
+      'Monthly Forecast':'#f0a500',
+      'Budget (Hardcoded)':'#e8344a'
+    };
+
+    var html='';
+
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bd)">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--tx)">📋 Field Mapping & Logic Rules</div>'
+      
+      +'</div>';
+
+    Object.keys(groups).forEach(function(grp){
+      var color=groupColors[grp]||'#5c6b88';
+      var rows=groups[grp];
+      html+='<div style="margin-bottom:18px">'
+        +'<div style="font-size:10px;font-weight:700;color:'+color+';text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;background:var(--sur2);border-left:3px solid '+color+';border-radius:4px;margin-bottom:6px">'+grp+'</div>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        +'<thead><tr style="background:var(--sur2)">'
+        +'<th style="padding:5px 8px;text-align:left;color:var(--mu);font-size:10px;border-bottom:1px solid var(--bd);width:220px">Field / ค่าที่ใช้</th>'
+        +'<th style="padding:5px 8px;text-align:left;color:var(--mu);font-size:10px;border-bottom:1px solid var(--bd)">ที่มา (ไฟล์ · Sheet · Column) & หมายเหตุ</th>'
+        +'</tr></thead><tbody>';
+      rows.forEach(function(r,i){
+        var bg=i%2===0?'':'background:var(--sur2)';
+        var src='';
+        if(r.file!=='—'&&r.file!=='(auto-generate)'&&r.file!=='(hardcoded in JS)'){
+          src='<span style="color:var(--ac2);font-family:monospace;font-size:10px">'+r.file+'</span>'
+            +' · <span style="color:var(--mu2);font-size:10px">'+r.sheet+'</span>'
+            +' · <span style="color:var(--ylw2);font-family:monospace;font-size:10px">'+r.col+'</span>';
+          if(r.hdr&&r.hdr!=='—') src+=' <span style="color:var(--mu);font-size:10px">(hdr '+r.hdr+')</span>';
+          src+='<br>';
+        } else if(r.file==='(hardcoded in JS)'||r.file==='(auto-generate)'){
+          src='<span style="color:var(--org);font-size:10px">'+r.file+'</span><br>';
+        }
+        html+='<tr style="border-bottom:1px solid var(--bd);'+bg+'">'
+          +'<td style="padding:6px 8px;font-weight:600;color:var(--tx);vertical-align:top">'+r.field+'</td>'
+          +'<td style="padding:6px 8px;color:var(--mu2);vertical-align:top">'+src+'<span style="font-size:11px">'+r.note+'</span></td>'
+          +'</tr>';
+      });
+      html+='</tbody></table></div>';
+    });
+
+    el.innerHTML='<div style="height:100%;overflow-y:auto;padding:16px 20px">'+html+'</div>';
+  }
+
+  function tuneUI(){
+    var nbse=document.getElementById('nb-se'); if(nbse) nbse.textContent='Service Commercial Orders';
+
+    var vs=document.getElementById('ver-stamp');
+    if(vs && (vs.textContent===''||vs.textContent==='Master Admin v246'||/^master-admin/.test(vs.textContent))){
+      var _el=document.getElementById('bjh-embedded-data');
+      if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
+    }
+    // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
+    var _BUILD_VER='V554.0';
+    var _BUILD_TIME='21 ก.ค. 2569 (V554 Mobile 5 เมนู + auto load)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
+    var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
+    try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
+    // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
+    //   (แสดง build ver + Master/TX timestamp + สีตามสถานะ lazy load) — เรียกซ้ำที่นี่เผื่อ overrides โหลดทีหลัง _showApp()
+    try{ if(typeof window._bjhUpdateBadge==='function') window._bjhUpdateBadge(); }catch(e){}
+
+    _fStSel=[];
+    document.querySelectorAll('#f-st-drop input[type=checkbox]').forEach(function(c){c.checked=false;});
+    updateStBtn();
+    function setPill(id,label,status){
+      var el=document.getElementById(id); if(!el) return;
+      var _sts=Array.isArray(status)?status:[status];
+      var cnt;
+      // pill-spf-proc: SP Ordered (Pending) ที่ "ไม่มี" HM stage เท่านั้น
+      if(id==='pill-spf-proc'){
+        cnt=FD.filter(function(r){ return _sts.indexOf(r.st)>=0 && !(r.st==='SP Ordered (Pending)' && _hasHMStage(r)); }).length;
+      }
+      // pill-pend (Prospect): Offer + SP Ordered (Pending) ที่ "มี" HM stage
+      else if(id==='pill-pend'){
+        cnt=FD.filter(function(r){ return r.st==='Offer' || r.st==='Prospect' || (r.st==='SP Ordered (Pending)' && _hasHMStage(r)); }).length; // [v372] รวม st='Prospect'
+      }
+      else {
+        cnt=FD.filter(function(r){ return _sts.indexOf(r.st)>=0; }).length;
+      }
+      el.innerHTML=label+(cnt>0?' <span style="opacity:.7;font-size:10px">('+cnt+')</span>':'');
+      el.onclick=function(){ tpill(id.replace('pill-',''),null,status); };
+    }
+    var pallEl=document.getElementById('pill-all');
+    if(pallEl){ pallEl.innerHTML='All'; pallEl.onclick=function(){ tpill('all',null,null); }; }
+    var pact=document.getElementById('pill-actual');
+    if(pact){
+      var _cntAct=FD.filter(function(r){return r.st==='Actual FAD'||r.st==='Actual FAD (Not Found)'||r.st==='Actual FAD (CN)';}).length;
+      pact.innerHTML='Actual FAD'+(_cntAct>0?' <span style="opacity:.7;font-size:10px">('+_cntAct+')</span>':'');
+      pact.onclick=function(){ tpill('actual','ACTUAL_FAD_ALL',null); };
+    }
+    var pbill=document.getElementById('pill-billed');
+    if(pbill){
+      var _cntBill=FD.filter(function(r){return r.st==='Billed';}).length;
+      pbill.innerHTML='Billed'+(_cntBill>0?' <span style="opacity:.7;font-size:10px">('+_cntBill+')</span>':'');
+      pbill.onclick=function(){ tpill('billed',null,'Billed'); };
+    }
+    var pbl=document.getElementById('pill-backlog');
+    if(pbl){
+      var _cntBL=FD.filter(function(r){return r.st==='Backlog';}).length;
+      pbl.innerHTML='Backlog'+(_cntBL>0?' <span style="opacity:.7;font-size:10px">('+_cntBL+')</span>':'');
+      pbl.onclick=function(){ tpill('backlog','SC Billing|SP Billing|Bill Merge','Backlog'); }; // [v360] overrides rebind onclick ทับ body_app_top — ต้องแก้คู่กันเสมอ
+    }
+    setPill('pill-ordered','SC Ordered','SC Ordered');
+    setPill('pill-co-ready','SC Carry (Bill Pending)','SC Carry');
+    setPill('pill-spf-ord','SP Ordered','SP Ordered (Ordering)');
+    setPill('pill-spf-proc','SP Ordered Processing','SP Ordered (Pending)');
+    setPill('pill-co-notready','SC Carry (PM Pending)','SC Carry (Pending)');
+    setPill('pill-pend','Prospect','Offer');
+    setPill('pill-excluded','Excluded','Excluded');
+    
+    setPill('pill-data','Data Issue','Data Issue'); var pg=document.getElementById('pill-gap'); if(pg) pg.remove();
+    var _curMo=window.CUR_MO||(new Date().getMonth()+1);
+    var _curYr=window.CUR_YR||(new Date().getFullYear());
+    // ─ Default เดือน: tick checkbox + update button (f-mo เป็น multi-checkbox dropdown) ─
+    try {
+      if(typeof _fMoSel!=='undefined'){
+        _fMoSel = [_curMo];
+        document.querySelectorAll('.f-mo-chk').forEach(function(c){ c.checked = parseInt(c.value)===_curMo; });
+        var _moAll = document.getElementById('f-mo-all'); if(_moAll) _moAll.checked = false;
+        var _moBtn = document.getElementById('f-mo-btn');
+        if(_moBtn){
+          var _MOS = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+          _moBtn.textContent = (_MOS[_curMo]||_curMo) + ' ▾';
+        }
+      }
+    } catch(e){}
+    var fyr=document.getElementById('f-yr'); if(fyr) fyr.value=String(_curYr);
+
+    try { if(typeof _applyNavPermissions==='function') _applyNavPermissions(); } catch(e){} // [v228] แทน force-show -> apply permission
+    if(typeof sv==='function'){ if(typeof _bjhLanding==='function') _bjhLanding(); else sv('se'); }
+    else try{ af(); }catch(e){}
+
+    var _pallEl2=document.getElementById('pill-all');
+    if(_pallEl2){ _pallEl2.classList.add('on'); }
+  }
+
+  function resetAllFilters(){
+    ['f-sales','f-yr','f-type','f-team'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.value='';
+    });
+    var _curMo=window.CUR_MO||(new Date().getMonth()+1);
+    var _curYr=window.CUR_YR||(new Date().getFullYear());
+    // reset เดือน → เลือก "ทั้งหมด" (ล้างเดือนทั้งหมด เพราะ user กด reset เอง)
+    try {
+      if(typeof _fMoSel!=='undefined'){
+        _fMoSel = [];
+        document.querySelectorAll('.f-mo-chk').forEach(function(c){ c.checked = false; });
+        var _moAll = document.getElementById('f-mo-all'); if(_moAll) _moAll.checked = true;
+        var _moBtn = document.getElementById('f-mo-btn'); if(_moBtn) _moBtn.textContent = 'ทั้งหมด ▾';
+      }
+    } catch(e){}
+    var fyr=document.getElementById('f-yr'); if(fyr) fyr.value=String(_curYr);
+    pillSt=null; pillIp=null; activePill='all';
+    if(typeof _pillAll!=='undefined') _pillAll=true;
+    document.querySelectorAll('.ip-pill').forEach(function(el){ el.classList.remove('on'); });
+    var _pareset=document.getElementById('pill-all'); if(_pareset) _pareset.classList.add('on');
+    var fsrch=document.getElementById('f-search'); if(fsrch) fsrch.value='';
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    tuneUI();
+    try{ buildSummary(); }catch(e){}
+  });
+
+  window.buildSummary=buildSummary;
+  window.af=af;
+})();
+
+// ═══════════════════════════════════════════════════════════
+// [V479.25] Display Config — contrast level (1/2/3) + font size (1/2/3) สำหรับ present
+// เก็บใน localStorage, set attribute data-contrast / data-fontsize บน <html>
+(function(){
+  function applyDisp(){
+    // [V479.27] ล็อกค่าที่ user เลือกแล้ว: contrast=3 (เข้มสุด), fontsize=1 (ปกติ) — ปุ่ม config ถูกถอดออก
+    document.documentElement.setAttribute('data-contrast', '3');
+    document.documentElement.setAttribute('data-fontsize', '1');
+  }
+  window._applyDisp = applyDisp;
+  // apply ตอนโหลด
+  if(document.readyState!=='loading') applyDisp();
+  else document.addEventListener('DOMContentLoaded', applyDisp);
+
+  window.dispCfgOpen = function(){
+    var ct='2', fs='2';
+    try{ ct=localStorage.getItem('bjh_contrast')||'2'; }catch(e){}
+    try{ fs=localStorage.getItem('bjh_fontsize')||'2'; }catch(e){}
+    var ov=document.getElementById('disp-cfg-overlay'); if(ov)ov.remove();
+    ov=document.createElement('div'); ov.id='disp-cfg-overlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px';
+    function lvlBtn(kind,val,cur,label){
+      var on=(String(cur)===String(val));
+      return '<button onclick="dispCfgSet(\''+kind+'\','+val+')" style="flex:1;padding:12px 8px;border:2px solid '+(on?'#0757b8':'#9099a3')+';border-radius:8px;background:'+(on?'#0757b8':'transparent')+';color:'+(on?'#fff':'#1a1f26')+';font-size:15px;font-weight:800;cursor:pointer">'+label+'</button>';
+    }
+    ov.innerHTML='<div style="background:#eef1f5;border:1px solid #9099a3;border-radius:12px;max-width:420px;width:100%;padding:0">'
+      +'<div style="padding:16px 20px;border-bottom:1px solid #c4ccd4;display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-size:16px;font-weight:800;color:#0f141a">⚙ ปรับการแสดงผล (สำหรับ Present)</div>'
+      +'<button onclick="document.getElementById(\'disp-cfg-overlay\').remove()" style="background:transparent;border:none;color:#1a1f26;font-size:22px;cursor:pointer;font-weight:700">×</button></div>'
+      +'<div style="padding:18px 20px">'
+      +'<div style="font-size:13px;font-weight:800;color:#1a1f26;margin-bottom:8px">🎨 ความชัด (Contrast)</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:6px" id="dc-contrast-row">'
+      +   lvlBtn('contrast',1,ct,'1<br><span style=\'font-size:10px;font-weight:600\'>อ่อน</span>')
+      +   lvlBtn('contrast',2,ct,'2<br><span style=\'font-size:10px;font-weight:600\'>ปานกลาง</span>')
+      +   lvlBtn('contrast',3,ct,'3<br><span style=\'font-size:10px;font-weight:600\'>เข้มสุด</span>')
+      +'</div>'
+      +'<div style="font-size:11px;color:#333b44;margin-bottom:18px">ยิ่ง level สูง ตัวอักษรยิ่งเข้ม/ดำ (ชัดบนจอ projector)</div>'
+      +'<div style="font-size:13px;font-weight:800;color:#1a1f26;margin-bottom:8px">🔠 ขนาดตัวอักษร (Font Size)</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:6px" id="dc-fontsize-row">'
+      +   lvlBtn('fontsize',1,fs,'1<br><span style=\'font-size:10px;font-weight:600\'>ปกติ</span>')
+      +   lvlBtn('fontsize',2,fs,'2<br><span style=\'font-size:10px;font-weight:600\'>ใหญ่</span>')
+      +   lvlBtn('fontsize',3,fs,'3<br><span style=\'font-size:10px;font-weight:600\'>ใหญ่สุด</span>')
+      +'</div>'
+      +'<div style="font-size:11px;color:#333b44">ขยายตัวอักษรทั้งระบบ (จอไกลอ่านง่าย)</div>'
+      +'</div>'
+      +'<div style="padding:12px 20px;border-top:1px solid #c4ccd4;display:flex;justify-content:space-between;align-items:center">'
+      +'<button onclick="dispCfgReset()" style="background:transparent;border:1px solid #9099a3;color:#333b44;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;font-weight:600">รีเซ็ต (2/2)</button>'
+      +'<button onclick="document.getElementById(\'disp-cfg-overlay\').remove()" style="background:#0757b8;border:none;color:#fff;border-radius:6px;padding:7px 20px;font-size:13px;font-weight:700;cursor:pointer">เสร็จ</button>'
+      +'</div></div>';
+    document.body.appendChild(ov);
+  };
+  window.dispCfgSet = function(kind,val){
+    try{ localStorage.setItem('bjh_'+kind, String(val)); }catch(e){}
+    document.documentElement.setAttribute('data-'+kind, String(val));
+    // re-render popup ให้ปุ่มที่เลือก highlight
+    dispCfgOpen();
+  };
+  window.dispCfgReset = function(){
+    try{ localStorage.setItem('bjh_contrast','2'); localStorage.setItem('bjh_fontsize','2'); }catch(e){}
+    document.documentElement.setAttribute('data-contrast','2');
+    document.documentElement.setAttribute('data-fontsize','2');
+    dispCfgOpen();
+  };
+
+/* ═══════════════════════════════════════════════════════════
+   [V479.66] (1) _spSyncData — sync _jsupContract -> _spData (retry)
+   ปัญหา: RAW_CONTRACT อยู่ใน master file (28MB) โหลดช้ากว่า tx
+          -> stepTxEtl เรียก spLoadData ตอน _jsupContract ยังว่าง
+          -> _spData.contracts=0 -> Contract & PO ขึ้น * ทุกแถว
+   ═══════════════════════════════════════════════════════════ */
+window._spSyncData = function(tag){
+  /* [V479.71] FIX วนไม่จบ + spam console:
+       spLoadData() เรียก spRenderAll() (อยู่ใน IIFE SalesProspect — ยังไม่ define ตอน boot)
+       -> throw -> เดิม return false -> retry ทุก 500ms ไม่หยุด (log ท่วม console)
+     Fix: ยึด "contracts เข้า _spData แล้วหรือยัง" เป็นเกณฑ์จบ ไม่ใช่ "render สำเร็จไหม" */
+  function _try(){
+    if(typeof window.spLoadData !== 'function') return false;
+    var con = window._jsupContract || [];
+    var quo = window._jsupQuo || [];
+    if(!quo.length)  return false;   // tx ยังไม่มา
+    if(!con.length)  return false;   // master ยังไม่มา -> retry ต่อ (นี่คือเหตุผลเดียวที่ควร retry)
+    try{
+      window.spLoadData({
+        RAW_CONTRACT     : con,
+        RAW_Quotation    : quo,
+        RAW_Quotation_SP : (window._jsupQuoSP || []),
+        RAW_SC_BILL      : (window._jsupSC || [])
+      }, (window._LAST_CONFIG || {}));
+    }catch(e){
+      /* render ภายใน spLoadData อาจ throw (spRenderAll ยังไม่ define) — ไม่เป็นไร
+         ข้อมูลถูก set เข้า _spData ไปแล้วก่อนถึงบรรทัด render */
+      if(!window._spSyncWarned){ window._spSyncWarned=1; try{ console.warn('[spSync] render ยังไม่พร้อม (ข้อมูลเข้าแล้ว):', e.message); }catch(_){} }
+    }
+    try{ console.log('[spSync/'+(tag||'-')+'] contracts='+con.length+' quotations='+quo.length); }catch(e){}
+    return true;   // contracts มาแล้ว = จบ (ไม่สนว่า render จะพังไหม)
+  }
+  if(_try()) return;
+  if(window._spSyncIV) return;
+  var t0 = Date.now();
+  window._spSyncIV = setInterval(function(){
+    if(_try() || Date.now()-t0 > 60000){
+      clearInterval(window._spSyncIV); window._spSyncIV = null;
+      // render ตอนนี้ SalesProspect พร้อมแล้ว
+      try{ if(window.spRenderAll) window.spRenderAll(); }catch(e){}
+      try{ if(window._spCurrentTab==='contract' && window.spRenderContract) window.spRenderContract(); }catch(e){}
+    }
+  }, 500);
+};
+
+/* ═══════════════════════════════════════════════════════════
+   [V479.66] (2) LIGHT MODE — recolor ครอบ #v-sp + auto-contrast
+   ปัญหาเดิม: _recolorInlineBg skip #v-sp -> modal SalesProspect
+     (รายละเอียด QN / สั่ง SP / เข้า SC / เปิดบิล) พื้น dark ค้าง
+     แต่ label ใช้ color:var(--mu) = เทาเข้ม -> เข้มบนเข้ม = หายสนิท
+   Fix: (a) ไม่ skip #v-sp แล้ว  (b) auto-contrast safety net
+        (c) MutationObserver จับ element ที่ render ทีหลัง (modal)
+   ═══════════════════════════════════════════════════════════ */
+(function(){
+  function _luma(c){
+    if(!c) return 255;
+    var r,g,b,m;
+    c = String(c).trim();
+    if(c.charAt(0)==='#'){
+      var h=c.slice(1);
+      if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+      if(h.length<6) return 255;
+      r=parseInt(h.slice(0,2),16); g=parseInt(h.slice(2,4),16); b=parseInt(h.slice(4,6),16);
+    } else if((m=c.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?/))){
+      r=+m[1]; g=+m[2]; b=+m[3];
+      if(m[4]!==undefined && parseFloat(m[4])<0.25) return 255; // โปร่งเกือบใส -> ถือว่าพื้นสว่าง
+    } else return 255;
+    return 0.2126*r + 0.7152*g + 0.0722*b;
+  }
+  // หาพื้นหลังจริง (ไต่ขึ้น parent จนเจอตัวที่ไม่โปร่งใส)
+  function _effBg(el){
+    var n = el, guard = 0;
+    while(n && n.nodeType===1 && guard++ < 12){
+      var bg = getComputedStyle(n).backgroundColor;
+      if(bg && !/rgba\([^)]*,\s*0\s*\)/.test(bg) && bg !== 'transparent'){
+        var L = _luma(bg);
+        if(!/rgba/.test(bg) || _alpha(bg) >= 0.5) return L;
+      }
+      n = n.parentElement;
+    }
+    return 255; // ไม่เจอ -> ถือว่าสว่าง (light mode body)
+  }
+  function _alpha(c){ var m=String(c).match(/rgba\([^)]*,\s*([\d.]+)\s*\)/); return m?parseFloat(m[1]):1; }
+
+  /* (a) recolor พื้นเข้ม -> --sur2  (รวม #v-sp แล้ว) */
+  function _bgPass(theme){
+    var all = document.querySelectorAll('[style*="background"]');
+    for(var i=0;i<all.length;i++){
+      var el = all[i];
+      if(theme === 'light'){
+        if(el.getAttribute('data-obg')!==null) continue;
+        var st = el.getAttribute('style')||'';
+        var m = st.match(/background(-color)?\s*:\s*(#[0-9a-fA-F]{3,6}|rgba?\([^)]+\))/);
+        if(!m) continue;
+        var col = m[2];
+        if(_luma(col) < 70 && _alpha(col) >= 0.5){
+          el.setAttribute('data-obg', col);
+          el.style.background = 'var(--sur2)';
+        }
+      } else {
+        var ob = el.getAttribute('data-obg');
+        if(ob){ el.style.background = ob; el.removeAttribute('data-obg'); }
+      }
+    }
+  }
+
+  /* (b) auto-contrast: ตัวอักษรจางบนพื้นสว่าง -> ดันเข้ม
+        (safety net ครอบทุกหน้า/ทุก modal ที่ยังหลุด) */
+  function _txPass(theme){
+    var all = document.querySelectorAll('[style*="color"]');
+    for(var i=0;i<all.length;i++){
+      var el = all[i];
+      if(theme !== 'light'){
+        var oc = el.getAttribute('data-otx');
+        if(oc){ el.style.color = oc; el.removeAttribute('data-otx'); }
+        continue;
+      }
+      if(el.getAttribute('data-otx')!==null) continue;
+      var cs = getComputedStyle(el);
+      var fg = _luma(cs.color);
+      var bgL = _effBg(el);
+      // พื้นสว่าง (>=150) + ตัวอักษรสว่างเกิน (>=140) -> อ่านไม่ออก
+      if(bgL >= 150 && fg >= 140){
+        el.setAttribute('data-otx', el.style.color || '');
+        el.style.setProperty('color', '#343b43', 'important');
+      }
+    }
+  }
+
+  function _pass(theme){
+    try{ _bgPass(theme); }catch(e){}
+    try{ _txPass(theme); }catch(e){}
+  }
+  window._bjhLightPass = _pass;
+
+  /* override ตัวเดิมใน script_main (โหลดก่อน overrides -> ทับได้) */
+  try{ window._recolorInlineBg = _pass; }catch(e){}
+
+  /* (c) observer: modal render ทีหลัง -> pass ซ้ำ (debounce) */
+  var _t=null;
+  function _kick(){
+    if(document.documentElement.getAttribute('data-theme')!=='light') return;
+    clearTimeout(_t);
+    _t = setTimeout(function(){ _pass('light'); }, 60);
+  }
+  function _boot(){
+    try{
+      new MutationObserver(_kick).observe(document.body, {childList:true, subtree:true});
+    }catch(e){}
+    if(document.documentElement.getAttribute('data-theme')==='light') _pass('light');
+  }
+  if(document.body) _boot();
+  else document.addEventListener('DOMContentLoaded', _boot);
+})();
+
+})();
+
+// ════════════════════════════════════════════════════════
+// [v480] SLIM GUARD — ตรวจว่า ex_col= ที่ต้นทางตัด field วิกฤตทิ้งหรือไม่
+//   field พวกนี้เคยอยู่ใน _SLIM_CUT_ARR (ตัดฝั่ง client หลัง ETL → ไม่พัง)
+//   พอย้ายไปตัดที่ต้นทาง (SmartFlow ex_col) จะพังเงียบทันที → guard นี้จับให้เห็นใน console
+//   ถ้าเจอ → เอาชื่อ field ออกจาก BJH_EX_COL ใน Code.gs แล้วรัน sync ใหม่
+// ════════════════════════════════════════════════════════
+window._BJH_SLIM_REQUIRED = {
+  RAW_INSTALLATION : ['INSTALL_STATUS','MC_STATUS_HISTORY','CUS_ID','MC_STATUS_NAME','SN'],
+  RAW_CONTRACT     : ['QH_SUBJECT_EMAIL','NOTE_LOG','PROJECT_NAME','CONTRACT_NO','SERAIL_NUMBER'],
+  RAW_CUSTOMER     : ['CUS_ID','CUS_NAME','PROVINCE'],
+  RAW_Quotation    : ['NOTE_LOG','SUBJECT_EMAIL','QH_GP_REMARK','QH_TOTAL_AMT'],
+  RAW_Quotation_SP : ['NOTE_LOG','SUBJECT_EMAIL','QH_GP_REMARK','QH_TOTAL_AMT'],
+  RAW_SC_BILL      : ['PRODUCT_NAME','BILL_JOB_PRINT_DATETIME']
+};
+window._bjhSlimMissing = [];
+window._bjhSlimGuard = function(parsed){
+  if(!parsed) return [];
+  var miss = [];
+  var REQ = window._BJH_SLIM_REQUIRED;
+  for (var tbl in REQ){
+    if(!REQ.hasOwnProperty(tbl)) continue;
+    var rows = parsed[tbl];
+    if(!rows || !rows.length) continue;
+    var r0 = rows[0] || {};
+    var need = REQ[tbl];
+    for (var i=0; i<need.length; i++){
+      if (!(need[i] in r0)) miss.push(tbl + '.' + need[i]);
+    }
+  }
+  window._bjhSlimMissing = miss;
+  if (miss.length){
+    console.error('%c[SLIM GUARD] field วิกฤตหายไป ' + miss.length + ' ตัว — ฟีเจอร์จะพังเงียบ!',
+                  'background:#c00;color:#fff;padding:2px 6px;font-weight:bold');
+    console.error('[SLIM GUARD] หาย:', miss);
+    console.error('[SLIM GUARD] แก้: เอาชื่อ field ออกจาก BJH_EX_COL ใน Code.gs -> Deploy -> รัน smartflowSyncToDrive()');
+    try {
+      var box = document.getElementById('dbg-box');
+      if (box) box.innerHTML += '<div style="color:#c00;font-weight:bold">[SLIM GUARD] field หาย: ' + miss.join(', ') + '</div>';
+    } catch(e){}
+  } else {
+    console.log('%c[SLIM GUARD] field วิกฤตครบทุกตัว', 'color:#0a0;font-weight:bold');
+  }
+  return miss;
+};
+
+// ════════════════════════════════════════════════════════
+// [C1] ปิด badge FAD — window.fadBills ไม่เคยมีแหล่งข้อมูล (Sheet 'fad'/'actual_fad' เก็บยอดรายเดือน ไม่มีเลขบิล)
+//   -> getFadInfo() คืน exists:false เสมอ -> ทุกแถวที่ BILL_NUMBER ขึ้นต้น 36 ขึ้น "FAD Unmatched"
+//   ปิดแค่ "การแสดงผล" ไม่แตะ logic classify -> ถ้าวันหลังมีข้อมูลจริง ตั้ง true กลับได้ทันที
+// ════════════════════════════════════════════════════════
+window.BJH_FAD_BADGE = false;
+
+// ════════════════════════════════════════════════════════
+// [C8] คลิกเลข -> คัดลอก  (QN · SR · Contract · Serial · เลขบิล)
+//   ใช้ event delegation ที่ document -> ครอบคลุมทุกตาราง/ทุก popup โดยไม่ต้องแก้ render สักจุด
+//   capture phase + stopPropagation -> ไม่ไปเปิด popup ของแถว
+// ════════════════════════════════════════════════════════
+(function(){
+  function _isNum(t){
+    t = String(t == null ? '' : t).trim();
+    if (t.length < 6 || t.length > 32) return false;
+    if (/\s/.test(t)) return false;                       // มีช่องว่าง = ไม่ใช่เลขเอกสาร
+    if (!/\d{4,}/.test(t)) return false;                  // ต้องมีตัวเลข >=4 ตัวติดกัน
+    if (!/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/.test(t)) return false;  // อนุญาต A-Z 0-9 . _ / -
+    if (/^\d{4}-\d{2}-\d{2}/.test(t)) return false;      // กันวันที่ 2026-05-06
+    return true;
+  }
+  function _leafText(el){
+    if (!el || el.nodeType !== 1) return '';
+    if (el.querySelector && el.querySelector('*')) return '';   // ต้องเป็น leaf (ไม่มี element ลูก)
+    return (el.textContent || '').trim();
+  }
+  function _toast(msg, ok){
+    var id = 'bjh-cp-toast', t = document.getElementById(id);
+    if (!t) {
+      t = document.createElement('div'); t.id = id;
+      t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99999;'
+        + 'padding:9px 18px;border-radius:9px;font-size:12.5px;font-weight:700;font-family:inherit;'
+        + 'box-shadow:0 8px 28px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .16s';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.background = ok ? '#064e3b' : '#450a0a';
+    t.style.color      = ok ? '#6ee7b7' : '#fca5a5';
+    t.style.border     = '1px solid ' + (ok ? '#10b981' : '#ef4444');
+    t.style.opacity = '1';
+    clearTimeout(window._bjhCpT);
+    window._bjhCpT = setTimeout(function(){ t.style.opacity = '0'; }, 1400);
+  }
+  function _copy(txt){
+    var done = function(ok){ _toast(ok ? ('📋 คัดลอกแล้ว: ' + txt) : ('คัดลอกไม่ได้: ' + txt), ok); };
+    try{
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(function(){ done(true); }, function(){ _copyFallback(txt, done); });
+        return;
+      }
+    }catch(e){}
+    _copyFallback(txt, done);
+  }
+  function _copyFallback(txt, done){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.style.cssText = 'position:fixed;top:-999px;left:-999px;opacity:0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      done(!!ok);
+    }catch(e){ done(false); }
+  }
+
+  // hover: บอกให้รู้ว่ากดได้
+  document.addEventListener('mouseover', function(e){
+    var el = e.target;
+    if (!el || el.nodeType !== 1 || el.dataset.bjhCp) return;
+    var t = _leafText(el);
+    if (!_isNum(t)) return;
+    el.dataset.bjhCp = '1';
+    el.style.cursor = 'pointer';
+    el.style.textDecoration = 'underline dotted';
+    el.style.textUnderlineOffset = '3px';
+    if (!el.title) el.title = '📋 คลิกเพื่อคัดลอก';
+  }, true);
+
+  // click (capture) -> copy + กันไม่ให้ไปเปิด popup ของแถว
+  document.addEventListener('click', function(e){
+    var el = e.target;
+    var t = _leafText(el);
+    if (!_isNum(t)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    _copy(t);
+  }, true);
+})();
+
+// ════════════════════════════════════════════════════════
+// [C22] Install Base พร้อมเมื่อไหร่ -> re-render Critical Down บน Daily Board ทันที
+//   _bjhMarkLazy('install'/'master') ถูกเรียกหลัง _applyMasterData transform เสร็จ
+//   wrap ไว้ (overrides โหลดหลัง script_main -> ทับได้)
+// ════════════════════════════════════════════════════════
+(function(){
+  var _orig = window._bjhMarkLazy;
+  window._bjhMarkLazy = function(key){
+    try{ if(typeof _orig === 'function') _orig(key); }catch(e){}
+    if(key === 'install' || key === 'master'){
+      try{
+        if(typeof window._hbRenderCD === 'function'){
+          window._hbCdRetry = 0;
+          window._hbRenderCD();
+        }
+      }catch(e){}
+    }
+  };
+})();
+
+// [C22b] diagnostic — พิมพ์ใน Console เพื่อดูว่าติดตรงไหน
+window._bjhCdDebug = function(){
+  var r = {
+    '_cdBuildV2 (function?)' : typeof window._cdBuildV2,
+    'spRenderAlert (function?)': typeof window.spRenderAlert,
+    '_spInstallRows'         : (window._spInstallRows||[]).length,
+    '_spMCHistory'           : (window._spMCHistory||[]).length,
+    'D (records)'            : (window.D||[]).length,
+    '_hbCdRetry'             : window._hbCdRetry || 0,
+    '_hbCdPrimed'            : !!window._hbCdPrimed
+  };
+  try{
+    var rows = (typeof window._cdBuildV2==='function') ? (window._cdBuildV2()||[]) : null;
+    r['_cdBuildV2() rows'] = rows ? rows.length : 'เรียกไม่ได้';
+    if(rows && rows.length){
+      var g={dead:0,check:0,eol:0,watch:0};
+      rows.forEach(function(m){ if(g[m.mcGroup]!=null) g[m.mcGroup]++; });
+      r['กลุ่ม'] = JSON.stringify(g);
+    }
+  }catch(e){ r['_cdBuildV2() error'] = e.message; }
+  console.table(r);
+  return r;
+};
+
+
+/* ══════════════════════════════════════════════════════════════
+   [V522] Sales Confirm รายบรรทัด — ใช้ในหน้า 🛒 สั่ง SP · 📥 เข้า SC
+     แทนการเปิด ✅ Confirm Billing แล้วติ๊กทีละอัน
+     กลไกเดียวกับ Confirm Billing 100% (ไม่แตะ backend):
+       st -> 'Backlog (Confirmed)' · _confirmed_billing=1 · saveNotes()
+     ต่างกันแค่ "เลือกเดือนที่จะลงได้" ตอนกด
+   ══════════════════════════════════════════════════════════════ */
+(function(){
+  var MON_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  function _scfEsc(v){
+    return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  //  สิทธิ์: sales กดได้เฉพาะแถวตัวเอง · manager/admin กดได้ทุกแถว
+  function _scfCanConfirm(r){
+    try {
+      if (!r) return false;
+      if (!(window._spIsSales && window._spIsSales)) {}
+      var isSales = !!window._spIsSales;
+      if (!isSales) return true;                       // manager/admin
+      var me = String(window._spMyName||'').trim();
+      if (!me) return false;
+      return String(r.sa||'').trim() === me;           // เฉพาะของตัวเอง
+    } catch(e){ return false; }
+  }
+  window._scfCanConfirm = _scfCanConfirm;
+
+  //  cell ปุ่มในตาราง
+  window._scfCellHtml = function(idx){
+    var r = (window.D||[])[idx];
+    if (!r) return '<span style="color:var(--mu2,#6b7a9c)">—</span>';
+    var done = (r.st === 'Backlog (Confirmed)') || Number(r._confirmed_billing||0) === 1;
+    if (done){
+      var mLabel = (r.rbmo||r.mo) ? (MON_TH[Number(r.rbmo||r.mo)]||'') : '';
+      return '<button onclick="event.stopPropagation();_scfOpen('+idx+')" title="ยืนยันแล้ว — กดเพื่อแก้เดือน" '
+        + 'style="font-size:10.5px;padding:3px 9px;border-radius:11px;border:1px solid #22c55e;'
+        + 'background:rgba(34,197,94,.14);color:#4ade80;cursor:pointer;font-family:inherit;white-space:nowrap">'
+        + '\u2713 ' + _scfEsc(mLabel||'ยืนยันแล้ว') + '</button>';
+    }
+    if (!_scfCanConfirm(r)){
+      return '<span style="font-size:10.5px;color:var(--mu2,#6b7a9c)" title="ยืนยันได้เฉพาะงานของตัวเอง">\u2014</span>';
+    }
+    return '<button onclick="event.stopPropagation();_scfOpen('+idx+')" '
+      + 'style="font-size:10.5px;padding:3px 9px;border-radius:11px;border:1px solid #f59e0b;'
+      + 'background:transparent;color:#fbbf24;cursor:pointer;font-family:inherit;white-space:nowrap">'
+      + '\u2705 Confirm</button>';
+  };
+
+  //  popup เลือกเดือน
+  window._scfOpen = function(idx){
+    var r = (window.D||[])[idx];
+    if (!r){ alert('ไม่พบรายการ'); return; }
+    if (!_scfCanConfirm(r)){ alert('ยืนยันได้เฉพาะงานของตัวเอง'); return; }
+
+    var ov = document.getElementById('scf-overlay'); if (ov) ov.remove();
+    var curMo = Number(r.rbmo || r.mo || 0) || (new Date().getMonth()+1);
+    var curYr = Number(r.rbyr || r.yr || 0) || (new Date().getFullYear());
+    var done  = (r.st === 'Backlog (Confirmed)') || Number(r._confirmed_billing||0)===1;
+
+    var moOpts = '';
+    for (var m=1; m<=12; m++){   //  เลือกได้ทั้งปี
+      moOpts += '<option value="'+m+'"'+(m===curMo?' selected':'')+'>'+MON_TH[m]+'</option>';
+    }
+    var yrOpts = '';
+    var y0 = (new Date().getFullYear());
+    for (var y=y0-1; y<=y0+1; y++){
+      yrOpts += '<option value="'+y+'"'+(y===curYr?' selected':'')+'>'+y+'</option>';
+    }
+
+    ov = document.createElement('div'); ov.id='scf-overlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100001;display:flex;align-items:center;justify-content:center;padding:20px';
+    ov.innerHTML =
+        '<div style="background:#0f172a;border:1px solid #334155;border-radius:11px;max-width:430px;width:100%">'
+      +   '<div style="padding:14px 18px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center">'
+      +     '<div style="font-size:14px;font-weight:700;color:#e2e8f0">' + (done?'\u270f\ufe0f แก้เดือนที่ลง':'\u2705 Sales Confirm') + '</div>'
+      +     '<button onclick="document.getElementById(\'scf-overlay\').remove()" style="background:transparent;border:none;color:#64748b;font-size:21px;cursor:pointer;line-height:1">\u00d7</button>'
+      +   '</div>'
+      +   '<div style="padding:14px 18px">'
+      +     '<div style="font-size:12px;color:#e2e8f0;margin-bottom:3px;font-weight:600">'+_scfEsc(r.qn||r.sr||'—')+'</div>'
+      +     '<div style="font-size:11px;color:#64748b;margin-bottom:12px">'+_scfEsc(r.cu||'')
+      +       (r.px?' \u00b7 <b style="color:#4ade80">'+Number(r.px).toLocaleString('th-TH')+'\u0e3f</b>':'')+'</div>'
+      +     '<div style="font-size:11px;color:#94a3b8;margin-bottom:5px">เดือนที่จะลง</div>'
+      +     '<div style="display:flex;gap:8px;margin-bottom:12px">'
+      +       '<select id="scf-mo" style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:7px 9px;color:#e2e8f0;font-size:12px;font-family:inherit">'+moOpts+'</select>'
+      +       '<select id="scf-yr" style="width:96px;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:7px 9px;color:#e2e8f0;font-size:12px;font-family:inherit">'+yrOpts+'</select>'
+      +     '</div>'
+      +     '<div style="font-size:11px;color:#94a3b8;margin-bottom:5px">\u0e42\u0e19\u0e49\u0e15 <span style="color:#64748b">(\u0e15\u0e31\u0e27\u0e40\u0e14\u0e35\u0e22\u0e27\u0e01\u0e31\u0e1a\u0e04\u0e2d\u0e25\u0e31\u0e21\u0e19\u0e4c \ud83d\udcdd \u0e42\u0e19\u0e49\u0e15)</span></div>'
+      +     '<input id="scf-note" value="'+_scfEsc(_scfNoteOf(r))+'" placeholder="เช่น รอ PO / นัดส่งของ..." style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:7px 9px;color:#e2e8f0;font-size:12px;font-family:inherit;box-sizing:border-box;outline:none">'
+      +     '<div id="scf-msg" style="font-size:11px;margin-top:9px;min-height:15px"></div>'
+      +   '</div>'
+      +   '<div style="padding:12px 18px;border-top:1px solid #334155;display:flex;gap:8px;align-items:center">'
+      //  [V523] ถอนยืนยัน — โผล่เฉพาะแถวที่ยืนยันแล้ว (ชิดซ้าย แยกจากปุ่มหลัก กันกดพลาด)
+      +     (done
+          ? '<button id="scf-undo" onclick="_scfUndo('+idx+')" title="คืนสถานะเดิม ก่อนยืนยัน" '
+            + 'style="padding:7px 14px;border-radius:6px;border:1px solid #7f1d1d;background:rgba(239,68,68,.12);'
+            + 'color:#f87171;font-size:12px;font-family:inherit;cursor:pointer">\ud83d\uddd1 ถอนยืนยัน</button>'
+          : '')
+      +     '<span style="flex:1"></span>'
+      +     '<button onclick="document.getElementById(\'scf-overlay\').remove()" style="padding:7px 15px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:12px;font-family:inherit;cursor:pointer">ปิด</button>'
+      +     '<button id="scf-ok" onclick="_scfSave('+idx+')" style="padding:7px 18px;border-radius:6px;border:none;background:#22c55e;color:#052e16;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">' + (done?'\ud83d\udcbe บันทึก':'\u2705 ยืนยัน') + '</button>'
+      +   '</div>'
+      + '</div>';
+    document.body.appendChild(ov);
+    try{ document.getElementById('scf-note').focus(); }catch(e){}
+  };
+
+  //  [V525] โน้ต = ตัวเดียวกับคอลัมน์ 📝 โน้ต (quote_notes) — ตัด tag เดือนออกก่อนแสดง
+  function _scfNoteOf(r){
+    try {
+      var q = String((r&&(r.qn||r.sr))||'').trim();
+      if (!q) return '';
+      var t = (window._QUOTE_NOTES||{})[q] || '';
+      return _scfStripTag(t);
+    } catch(e){ return ''; }
+  }
+  //  tag เดือนที่ฝากไว้ในโน้ต: [→7/2026]  (ใช้ให้ loadData ย้ายเดือนกลับได้)
+  var _SCF_TAG_RE = /\s*\[\u2192\s*(\d{1,2})\s*\/\s*(\d{4})\s*\]\s*$/;
+  function _scfStripTag(t){ return String(t||'').replace(_SCF_TAG_RE,'').trim(); }
+  function _scfMakeTag(note, mo, yr){
+    var base = _scfStripTag(note);
+    return (base ? base+' ' : '') + '[\u2192'+mo+'/'+yr+']';
+  }
+  window._scfStripTag = _scfStripTag;
+
+  //  บันทึกโน้ตลง quote_notes (ที่เดียวกับคอลัมน์ 📝 โน้ต)
+  function _scfSaveQuoteNote(qn, text, cb){
+    try {
+      var q = String(qn||'').trim();
+      if (!q){ if(cb) cb(false); return; }
+      window._QUOTE_NOTES = window._QUOTE_NOTES || {};
+      if (text) window._QUOTE_NOTES[q] = text; else delete window._QUOTE_NOTES[q];
+      if (typeof window._qnSaveConfig === 'function'){ window._qnSaveConfig(window._QUOTE_NOTES, cb||function(){}); return; }
+      //  fallback — เขียน config ตรง
+      if (typeof google!=='undefined' && google.script && google.script.run){
+        google.script.run
+          .withSuccessHandler(function(){ if(cb) cb(true); })
+          .withFailureHandler(function(){ if(cb) cb(false); })
+          .saveConfigSection('quote_notes', window._QUOTE_NOTES);
+      } else if (cb) cb(true);
+    } catch(e){ if(cb) cb(false); }
+  }
+
+  //  [V523] ถอนยืนยัน — คืนสถานะเดิม (ใช้กลไกเดียวกับ cbCancelConfirm ของ Confirm Billing)
+  window._scfUndo = function(idx){
+    var r = (window.D||[])[idx];
+    var msg = document.getElementById('scf-msg');
+    var btn = document.getElementById('scf-undo');
+    if (!r){ if(msg){msg.style.color='#f87171';msg.textContent='ไม่พบรายการ';} return; }
+    if (!_scfCanConfirm(r)){ if(msg){msg.style.color='#f87171';msg.textContent='ถอนได้เฉพาะงานของตัวเอง';} return; }
+
+    var _qn = r.qn||r.sr||'';
+    if (!window.confirm('ถอนยืนยัน ' + _qn + ' ?\n\nสถานะจะกลับเป็น "' + (r._orig_st||'SC Ordered') + '"')) return;
+
+    if (btn){ btn.disabled=true; btn.textContent='กำลังถอน...'; }
+
+    //  ── คืนค่าใน memory ──
+    var prevSt = r.st, prevCf = r._confirmed_billing;
+    var prevMo = r.mo, prevYr = r.yr, prevRbmo = r.rbmo, prevRbyr = r.rbyr;
+    var prevFmo = r.fmo, prevFyr = r.fyr;   // [V529]
+    //  key ที่ใช้ตอนบันทึก (เดือนเดิมก่อนย้าย) — ต้องใช้ตัวนี้ถอน ไม่ใช่เดือนที่ย้ายไป
+    var _mo = (r._scf_key_mo!=null ? r._scf_key_mo : (r.rbmo!=null?r.rbmo:''));
+    var _yr = (r._scf_key_yr!=null ? r._scf_key_yr : (r.rbyr!=null?r.rbyr:''));
+    r.st = r._orig_st || 'SC Ordered';
+    r._confirmed_billing = 0;
+    //  [V525] คืนเดือนเดิมด้วย (ตอน confirm ย้ายเดือนไป)
+    if (r._orig_mo != null){
+      r.mo = r._orig_mo; r.yr = r._orig_yr;
+      //  [V529] คืน fmo/fyr ด้วย (ถ้าไม่มีค่าเดิมเก็บไว้ ให้ sync ตาม mo)
+      var _ofm = (r._orig_fmo != null) ? r._orig_fmo : r._orig_mo;
+      var _ofy = (r._orig_fyr != null) ? r._orig_fyr : r._orig_yr;
+      r.fmo = _ofm; r.fyr = _ofy; r.fm = _ofm; r.fy = _ofy;
+    }
+    if (r._scf_key_mo != null){ r.rbmo = r._scf_key_mo; r.rbyr = r._scf_key_yr; }
+    r._search = null;
+
+    var myId='', myName='';
+    try { myId=(window._currentUser&&window._currentUser.empId)||''; myName=(window._currentUser&&window._currentUser.name)||''; } catch(e){}
+
+    //  payload รูปแบบเดียวกับ cbCancelConfirm (cancelled:true)
+    var payload = [{ qn:_qn, month:_mo, year:_yr, cancelled:true, salesId:myId, salesName:myName }];
+
+    function _done(errTxt){
+      if (btn){ btn.disabled=false; btn.textContent='\ud83d\uddd1 ถอนยืนยัน'; }
+      if (errTxt){
+        //  rollback ถ้าบันทึกไม่สำเร็จ — อย่าให้จอกับ server ไม่ตรงกัน
+        r.st = prevSt; r._confirmed_billing = prevCf; r._search = null;
+        r.mo = prevMo; r.yr = prevYr; r.rbmo = prevRbmo; r.rbyr = prevRbyr;   // [V525] rollback เดือนด้วย
+        r.fmo = prevFmo; r.fyr = prevFyr; r.fm = prevFmo; r.fy = prevFyr;     // [V529]
+        if (msg){ msg.style.color='#f87171'; msg.textContent=errTxt; }
+        return;
+      }
+      if (msg){ msg.style.color='#4ade80'; msg.textContent='\u2713 ถอนยืนยันแล้ว'; }
+      setTimeout(function(){
+        var ov=document.getElementById('scf-overlay'); if(ov) ov.remove();
+        try{ if(typeof window.spRenderOrdSP==='function') window.spRenderOrdSP(); }catch(e){}
+        try{ if(typeof window.spRenderOrdSC==='function') window.spRenderOrdSC(); }catch(e){}
+        try{ if(typeof window.buildSummary==='function') window.buildSummary(); }catch(e){}
+        try{ if(typeof window.af==='function') window.af(); }catch(e){}
+      }, 550);
+    }
+
+    if (typeof google !== 'undefined' && google.script && google.script.run){
+      google.script.run
+        .withSuccessHandler(function(res){
+          try {
+            var j = (typeof res==='string') ? JSON.parse(res) : res;
+            _done(j && j.ok ? '' : ((j && j.error) || 'บันทึกไม่สำเร็จ'));
+          } catch(e){ _done('บันทึกไม่สำเร็จ'); }
+        })
+        .withFailureHandler(function(e){ _done('เชื่อมต่อไม่ได้: ' + ((e&&e.message)||'')); })
+        .saveNotes(JSON.stringify(payload));
+    } else {
+      _done('');   //  dev fallback
+    }
+  };
+
+  window._scfSave = function(idx){
+    var r = (window.D||[])[idx];
+    var msg = document.getElementById('scf-msg');
+    var btn = document.getElementById('scf-ok');
+    if (!r){ if(msg){msg.style.color='#f87171';msg.textContent='ไม่พบรายการ';} return; }
+    if (!_scfCanConfirm(r)){ if(msg){msg.style.color='#f87171';msg.textContent='ยืนยันได้เฉพาะงานของตัวเอง';} return; }
+
+    var mo = parseInt((document.getElementById('scf-mo')||{}).value||0,10);
+    var yr = parseInt((document.getElementById('scf-yr')||{}).value||0,10);
+    var note = String((document.getElementById('scf-note')||{}).value||'').trim();
+    if (!(mo>=1&&mo<=12) || !yr){ if(msg){msg.style.color='#f87171';msg.textContent='เลือกเดือน/ปีให้ถูกต้อง';} return; }
+
+    if (btn){ btn.disabled=true; btn.textContent='กำลังบันทึก...'; }
+
+    //  ── อัปเดต record ในหน่วยความจำ (เหมือน Confirm Billing) ──
+    var myId='', myName='';
+    try { myId=(window._currentUser&&window._currentUser.empId)||''; myName=(window._currentUser&&window._currentUser.name)||''; } catch(e){}
+    if (!r._orig_st) r._orig_st = r.st;
+    //  [V525] เก็บเดือนเดิมไว้ (ใช้เป็น key ตอน reload + ใช้คืนค่าตอนถอนยืนยัน)
+    if (r._scf_key_mo == null){
+      r._scf_key_mo = (r.rbmo != null ? r.rbmo : (r.mo || ''));
+      r._scf_key_yr = (r.rbyr != null ? r.rbyr : (r.yr || ''));
+    }
+    if (r._orig_mo == null){ r._orig_mo = r.mo; r._orig_yr = r.yr; r._orig_fmo = r.fmo; r._orig_fyr = r.fyr; }  // [V529] +fmo
+
+    r.st = 'Backlog (Confirmed)';
+    r._confirmed_billing = 1;
+    //  [V525] ย้ายเดือนจริง — แก้ทั้ง mo/yr (เดือนหลัก ใช้กรอง/สรุป) และ rbmo/rbyr (รอบบิล)
+    r.mo = mo;  r.yr = yr;
+    r.rbmo = mo; r.rbyr = yr;
+    //  [V529] 🔴 ต้องย้าย fmo/fyr ด้วย — Monthly Forecast อ่าน r.fmo (ไม่ใช่ r.mo)
+    //     V525 ลืมจุดนี้ -> รายการโผล่ทั้งเดือนเก่า (fmo) และเดือนใหม่ (mo) = ยอดเกิน
+    r.fmo = mo; r.fyr = yr; r.fm = mo; r.fy = yr;
+    r._search = null;
+
+    //  ⚠ key ของ salesnotes = qn|month|year  (_applyNotesOverride match ด้วย rbmo/rbyr เดิม)
+    //    -> ต้องส่ง "เดือนเดิม" เป็น key ไม่งั้น reload แล้วหาไม่เจอ = สถานะยืนยันหาย
+    //    -> เดือนใหม่ฝากไว้ใน note เป็น tag [→M/YYYY] แล้วให้ loadData อ่านกลับ
+    var _keyMo = (r._scf_key_mo!=null ? r._scf_key_mo : mo);
+    var _keyYr = (r._scf_key_yr!=null ? r._scf_key_yr : yr);
+    var _noteTagged = _scfMakeTag(note, mo, yr);
+
+    var payload = [{
+      qn: r.qn||r.sr||'', rid: r.qn||r.sr||'', customer: r.cu||'',
+      salesId: myId, salesName: myName,
+      month: _keyMo, year: _keyYr, note: _noteTagged,
+      status: 'Backlog (Confirmed)', ip: r.ip||'', origSt: r._orig_st||''
+    }];
+
+    //  [V525] โน้ต = ตัวเดียวกับคอลัมน์ 📝 โน้ต -> เขียนลง quote_notes ด้วย (ไม่ใส่ tag)
+    _scfSaveQuoteNote(r.qn||r.sr||'', note, function(){
+      try{ if(typeof window._qnLoadNotes==='function') window._qnLoadNotes(); }catch(e){}
+    });
+
+    function _after(okTxt, errTxt){
+      if (btn){ btn.disabled=false; }
+      if (errTxt){
+        if (msg){ msg.style.color='#f87171'; msg.textContent=errTxt; }
+        if (btn) btn.textContent='\u2705 ยืนยัน';
+        return;
+      }
+      if (msg){ msg.style.color='#4ade80'; msg.textContent=okTxt; }
+      setTimeout(function(){
+        var ov=document.getElementById('scf-overlay'); if(ov) ov.remove();
+        //  re-render หน้าที่เปิดอยู่
+        try{ if(typeof window.spRenderOrdSP==='function') window.spRenderOrdSP(); }catch(e){}
+        try{ if(typeof window.spRenderOrdSC==='function') window.spRenderOrdSC(); }catch(e){}
+        try{ if(typeof window.buildSummary==='function') window.buildSummary(); }catch(e){}
+        try{ if(typeof window.af==='function') window.af(); }catch(e){}
+      }, 550);
+    }
+
+    if (typeof google!=='undefined' && google.script && google.script.run){
+      google.script.run
+        .withSuccessHandler(function(res){
+          try {
+            var rr = typeof res==='string' ? JSON.parse(res) : res;
+            if (rr && rr.ok) _after('\u2705 บันทึกแล้ว \u2014 ลงเดือน '+MON_TH[mo]+' '+yr);
+            else _after('', (rr&&rr.error)||'บันทึกไม่สำเร็จ');
+          } catch(e){ _after('', 'บันทึกไม่สำเร็จ'); }
+        })
+        .withFailureHandler(function(e){ _after('', 'เชื่อมต่อไม่ได้: '+((e&&e.message)||'')); })
+        .saveNotes(JSON.stringify(payload));
+    } else {
+      _after('\u2705 บันทึกแล้ว (local) \u2014 '+MON_TH[mo]+' '+yr);
+    }
+  };
+})();
+
+</script>

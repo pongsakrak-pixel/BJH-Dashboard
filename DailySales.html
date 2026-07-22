@@ -1,0 +1,505 @@
+<!-- ═══════════════════════════════════════════════════════════
+     DailySales.html — หน้า Daily Sales (เมนูแรก field-tool เซลล์)
+     v13 (เจอจุดที่ 2! reset nav default ก็ตั้ง display — แก้แล้ว + [CODE v12] ใน debug) · view ปกติในระบบ (id=v-ds) · ดึง raw จริง
+     แทนที่ MobileField overlay เดิม (รื้อทิ้งแล้ว)
+     4 แท็บ: 🩺 เร่งด่วน → 🔧 อะไหล่(Stock In only) → 📄 ใบเสนอราคา → 📊 ตัวเลข
+     ═══════════════════════════════════════════════════════════ -->
+<div class="view" id="v-ds" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+<style>
+#v-ds{--d-bg:#0f1419;--d-card:#1a212b;--d-card2:#222c38;--d-line:#2c3845;
+  --d-tx:#e8edf2;--d-mu:#8a98a8;--d-mu2:#5e6c7a;
+  --d-red:#ff5252;--d-orange:#ff9d3c;--d-green:#3ddc84;--d-blue:#4aa3ff;--d-purple:#b07cff;--d-pink:#ff6fae;
+  background:var(--d-bg);color:var(--d-tx);font-size:16px;line-height:1.45;
+  display:flex;flex-direction:column;overflow:hidden}
+#v-ds *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+#v-ds .d-hd{background:linear-gradient(180deg,#141b24,#0f1419);border-bottom:1px solid var(--d-line);
+  padding:10px 14px 9px;flex:0 0 auto}
+#v-ds .d-htop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#v-ds .d-who{display:flex;align-items:center;gap:9px;min-width:0}
+#v-ds .d-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#4aa3ff,#b07cff);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex:0 0 auto}
+#v-ds .d-nm{font-weight:700;font-size:14px;line-height:1.1}
+#v-ds .d-rl{font-size:11px;color:var(--d-mu);line-height:1.2}
+#v-ds .d-refresh{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--d-tx);
+  background:var(--d-card2);border:1px solid var(--d-line);padding:7px 12px;border-radius:20px;cursor:pointer;font-weight:600}
+#v-ds .d-search{margin-top:9px;position:relative}
+#v-ds .d-search input{width:100%;background:var(--d-card);border:1px solid var(--d-line);border-radius:10px;
+  color:var(--d-tx);font-size:15px;padding:10px 12px 10px 36px;outline:none;font-family:inherit}
+#v-ds .d-search .ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--d-mu);font-size:14px}
+#v-ds .d-body{flex:1;overflow-y:auto;padding:8px 14px 18px;-webkit-overflow-scrolling:touch}
+
+#v-ds .d-card{background:var(--d-card);border:1px solid var(--d-line);border-radius:10px;
+  padding:9px 13px;margin-bottom:0;cursor:pointer;transition:transform .08s,background .12s}
+#v-ds .d-card:hover{background:var(--d-card2)}
+#v-ds .d-row{display:flex;align-items:center;gap:12px}
+#v-ds .d-rmain{flex:1;min-width:0}
+#v-ds .d-rtop{display:flex;align-items:baseline;gap:8px}
+#v-ds .d-rcu{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+#v-ds .d-rmeta{font-size:12px;color:var(--d-mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#v-ds .d-rsub{font-size:11.5px;color:var(--d-mu2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#v-ds .d-rright{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+#v-ds .d-rqn{font-size:11px;color:var(--d-mu2);font-family:ui-monospace,monospace}
+/* ST/IP columns (desktop) */
+#v-ds .d-rstip{display:none;flex:0 0 auto;gap:14px;text-align:right}
+#v-ds .d-rstip .col{display:flex;flex-direction:column;line-height:1.2}
+#v-ds .d-rstip .lb{font-size:9px;color:var(--d-mu2);text-transform:uppercase;letter-spacing:.5px}
+#v-ds .d-rstip .vl{font-size:12px;font-weight:600}
+@media(min-width:821px){#v-ds .d-rstip{display:flex} #v-ds .d-rcu{max-width:320px}}
+#v-ds .d-card:active{transform:scale(.985)}
+#v-ds .d-card.urgent{border-left:4px solid var(--d-red)}
+#v-ds .d-card.warn{border-left:4px solid var(--d-orange)}
+#v-ds .d-card.ok{border-left:4px solid var(--d-green)}
+#v-ds .d-card.info{border-left:4px solid var(--d-blue)}
+#v-ds .d-crow{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+#v-ds .d-cu{font-weight:700;font-size:15.5px;line-height:1.25;letter-spacing:-.2px}
+#v-ds .d-meta{font-size:13px;color:var(--d-mu);margin-top:3px}
+#v-ds .d-meta b{color:var(--d-tx);font-weight:600}
+#v-ds .d-badge{flex:0 0 auto;font-size:11px;font-weight:700;padding:4px 9px;border-radius:8px;white-space:nowrap}
+#v-ds .b-red{background:rgba(255,82,82,.14);color:var(--d-red)}
+#v-ds .b-orange{background:rgba(255,157,60,.14);color:var(--d-orange)}
+#v-ds .b-green{background:rgba(61,220,132,.14);color:var(--d-green)}
+#v-ds .b-blue{background:rgba(74,163,255,.14);color:var(--d-blue)}
+#v-ds .b-gray{background:#2a3441;color:var(--d-mu)}
+#v-ds .d-cbot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:11px}
+#v-ds .d-pills{display:flex;gap:6px;flex-wrap:wrap}
+#v-ds .d-pill{font-size:11.5px;color:var(--d-mu);background:var(--d-card2);padding:4px 8px;border-radius:7px}
+#v-ds .d-pill .em{color:var(--d-tx);font-weight:600}
+#v-ds .d-qn{font-size:11px;color:var(--d-mu2);font-family:ui-monospace,monospace}
+#v-ds .d-sec{font-size:12px;font-weight:700;color:var(--d-mu);text-transform:uppercase;
+  letter-spacing:.6px;margin:14px 2px 8px;display:flex;align-items:center;gap:7px}
+#v-ds .d-sec.first{margin-top:4px}
+#v-ds .d-sec .n{background:var(--d-card2);color:var(--d-tx);padding:1px 8px;border-radius:20px;font-size:11px}
+#v-ds .d-hint{font-size:12px;color:var(--d-mu2);text-align:center;padding:14px;background:var(--d-card);
+  border:1px dashed var(--d-line);border-radius:12px;margin-top:6px}
+#v-ds .d-empty{text-align:center;color:var(--d-mu);padding:46px 20px;font-size:14px}
+#v-ds .d-empty .e-ic{font-size:38px;margin-bottom:10px;opacity:.5}
+
+#v-ds .d-hero{background:linear-gradient(135deg,#1d2733,#161e28);border:1px solid var(--d-line);
+  border-radius:18px;padding:17px 16px;margin-bottom:12px;position:relative;overflow:hidden}
+#v-ds .d-hlbl{font-size:12px;color:var(--d-mu);font-weight:600;letter-spacing:.4px}
+#v-ds .d-hbig{font-size:36px;font-weight:800;letter-spacing:-1.4px;margin:2px 0 1px;line-height:1}
+#v-ds .d-hunit{font-size:17px;color:var(--d-mu);font-weight:600}
+#v-ds .d-hsub{font-size:13px;color:var(--d-mu);margin-top:6px}
+#v-ds .d-mlbl{font-size:12px;color:var(--d-mu);font-weight:600}
+#v-ds .d-picker{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px}
+#v-ds .d-picker::-webkit-scrollbar{display:none}
+#v-ds .d-chip{flex:0 0 auto;font-size:13px;font-weight:600;padding:7px 14px;border-radius:20px;
+  background:var(--d-card);border:1px solid var(--d-line);color:var(--d-mu);cursor:pointer}
+#v-ds .d-chip.on{background:var(--d-blue);border-color:var(--d-blue);color:#fff}
+
+#v-ds .d-nav{flex:0 0 auto;background:rgba(20,27,36,.97);border-top:1px solid var(--d-line);
+  display:flex;padding:5px 4px}
+#v-ds .d-nb{flex:1;background:none;border:none;color:var(--d-mu2);display:flex;flex-direction:column;
+  align-items:center;gap:3px;padding:6px 2px;cursor:pointer;position:relative;font-family:inherit}
+#v-ds .d-nb .ic{font-size:20px;line-height:1}
+#v-ds .d-nb .tx{font-size:10.5px;font-weight:600}
+#v-ds .d-nb.on{color:var(--d-blue)}
+#v-ds .d-nb .cnt{position:absolute;top:1px;right:50%;margin-right:-22px;background:var(--d-red);color:#fff;
+  font-size:9.5px;font-weight:700;min-width:16px;height:16px;border-radius:9px;padding:0 4px;
+  display:none;align-items:center;justify-content:center}
+
+#v-ds .d-sbg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1600;opacity:0;
+  pointer-events:none;transition:opacity .2s}
+#v-ds .d-sbg.on{opacity:1;pointer-events:auto}
+#v-ds .d-sheet{position:fixed;left:0;right:0;bottom:0;z-index:1601;background:var(--d-card);
+  border-radius:20px 20px 0 0;border-top:1px solid var(--d-line);transform:translateY(100%);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);max-height:86vh;overflow-y:auto;
+  padding:0 0 calc(20px + env(safe-area-inset-bottom))}
+#v-ds .d-sheet.on{transform:translateY(0)}
+#v-ds .d-grab{width:38px;height:4px;background:var(--d-line);border-radius:3px;margin:10px auto 4px}
+#v-ds .d-sh{padding:6px 18px 14px;border-bottom:1px solid var(--d-line)}
+#v-ds .d-scu{font-size:19px;font-weight:800;letter-spacing:-.3px}
+#v-ds .d-ssub{font-size:13px;color:var(--d-mu);margin-top:3px}
+#v-ds .d-sb{padding:15px 18px}
+#v-ds .d-kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--d-line);font-size:14px;gap:12px}
+#v-ds .d-kv .k{color:var(--d-mu);flex:0 0 auto}
+#v-ds .d-kv .v{font-weight:600;text-align:right}
+#v-ds .d-tl{position:relative;padding-left:26px;margin-top:6px}
+#v-ds .d-tl::before{content:'';position:absolute;left:8px;top:6px;bottom:10px;width:2px;background:var(--d-line)}
+#v-ds .d-ti{position:relative;padding-bottom:15px}
+#v-ds .d-ti::before{content:'';position:absolute;left:-22px;top:4px;width:11px;height:11px;border-radius:50%;
+  background:var(--d-card);border:2px solid var(--d-mu2)}
+#v-ds .d-ti.done::before{background:var(--d-green);border-color:var(--d-green)}
+#v-ds .d-ti.now::before{background:var(--d-orange);border-color:var(--d-orange);box-shadow:0 0 0 4px rgba(255,157,60,.14)}
+#v-ds .d-tt{font-size:14px;font-weight:600}
+#v-ds .d-td{font-size:12px;color:var(--d-mu);margin-top:1px}
+#v-ds .d-ti.pending .d-tt{color:var(--d-mu2)}
+#v-ds .d-acts{display:flex;gap:9px;padding:4px 18px 0}
+#v-ds .d-act{flex:1;text-align:center;font-size:14px;font-weight:700;padding:13px;border-radius:12px;
+  border:none;cursor:pointer;color:#fff;font-family:inherit}
+#v-ds .d-mail{background:var(--d-blue)}
+#v-ds .d-do{display:block;width:100%;text-align:left;background:var(--d-card2);border:1px solid var(--d-line);
+  border-radius:13px;padding:15px 16px;margin-bottom:11px;cursor:pointer;color:var(--d-tx);font-family:inherit}
+#v-ds .d-dot{font-size:16px;font-weight:700}
+#v-ds .d-dod{font-size:12.5px;color:var(--d-mu);margin-top:3px;line-height:1.4}
+#v-ds .d-notebox{background:var(--d-card2);border-radius:11px;padding:12px;margin-top:12px;font-size:14px;line-height:1.5}
+#v-ds .d-item{background:var(--d-card2);border:1px solid var(--d-line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+#v-ds .d-itop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#v-ds .d-iname{font-size:14px;font-weight:600;line-height:1.3}
+#v-ds .d-istat{font-size:12px;font-weight:700;white-space:nowrap;flex:0 0 auto}
+#v-ds .d-isub{font-size:12px;color:var(--d-mu);margin-top:3px}
+#v-ds .d-pickwrap{padding:6px 18px 4px}
+#v-ds .d-picklbl{font-size:12px;color:var(--d-mu);margin:4px 2px 12px;font-weight:600}
+
+/* ═══ DESKTOP (≥821px): nav บน + การ์ด grid หลายคอลัมน์ ═══ */
+@media(min-width:821px){
+  #v-ds{width:100%;border-left:1px solid var(--d-line);border-right:1px solid var(--d-line)}
+  /* nav ย้ายขึ้นบน (เหนือ body) */
+  #v-ds{display:flex;flex-direction:column}
+  #v-ds .d-nav{order:-1;border-top:none;border-bottom:1px solid var(--d-line);
+    justify-content:center;gap:6px;padding:8px 14px;background:transparent}
+  #v-ds .d-nb{flex:0 0 auto;flex-direction:row;gap:7px;padding:9px 18px;border-radius:10px;
+    border:1px solid transparent}
+  #v-ds .d-nb.on{background:rgba(74,163,255,.12);border-color:rgba(74,163,255,.3)}
+  #v-ds .d-nb .ic{font-size:17px}
+  #v-ds .d-nb .tx{font-size:13px}
+  #v-ds .d-nb .cnt{position:static;margin:0 0 0 2px}
+  /* body: การ์ด grid 2 คอลัมน์ */
+  #v-ds .d-body{padding:12px 28px 20px}
+  #v-ds .d-cardgrid{display:flex;flex-direction:column;gap:7px}
+  #v-ds .d-sec{grid-column:1/-1}
+  #v-ds .d-hint{grid-column:1/-1}
+  #v-ds .d-card{margin-bottom:0}
+  /* hero/number tab อยู่กลาง ไม่ต้อง grid */
+  #v-ds .d-hero,#v-ds .d-picker{max-width:760px;margin-left:auto;margin-right:auto}
+  /* sheet → กลางจอเหมือน modal (ไม่ติดล่าง) */
+  #v-ds .d-sheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-46%) scale(.98);
+    width:460px;max-width:92vw;max-height:84vh;border-radius:16px;border:1px solid var(--d-line);opacity:0}
+  #v-ds .d-sheet.on{transform:translate(-50%,-50%) scale(1);opacity:1}
+  #v-ds .d-grab{display:none}
+}
+
+</style>
+
+  <div class="d-hd">
+    <div class="d-htop">
+      <div class="d-who">
+        <div class="d-av" id="ds-av">·</div>
+        <div><div class="d-nm" id="ds-nm">—</div><div class="d-rl" id="ds-rl">เซลล์</div></div>
+      </div>
+      <div class="d-refresh" onclick="dsRefreshData()">🔄 รีเฟรช</div>
+    </div>
+    <div class="d-search">
+      <span class="ic">🔍</span>
+      <input id="ds-q" placeholder="ค้นหา ลูกค้า / S/N / เลขใบ / brand" oninput="dsSearch()">
+    </div>
+  </div>
+  <div class="d-body" id="ds-view"></div>
+  <div class="d-nav">
+    <button class="d-nb on" data-t="mon" onclick="dsGo('mon')">
+      <span class="ic">🩺</span><span class="tx">เร่งด่วน</span><span class="cnt" id="ds-cMon">0</span></button>
+    <button class="d-nb" data-t="part" onclick="dsGo('part')">
+      <span class="ic">🔧</span><span class="tx">อะไหล่</span><span class="cnt" id="ds-cPart">0</span></button>
+    <button class="d-nb" data-t="quo" onclick="dsGo('quo')">
+      <span class="ic">📄</span><span class="tx">ใบเสนอราคา</span><span class="cnt" id="ds-cQuo">0</span></button>
+    <button class="d-nb" data-t="num" onclick="dsGo('num')">
+      <span class="ic">📊</span><span class="tx">ตัวเลข</span></button>
+  </div>
+  <div class="d-sbg" id="ds-sbg" onclick="dsCloseSheet()"></div>
+  <div class="d-sheet" id="ds-sheet"><div id="ds-sheetIn"></div></div>
+</div>
+<script>
+/* ═══════════ Daily Sales — logic (ข้อมูลจริง) ═══════════ */
+(function(){
+'use strict';
+var TAB='mon', SEARCH='', PICK=null, _rendered=false;
+
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+var _REG=[]; function reg(o){ _REG.push(o); return _REG.length-1; } function unreg(i){ return _REG[+i]; }
+function pd(s){if(!s)return null;var t=String(s).slice(0,10);var m=t.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(!m)return null;return new Date(+m[1],+m[2]-1,+m[3]);}
+function daysTo(s){var d=pd(s);if(!d)return null;var n=new Date();n.setHours(0,0,0,0);return Math.round((d-n)/86400000);}
+function fB(n){n=+n||0;return '฿'+Math.round(n).toLocaleString('th-TH');}
+function fMM(n){return (Math.round((+n||0)/1e4)/100).toFixed(2);}
+function role(){try{return window._USER_ROLE||(window._currentUser&&window._currentUser.role)||'admin';}catch(e){return 'admin';}}
+function isSales(){return role()==='sales';}
+function myName(){try{return window._SALES_LOCK||(window._currentUser&&window._currentUser.name)||'';}catch(e){return '';}}
+function salesList(){var set={};
+  (window._jsupSC||[]).forEach(function(r){if(r.SALES_SERVICE_NAME)set[r.SALES_SERVICE_NAME]=1;});
+  (window._jsupParts||[]).forEach(function(r){if(r.SALES_SERVICE_NAME)set[r.SALES_SERVICE_NAME]=1;});
+  (window._jsupQuo||[]).forEach(function(r){if(r.SALES_SERVICE_NAME)set[r.SALES_SERVICE_NAME]=1;});
+  return Object.keys(set).filter(function(x){return x&&x.trim();}).sort();}
+function activeSa(){if(isSales())return myName();return PICK||myName()||(salesList()[0]||'');}
+function saMatch(rowSa,t){if(!t)return true;if(!rowSa)return false;
+  return String(rowSa).indexOf(t)>=0||String(t).indexOf(rowSa)>=0;}
+function match(){var a=Array.prototype.slice.call(arguments);if(!SEARCH)return true;
+  return a.join(' ').toLowerCase().indexOf(SEARCH)>=0;}
+var THMO=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thDate(s){var d=pd(s);if(!d)return String(s||'').slice(0,10);
+  return d.getDate()+' '+THMO[d.getMonth()+1]+' '+(d.getFullYear()+543).toString().slice(2);}
+
+/* ── 1) เร่งด่วน ── RAW_CONTRACT ── */
+function dataMon(){
+  var rows=window._jsupContract||[]; var tgt=isSales()?myName():(PICK||null); var out=[];
+  rows.forEach(function(r){
+    var dt=daysTo(r.CONTRACT_END_DATE); if(dt==null||dt<0||dt>45)return;
+    var owner=r.CON_OWNER_NEW||r.SALES_NAME_CH||r.SALES_NAME_DT||'';
+    if(tgt&&!saMatch(owner,tgt))return;
+    out.push({cu:r.CUSTOMER_NAME||'—',brand:r.BRAND||'',model:r.Model||r.PRODUCT_NAME||'',
+      sn:r.SERAIL_NUMBER||'',end:r.CONTRACT_END_DATE,days:dt,
+      noQuo:!!r.con_trigger_do_create_quotation,conNo:r.CONTRACT_NO||'',
+      lvl:dt<=15?'urgent':dt<=30?'warn':'info'});
+  });
+  out.sort(function(a,b){return a.days-b.days;}); return out;
+}
+function rMon(){
+  var rows=dataMon().filter(function(r){return match(r.cu,r.brand,r.model,r.sn);});
+  setCnt('ds-cMon',rows.filter(function(r){return r.lvl==='urgent';}).length);
+  if(!rows.length)return empty('🩺','ไม่มีเครื่องใกล้หมดสัญญา (45 วัน)');
+  var urg=rows.filter(function(r){return r.lvl==='urgent';});
+  var rest=rows.filter(function(r){return r.lvl!=='urgent';}); var h='';
+  if(urg.length)h+='<div class="d-sec first">⚠️ ต้องรีบ <span class="n">'+urg.length+'</span></div>'+urg.map(cardMon).join('');
+  if(rest.length)h+='<div class="d-sec">เฝ้าระวัง <span class="n">'+rest.length+'</span></div>'+rest.map(cardMon).join('');
+  return h;
+}
+function cardMon(r){var bd=r.days<=15?'b-red':r.days<=30?'b-orange':'b-blue';
+  return '<div class="d-card '+r.lvl+'" onclick="dsOpenMon('+reg(r)+')">'+
+    '<div class="d-row"><div class="d-rmain">'+
+    '<div class="d-rtop"><span class="d-rcu">'+esc(r.cu)+'</span>'+
+    '<span class="d-rmeta">'+esc(r.brand)+' '+esc(r.model)+'</span></div>'+
+    '<div class="d-rsub">'+(r.sn?'S/N '+esc(r.sn)+' \u00b7 ':'')+'\u0e2b\u0e21\u0e14 '+esc(thDate(r.end))+(r.noQuo?' \u00b7 \u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e40\u0e2a\u0e19\u0e2d\u0e15\u0e48\u0e2d':'')+'</div></div>'+
+    '<div class="d-rright"><span class="d-badge '+bd+'">\u0e40\u0e2b\u0e25\u0e37\u0e2d '+r.days+' \u0e27\u0e31\u0e19</span></div></div></div>';}
+function partStage(r){var qs=(r.QUO_STATUS||'').toLowerCase();
+  if(r.RECEIVE_DATETIME)return {label:'รับของแล้ว',cls:'ok',sort:5};
+  if(qs.indexOf('stock in')>=0||qs.indexOf('พร้อม')>=0||r.PARTS_READY_DATETIME)return {label:'พร้อมเบิก',cls:'ok',sort:0};
+  if(qs.indexOf('wait stock')>=0||r.ETA_DATE)return {label:'รอของเข้า',cls:'warn',sort:1};
+  if(r.ADMIN_PROCESS_DATETIME)return {label:'Admin จัดซื้อ',cls:'info',sort:2};
+  if(r.ENG_APP_DATETIME)return {label:'ช่างอนุมัติ',cls:'info',sort:3};
+  if(r.ENG_REQ_DATETIME)return {label:'ช่างขอเบิก',cls:'info',sort:4};
+  return {label:r.QUO_STATUS||'กำลังดำเนินการ',cls:'info',sort:4};}
+function partTimeline(r){function fx(d){return d?thDate(d)+' ✓':null;}
+  var steps=[['เปิดงาน',r.ENG_REQ_DATETIME],['ช่างอนุมัติ',r.ENG_APP_DATETIME],
+    ['Admin จัดซื้อ',r.ADMIN_PROCESS_DATETIME],['ของพร้อม / Stock In',r.PARTS_READY_DATETIME],['รับของ',r.RECEIVE_DATETIME]];
+  var last=-1;steps.forEach(function(s,i){if(s[1])last=i;});
+  return steps.map(function(s,i){var st=s[1]?'done':(i===last+1?'now':'pending');
+    var d=s[1]?fx(s[1]):(i===last+1?(r.ETA_DATE&&i>=3?('ETA '+thDate(r.ETA_DATE)):'กำลังดำเนินการ'):'รอ');
+    return [s[0],d,st];});}
+function partItems(){var rows=window._jsupParts||[];var tgt=isSales()?myName():(PICK||null);var out=[];
+  rows.forEach(function(r){var owner=r.SALES_SERVICE_NAME||'';if(tgt&&!saMatch(owner,tgt))return;
+    var stg=partStage(r);if(stg.sort===5)return;
+    var _qn=r.QH_DOC_NUMBER||'';
+    out.push({cu:r.CUSTOMER_NAME||'\u2014',brand:r.BRAND_NAME||'',part:r.PARTS_NAME||'\u2014',
+      sn:r.JOB_SR||r.MODEL_NAME||'',qn:_qn,warranty:!_qn,qty:r.PARTS_QTY||'',
+      contact:r.CONTACT_NAME||'',eta:r.ETA_DATE||'',stage:stg,_st:r.QUO_STATUS||''});
+  });
+  return out;
+}
+function dataPart(){
+  var items=partItems(); var byQn={}; var solo=[];
+  items.forEach(function(it){
+    if(it.warranty){ solo.push({qn:'',cu:it.cu,brand:it.brand,items:[it],warranty:true,minSort:it.stage.sort,readyN:it.stage.sort===0?1:0}); return; }
+    if(!byQn[it.qn]) byQn[it.qn]={qn:it.qn,cu:it.cu,brand:it.brand,items:[],warranty:false,minSort:9,readyN:0};
+    var g=byQn[it.qn]; g.items.push(it);
+    if(it.stage.sort<g.minSort) g.minSort=it.stage.sort;
+    if(it.stage.sort===0) g.readyN++;
+    if(!g.cu||g.cu==='\u2014') g.cu=it.cu; if(!g.brand) g.brand=it.brand;
+  });
+  var groups=Object.keys(byQn).map(function(k){return byQn[k];}).concat(solo);
+  groups.sort(function(a,b){ var d=(b.readyN>0?1:0)-(a.readyN>0?1:0); if(d) return d; return a.minSort-b.minSort; });
+  return groups;
+}
+function gMatch(g){ if(!SEARCH)return true;
+  var s=[g.qn,g.cu,g.brand]; g.items.forEach(function(it){s.push(it.part,it.sn);});
+  return s.join(' ').toLowerCase().indexOf(SEARCH)>=0; }
+function rPart(){
+  var groups=dataPart();
+  var ready=groups.filter(function(g){return !g.warranty&&g.readyN>0&&gMatch(g);});
+  setCnt('ds-cPart',ready.length);
+  if(!SEARCH){
+    var h='';
+    if(ready.length)h+='<div class="d-sec first">\u2705 \u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e1a\u0e34\u0e01 (\u0e15\u0e32\u0e21\u0e43\u0e1a\u0e40\u0e2a\u0e19\u0e2d\u0e23\u0e32\u0e04\u0e32) <span class="n">'+ready.length+'</span></div>'+ready.map(cardGroup).join('');
+    else h+=empty('\ud83d\udd27','\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e43\u0e1a\u0e17\u0e35\u0e48\u0e21\u0e35\u0e2d\u0e30\u0e44\u0e2b\u0e25\u0e48\u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e1a\u0e34\u0e01');
+    var nWar=groups.filter(function(g){return g.warranty&&g.readyN>0;}).length;
+    var nProc=groups.filter(function(g){return !g.warranty&&g.readyN===0;}).length;
+    var hints=[];
+    if(nWar>0) hints.push('\ud83d\udee1 \u0e43\u0e19\u0e1b\u0e23\u0e30\u0e01\u0e31\u0e19 '+nWar+' \u0e23\u0e32\u0e22\u0e01\u0e32\u0e23');
+    if(nProc>0) hints.push('\u23f3 \u0e01\u0e33\u0e25\u0e31\u0e07\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23 '+nProc+' \u0e43\u0e1a');
+    if(hints.length)h+='<div class="d-hint">\ud83d\udd0d '+hints.join(' \u00b7 ')+' \u2014 \u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e04\u0e49\u0e19\u0e2b\u0e32\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e14\u0e39</div>';
+    return h;
+  }
+  var rows=groups.filter(gMatch);
+  if(!rows.length)return empty('\ud83d\udd27','\u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e2d\u0e30\u0e44\u0e2b\u0e25\u0e48\u0e17\u0e35\u0e48\u0e04\u0e49\u0e19\u0e2b\u0e32');
+  var rdy=rows.filter(function(g){return g.readyN>0;});
+  var rest=rows.filter(function(g){return g.readyN===0;});var h='';
+  if(rdy.length)h+='<div class="d-sec first">\u2705 \u0e21\u0e35\u0e02\u0e2d\u0e07\u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e1a\u0e34\u0e01 <span class="n">'+rdy.length+'</span></div>'+rdy.map(cardGroup).join('');
+  if(rest.length)h+='<div class="d-sec">\u0e23\u0e2d / \u0e01\u0e33\u0e25\u0e31\u0e07\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23 <span class="n">'+rest.length+'</span></div>'+rest.map(cardGroup).join('');
+  return h;
+}
+function cardGroup(g){
+  var bd=g.warranty?'b-gray':g.readyN>0?'b-green':g.minSort===1?'b-orange':'b-gray';
+  var et=g.warranty?'\ud83d\udee1 \u0e43\u0e19\u0e1b\u0e23\u0e30\u0e01\u0e31\u0e19':g.readyN>0?('\u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e1a\u0e34\u0e01 '+g.readyN+'/'+g.items.length):'\u0e23\u0e2d\u0e02\u0e2d\u0e07';
+  var cls=g.warranty?'info':g.readyN>0?'ok':g.minSort===1?'warn':'info';
+  var idx=reg(g); var nItem=g.items.length;
+  // ST = สถานะ (QUO_STATUS ของรายการแรก) ; IP = In Process (stage label ปัจจุบัน)
+  var it0=g.items[0]||{}; var st=(it0._st||'')||(it0.stage&&it0.stage.label)||'-';
+  var ip=(it0.stage&&it0.stage.label)||'-';
+  var stip='<div class="d-rstip">'+
+    '<div class="col"><span class="lb">ST</span><span class="vl">'+esc(st)+'</span></div>'+
+    '<div class="col"><span class="lb">IP</span><span class="vl">'+esc(ip)+'</span></div></div>';
+  return '<div class="d-card '+cls+'" onclick="dsOpenGroup('+idx+')">'+
+    '<div class="d-row"><div class="d-rmain">'+
+    '<div class="d-rtop"><span class="d-rcu">'+esc(g.cu)+'</span>'+
+    '<span class="d-rmeta">'+(g.brand?esc(g.brand)+' \u00b7 ':'')+nItem+' \u0e23\u0e32\u0e22\u0e01\u0e32\u0e23</span></div>'+
+    '<div class="d-rsub">'+(nItem>0?esc(g.items[0].part)+(nItem>1?(' +'+(nItem-1)):''):'')+(st&&st!=='-'?' · '+esc(st):'')+'</div></div>'+
+    stip+
+    '<div class="d-rright"><span class="d-rqn">'+(g.qn?esc(g.qn):'\u2014')+'</span>'+
+    '<span class="d-badge '+bd+'">'+esc(et)+'</span></div></div></div>';}
+
+/* ── 3) ใบเสนอราคา ── RAW_Quotation ── */
+var QUO_EXCLUDE=['PO Completed','Contract Completed','Canceled','Cancelled','Rejected','ยกเลิกสัญญา','Reject'];
+function dataQuo(){var rows=window._jsupQuo||[];var tgt=isSales()?myName():(PICK||null);var out=[];
+  rows.forEach(function(r){var stt=r.STATUS_NAME||'';
+    if(QUO_EXCLUDE.some(function(x){return stt.indexOf(x)>=0;}))return;
+    var owner=r.SALES_SERVICE_NAME||'';if(tgt&&!saMatch(owner,tgt))return;
+    var sent=r.SEND_TO_CUSTOMER_DATETIME||r.REQ_DATETIME;
+    var ag=sent?Math.max(0,-(daysTo(sent)||0)):0;var doc=r.DOC_NUMBER||'';
+    var type=/^QSP/i.test(doc)?'SP':/^QSC/i.test(doc)?'SC':(r.QH_TYPE||'');
+    var note=parseLastNote(r.NOTE_LOG);
+    out.push({cu:r.CUSTOMER_NAME||'—',qn:doc,type:type,brand:r.BRAND_NAME||'',amt:+r.QH_TOTAL_AMT||0,
+      stage:stt,aging:ag,note:note.txt,noteDate:note.date,
+      lvl:ag>=40?'urgent':ag>=20?'warn':stt.indexOf('Accept')>=0?'ok':'info'});});
+  out.sort(function(a,b){return b.aging-a.aging;});return out;}
+function parseLastNote(log){if(!log)return {txt:'',date:''};
+  try{if(typeof log==='string'&&log.charAt(0)==='['){var a=JSON.parse(log);
+    if(a.length){var l=a[a.length-1];return {txt:l.note||l.text||l.msg||'',date:(l.date||l.datetime||'').slice(0,10)};}}}catch(e){}
+  return {txt:String(log).slice(0,120),date:''};}
+function rQuo(){var rows=dataQuo().filter(function(r){return match(r.cu,r.qn,r.brand,r.stage);});
+  setCnt('ds-cQuo',rows.filter(function(r){return r.lvl==='urgent';}).length);
+  if(!rows.length)return empty('📄','ไม่มีใบเสนอราคาค้าง');
+  var hot=rows.filter(function(r){return r.aging>=20;});
+  var rest=rows.filter(function(r){return r.aging<20;});var h='';
+  if(hot.length)h+='<div class="d-sec first">🔥 ตามด่วน (ค้างนาน) <span class="n">'+hot.length+'</span></div>'+hot.map(cardQuo).join('');
+  if(rest.length)h+='<div class="d-sec">ทั้งหมด <span class="n">'+rest.length+'</span></div>'+rest.map(cardQuo).join('');
+  return h;}
+function cardQuo(r){var tb=r.type==='SC'?'b-blue':r.type==='SP'?'b-green':'b-gray';
+  var ag=r.aging>=40?'b-red':r.aging>=20?'b-orange':'b-gray';
+  return '<div class="d-card '+r.lvl+'" onclick="dsOpenQuo('+reg(r)+')">'+
+    '<div class="d-row"><div class="d-rmain">'+
+    '<div class="d-rtop"><span class="d-rcu">'+esc(r.cu)+'</span>'+
+    '<span class="d-rmeta">'+esc(r.stage)+(r.brand?' \u00b7 '+esc(r.brand):'')+'</span></div>'+
+    '<div class="d-rsub">'+fB(r.amt)+' \u00b7 '+esc(r.qn)+'</div></div>'+
+    '<div class="d-rright">'+(r.type?'<span class="d-badge '+tb+'">'+r.type+'</span>':'')+
+    '<span class="d-badge '+ag+'">'+r.aging+' \u0e27\u0e31\u0e19</span></div></div></div>';}
+function dataNum(sa){var sc=window._jsupSC||[];var yr=window.CUR_YR||2026,mo=window.CUR_MO||(new Date().getMonth()+1);
+  var actual=0,byMo={};
+  sc.forEach(function(r){if(sa&&!saMatch(r.SALES_SERVICE_NAME,sa))return;
+    var by=+r.BILL_YEAR||yr;if(by!==yr)return;var bm=+r.BILL_MONTH||0;var px=+r.BILL_PRICE||0;
+    actual+=px;byMo[bm]=(byMo[bm]||0)+px;});
+  var months=[];for(var m=1;m<=mo;m++)months.push(byMo[m]||0);
+  return {actual:actual,months:months,mo:mo,yr:yr};}
+function rNum(){var h='';
+  if(!isSales()){var list=salesList();if(!PICK&&list.length)PICK=myName()||list[0];
+    h+='<div class="d-picker">'+list.map(function(s){
+      return '<button class="d-chip '+(s===PICK?'on':'')+'" onclick="dsPick(\''+esc(s).replace(/'/g,"\\'")+'\')">'+esc(s)+'</button>';
+    }).join('')+'</div>';}
+  var sa=activeSa();var d=dataNum(sa);var mx=Math.max.apply(null,d.months.concat([1]));
+  h+='<div class="d-hero"><div class="d-hlbl">ยอดจริงสะสม · '+esc(sa||'รวม')+'</div>'+
+    '<div class="d-hbig">'+fMM(d.actual)+'<span class="d-hunit"> ล้าน</span></div>'+
+    '<div class="d-hsub">ปี '+d.yr+' · ถึงเดือน '+THMO[d.mo]+'</div></div>';
+  h+='<div class="d-card" style="cursor:default"><div class="d-mlbl" style="margin-bottom:10px">ยอดจริงรายเดือน (ล้าน)</div>'+
+    '<div style="display:flex;align-items:flex-end;gap:6px;height:96px">';
+  d.months.forEach(function(v,i){var ht=Math.round(v/mx*78)+8;var last=(i===d.months.length-1);
+    h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">'+
+      '<div style="font-size:9.5px;color:#8a98a8">'+fMM(v)+'</div>'+
+      '<div style="width:100%;height:'+ht+'px;border-radius:5px 5px 0 0;background:'+
+      (last?'linear-gradient(180deg,#3ddc84,#2bb56a)':'#222c38')+'"></div>'+
+      '<div style="font-size:9.5px;color:#5e6c7a">'+THMO[i+1]+'</div></div>';});
+  h+='</div></div>';
+  h+='<div class="d-card info" style="cursor:default"><div class="d-mlbl">รวมยอดจริง (SC Billing)</div>'+
+    '<div style="font-size:13px;color:#8a98a8;margin-top:4px">นับจาก RAW_SC_BILL · BILL_PRICE ปี '+d.yr+'</div></div>';
+  return h;}
+
+/* ── render router ── */
+function render(){var v=$('ds-view');if(!v)return; _REG=[];
+  if(TAB==='mon')v.innerHTML='<div class="d-cardgrid">'+rMon()+'</div>';
+  else if(TAB==='part')v.innerHTML='<div class="d-cardgrid">'+rPart()+'</div>';
+  else if(TAB==='quo')v.innerHTML='<div class="d-cardgrid">'+rQuo()+'</div>';
+  else v.innerHTML=rNum();}
+function empty(ic,t){return '<div class="d-empty"><div class="e-ic">'+ic+'</div>'+esc(t)+'</div>';}
+function setCnt(id,n){var e=$(id);if(!e)return;if(n>0){e.textContent=n;e.style.display='flex';}else{e.style.display='none';}}
+
+/* ── nav/search/pick ── */
+window.dsGo=function(t){TAB=t;SEARCH='';var q=$('ds-q');if(q)q.value='';
+  var nav=document.querySelectorAll('#v-ds .d-nb');
+  for(var i=0;i<nav.length;i++)nav[i].classList.toggle('on',nav[i].getAttribute('data-t')===t);
+  render();var b=$('ds-view');if(b)b.scrollTop=0;};
+window.dsSearch=function(){var q=$('ds-q');SEARCH=q?q.value.trim().toLowerCase():'';render();};
+window.dsPick=function(s){PICK=s;render();};
+
+/* ── header fill ── */
+function fillHeader(){var nm=myName()||'—';
+  var av=$('ds-av');if(av)av.textContent=(nm&&nm!=='—')?nm.charAt(0):'·';
+  var nmE=$('ds-nm');if(nmE)nmE.textContent=nm;
+  var rl=$('ds-rl');if(rl)rl.textContent=isSales()?'เซลล์':(role()==='manager'?'Manager':'Admin');}
+
+/* ── entry: เรียกจาก sv('ds') ── */
+window.dsRender=function(){ fillHeader(); render(); _rendered=true;
+  // ชื่อ sales อาจยังไม่พร้อมตอน render แรก — retry fill header
+  setTimeout(function(){ try{ fillHeader(); if(SEARCH==='') render(); }catch(e){} }, 400);
+};
+window.dsRefreshData=function(){
+  // ดึงข้อมูลใหม่จาก Drive (เหมือนปุ่ม refresh เดิมของระบบ)
+  try{ if(typeof bjhHardRefresh==='function'){ bjhHardRefresh(); return; } }catch(e){}
+  try{ if(typeof gasLoadData==='function'){ gasLoadData(true); return; } }catch(e){}
+  render();
+};
+
+/* ── detail sheets ── */
+function openSheet(html){$('ds-sheetIn').innerHTML='<div class="d-grab"></div>'+html;
+  $('ds-sheet').classList.add('on');$('ds-sbg').classList.add('on');}
+window.dsCloseSheet=function(){$('ds-sheet').classList.remove('on');$('ds-sbg').classList.remove('on');};
+function kv(k,v){return '<div class="d-kv"><span class="k">'+esc(k)+'</span><span class="v">'+v+'</span></div>';}
+
+window.dsOpenMon=function(i){var r=unreg(i);
+  openSheet('<div class="d-sh"><div class="d-scu">'+esc(r.cu)+'</div>'+
+    '<div class="d-ssub">'+esc(r.brand)+' '+esc(r.model)+'</div></div><div class="d-sb">'+
+    (r.sn?kv('S/N',r.sn):'')+kv('สัญญาหมด','<span style="color:#ff5252">'+esc(thDate(r.end))+' ('+r.days+' วัน)</span>')+
+    (r.conNo?kv('เลขสัญญา',r.conNo):'')+(r.noQuo?kv('สถานะ','<span style="color:#ff9d3c">ยังไม่เปิดใบเสนอต่อ</span>'):'')+'</div>');};
+window.dsOpenQuo=function(i){var r=unreg(i);
+  openSheet('<div class="d-sh"><div class="d-scu">'+esc(r.cu)+'</div>'+
+    '<div class="d-ssub">'+esc(r.qn)+(r.type?' · '+r.type:'')+(r.brand?' · '+esc(r.brand):'')+'</div></div>'+
+    '<div class="d-sb">'+kv('มูลค่า',fB(r.amt))+kv('สถานะ',esc(r.stage))+
+    kv('อายุใบ','<span style="color:'+(r.aging>=40?'#ff5252':'#e8edf2')+'">'+r.aging+' วัน</span>')+
+    (r.note?'<div class="d-notebox">💬 '+esc(r.note)+(r.noteDate?' <span style="color:#8a98a8">('+esc(r.noteDate)+')</span>':'')+'</div>':'')+'</div>');};
+window.dsOpenGroup=function(i){var g=unreg(i);
+  var items=g.items.map(function(it){
+    var sb=it.stage.sort===0?'#3ddc84':it.stage.sort===1?'#ff9d3c':'#8a98a8';
+    return '<div class="d-item"><div class="d-itop"><div class="d-iname">'+esc(it.part)+'</div>'+
+      '<span class="d-istat" style="color:'+sb+'">'+esc(it.stage.label)+'</span></div>'+
+      '<div class="d-isub">'+(it.sn?'S/N '+esc(it.sn):'')+(it.qty?' \u00b7 \u0e08\u0e33\u0e19\u0e27\u0e19 '+esc(it.qty):'')+'</div></div>';
+  }).join('');
+  var canBill=g.readyN>0;
+  var pickHtml = g.warranty
+    ? '<div class="d-pickwrap"><div class="d-hint" style="margin:0">\ud83d\udee1 \u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e43\u0e19\u0e1b\u0e23\u0e30\u0e01\u0e31\u0e19 \u2014 \u0e44\u0e21\u0e48\u0e15\u0e49\u0e2d\u0e07\u0e40\u0e1a\u0e34\u0e01 DO</div></div>'
+    : (canBill
+      ? '<div class="d-pickwrap"><div class="d-picklbl">\u0e40\u0e1a\u0e34\u0e01\u0e17\u0e31\u0e49\u0e07\u0e43\u0e1a ('+g.items.length+' \u0e23\u0e32\u0e22\u0e01\u0e32\u0e23) \u2192 \u0e2a\u0e48\u0e07\u0e40\u0e21\u0e25\u0e16\u0e36\u0e07 Admin</div>'+
+        '<button class="d-do" onclick="dsSendGroup('+i+",'do')"+'">'+
+        '<div class="d-dot">\ud83d\udce6 DO \u0e40\u0e1a\u0e34\u0e01\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32</div><div class="d-dod">\u0e40\u0e1a\u0e34\u0e01\u0e02\u0e2d\u0e07\u0e2d\u0e2d\u0e01\u0e15\u0e32\u0e21\u0e1b\u0e01\u0e15\u0e34</div></button>'+
+        '<button class="d-do" onclick="dsSendGroup('+i+",'bill')"+'">'+
+        '<div class="d-dot">\ud83e\uddfe \u0e40\u0e1a\u0e34\u0e01\u0e02\u0e2d\u0e07\u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e1b\u0e34\u0e14\u0e1a\u0e34\u0e25</div>'+
+        '<div class="d-dod">\u0e41\u0e19\u0e1a\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e2b\u0e15\u0e38\u0e43\u0e2b\u0e49 Operation Service \u0e40\u0e1b\u0e34\u0e14\u0e1a\u0e34\u0e25\u0e43\u0e19\u0e27\u0e31\u0e19\u0e0b\u0e48\u0e2d\u0e21</div></button></div>'
+      : '<div class="d-pickwrap"><div class="d-hint" style="margin:0">\u23f3 \u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e2d\u0e07\u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e1a\u0e34\u0e01\u0e43\u0e19\u0e43\u0e1a\u0e19\u0e35\u0e49</div></div>');
+  openSheet('<div class="d-sh"><div class="d-scu">'+esc(g.cu)+'</div>'+
+    '<div class="d-ssub">'+(g.qn?esc(g.qn):'\u0e44\u0e21\u0e48\u0e21\u0e35\u0e43\u0e1a\u0e40\u0e2a\u0e19\u0e2d\u0e23\u0e32\u0e04\u0e32')+(g.brand?' \u00b7 '+esc(g.brand):'')+'</div></div>'+
+    '<div class="d-sb"><div style="font-size:12px;font-weight:700;color:#8a98a8;text-transform:uppercase;letter-spacing:.5px;margin:2px 0 10px">\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2d\u0e30\u0e44\u0e2b\u0e25\u0e48 ('+g.items.length+')</div>'+
+    items+'</div>'+pickHtml);};
+
+/* ── เมลเบิกอะไหล่ ── */
+var MAIL_TO='MDGroupAdminServiceSupport@bjc.co.th';
+var MAIL_CC='MDGroupServiceCommercial@bjc.co.th; MDGroupService@bjc.co.th';
+window.dsSendGroup=function(i,mode){var g=unreg(i);
+  var subj='[\u0e02\u0e2d\u0e40\u0e1a\u0e34\u0e01\u0e2d\u0e30\u0e44\u0e2b\u0e25\u0e48] '+g.cu+' \u00b7 '+g.qn;
+  var body='\u0e40\u0e23\u0e35\u0e22\u0e19 Admin\\n';
+  body+=(mode==='bill')?'\u0e23\u0e1a\u0e01\u0e27\u0e19\u0e40\u0e1a\u0e34\u0e01\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e1b\u0e34\u0e14\u0e1a\u0e34\u0e25 \u0e42\u0e14\u0e22 DO \u0e43\u0e2b\u0e49\u0e14\u0e49\u0e27\u0e22\u0e04\u0e23\u0e31\u0e1a\\n':'\u0e23\u0e1a\u0e01\u0e27\u0e19\u0e40\u0e1a\u0e34\u0e01\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32 \u0e42\u0e14\u0e22 DO \u0e43\u0e2b\u0e49\u0e14\u0e49\u0e27\u0e22\u0e04\u0e23\u0e31\u0e1a\\n';
+  body+='\\n\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e43\u0e1a\u0e40\u0e2a\u0e19\u0e2d\u0e23\u0e32\u0e04\u0e32 : '+g.qn;
+  body+='\\n\u0e0a\u0e37\u0e48\u0e2d\u0e25\u0e39\u0e01\u0e04\u0e49\u0e32 : '+g.cu;
+  if(g.brand)body+='\\nBrand : '+g.brand;
+  body+='\\n\\n\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2d\u0e30\u0e44\u0e2b\u0e25\u0e48 ('+g.items.length+') :';
+  g.items.forEach(function(it,n){ body+='\\n'+(n+1)+'. '+it.part+(it.sn?(' \u00b7 S/N '+it.sn):'')+(it.qty?(' \u00b7 \u0e08\u0e33\u0e19\u0e27\u0e19 '+it.qty):''); });
+  if(mode==='bill')body+='\\n\\n\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e2b\u0e15\u0e38: \u0e17\u0e32\u0e07 Operation Service \u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23\u0e40\u0e1b\u0e34\u0e14\u0e1a\u0e34\u0e25\u0e44\u0e14\u0e49\u0e40\u0e23\u0e35\u0e22\u0e1a\u0e23\u0e49\u0e2d\u0e22\u0e20\u0e32\u0e22\u0e43\u0e19\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23\u0e0b\u0e48\u0e2d\u0e21';
+  var url='mailto:'+encodeURIComponent(MAIL_TO)+'?cc='+encodeURIComponent(MAIL_CC)+'&subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+  window.location.href=url;dsCloseSheet();};
+})();
+</script>

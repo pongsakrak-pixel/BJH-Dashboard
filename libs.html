@@ -1,0 +1,17 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- [v481] preload pako — แก้ "pako is not defined" ตอน stepMaster
+     เดิม: pako โหลด lazy ใน gasLoadData (stepTxEtl) ซึ่งรัน "หลัง" stepMaster
+           -> stepMaster decompress พัง -> catch เงียบ -> resolve ทั้งที่ master ว่าง
+           -> gasLoadData ยิง getDataForClientMaster() ซ้ำ (โหลด master 2 รอบ!)
+     ตอนนี้: โหลดคู่ขนานกับ HTML/CSS -> พร้อมก่อน JS ทุกตัวรัน (มี stepPako เป็น safety net) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script>
+(function(){
+  var _n=new Date();
+  window.CUR_MO=_n.getMonth()+1;
+  window.CUR_YR=_n.getFullYear();
+  window.ETL_CUR_MO=window.CUR_MO;
+  window.ETL_CUR_YR=window.CUR_YR;
+})();
+</script>
+</head>

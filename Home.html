@@ -1,0 +1,1555 @@
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- HOME / DAILY BOARD (Commercial) — Daily Sales + Pending 4 + ช่าง Service 1/2/3 -->
+<!-- เชื่อมข้อมูลจริงจาก D[] + budget · ตัวละคร SVG น่ารัก -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="view" id="v-home" style="display:none;flex-direction:column;flex:1;overflow:auto">
+<style>
+#v-home{
+  --hb-bg:#0a0f1a;--hb-card:#141d30;--hb-card2:#1a2540;--hb-line:#243352;
+  --hb-tx:#e8f0fc;--hb-mu:#7e93b8;--hb-mu2:#a8bce0;
+  --hb-teal:#2dd4bf;--hb-blue:#38bdf8;--hb-blue2:#0ea5e9;--hb-green:#34d399;--hb-ylw:#fbbf24;--hb-red:#f87171;--hb-purple:#a78bfa;--hb-orange:#fb923c;
+  --hb-t1:#0ea5e9;--hb-t2:#10b981;--hb-t3:#a78bfa;
+  background:radial-gradient(ellipse at top,#0f1726,#0a0f1a 70%);
+  padding:18px;font-family:var(--font),'Barlow',sans-serif;color:var(--hb-tx);
+}
+/* [V479.72] LIGHT MODE — Home มี CSS var ชุดของตัวเอง (--hb-*) ซึ่ง "ไม่เคยมีนิยามใน light"
+   -> ทั้งหน้า (Daily Board + modal ยอดขายรายวัน + การ์ดทีม Service) ค้างพื้น dark ตลอด
+   Fix: นิยาม --hb-* ชุด light ทั้งชุด (แก้ทุกจุดพร้อมกัน ไม่ต้องไล่ทีละ element)
+   สีสถานะเข้มขึ้นให้ผ่าน WCAG AA บนพื้นสว่าง */
+html[data-theme="light"] #v-home{
+  --hb-bg:#eef1f5;--hb-card:#ffffff;--hb-card2:#f2f5f9;--hb-line:#c4ccd6;
+  --hb-tx:#1a1f26;--hb-mu:#4a545f;--hb-mu2:#242a31;
+  --hb-teal:#046a55;--hb-blue:#0550ae;--hb-blue2:#043d84;--hb-green:#08662a;
+  --hb-ylw:#6b4300;--hb-red:#8a0b1f;--hb-purple:#4c1d95;--hb-orange:#8a3200;
+  --hb-t1:#0550ae;--hb-t2:#08662a;--hb-t3:#4c1d95;
+  background:radial-gradient(ellipse at top,#f7f9fc,#e7ebf1 70%);
+  color:var(--hb-tx);
+}
+/* overlay/backdrop จางลง + ปุ่มปิด modal อ่านออก */
+html[data-theme="light"] #v-home .hb-modal-bg{ background:rgba(0,0,0,.30) !important; }
+html[data-theme="light"] #v-home .hb-modal-x{ background:rgba(0,0,0,.05) !important; color:var(--hb-tx) !important; }
+html[data-theme="light"] #v-home .hb-modal-x:hover{ background:rgba(0,0,0,.12) !important; }
+/* หัวตาราง modal (วันที่ / จำนวนงาน / ยอดบิล) */
+html[data-theme="light"] #v-home .hb-modal thead th,
+html[data-theme="light"] #v-home .hb-modal-body thead th{ background:#dfe4ea !important; color:#1a1f26 !important; }
+/* ตัวเลข/ข้อความในการ์ดให้หนาชัดบนโปรเจกเตอร์ */
+html[data-theme="light"] #v-home .hb-svc-card .sn,
+html[data-theme="light"] #v-home .hb-modal-title,
+html[data-theme="light"] #v-home .hb-modal-foot{ font-weight:800; }
+#v-home .hb{max-width:1400px;margin:0 auto}
+/* header */
+#v-home .hbh{display:flex;align-items:center;gap:18px;margin-bottom:16px}
+#v-home .hbh .ttl{flex:1}
+#v-home .hbh h1{font-size:26px;font-weight:900;letter-spacing:-.5px;background:linear-gradient(90deg,var(--hb-teal),var(--hb-blue));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin:0}
+/* [C2] background-clip:text ทำให้ตัวอักษรเป็น "หน้ากาก" ให้ gradient -> emoji สีก็โดนด้วย -> กลายเป็นบล็อกตัน
+   แก้: คืน text-fill-color ให้ emoji โดยเฉพาะ (ตัวหนังสือยังเป็น gradient เหมือนเดิม) */
+#v-home .hbh h1 .hb-ico{-webkit-text-fill-color:initial;background:none;-webkit-background-clip:initial;background-clip:initial}
+#v-home .hbh .sub{font-size:14px;color:var(--hb-mu);font-weight:600;margin-top:2px}
+#v-home .hb-live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--hb-green);background:rgba(52,211,153,.12);border:1.5px solid rgba(52,211,153,.35);padding:7px 14px;border-radius:30px;font-weight:700}
+#v-home .hb-live::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--hb-green);animation:hbpulse 1.4s infinite;box-shadow:0 0 10px var(--hb-green)}
+@keyframes hbpulse{0%,100%{opacity:1}50%{opacity:.3}}
+#v-home .hb-clock{text-align:right}
+#v-home .hb-clock .time{font-family:var(--mono),monospace;font-size:32px;font-weight:800;line-height:1}
+#v-home .hb-clock .date{font-size:13px;color:var(--hb-mu2);font-weight:600;margin-top:2px}
+#v-home .hb-refresh{background:rgba(56,189,248,.12);border:1.5px solid rgba(56,189,248,.35);color:var(--hb-blue);padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* Daily Sales hero */
+#v-home .hb-dsales{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:18px}
+#v-home .hb-ds-main{background:linear-gradient(135deg,#0d9488,#0369a1);border-radius:20px;padding:24px 28px;position:relative;overflow:hidden;box-shadow:0 12px 40px rgba(13,148,136,.3)}
+#v-home .hb-ds-main .mascot-bg{position:absolute;right:16px;bottom:-6px}
+#v-home .hb-ds-main .mascot-team{position:absolute;right:18px;bottom:14px;z-index:1}
+#v-home .hb-ds-main .hl{font-size:15px;font-weight:700;opacity:.92;text-transform:uppercase;letter-spacing:1px}
+#v-home .hb-ds-main .hv{font-size:60px;font-weight:900;font-family:var(--mono),monospace;line-height:.95;margin:8px 0}
+#v-home .hb-ds-main .hv small{font-size:26px;opacity:.85}
+#v-home .hb-ds-main .hd{font-size:15px;font-weight:600;opacity:.92}
+#v-home .hb-ds-main .hd-jobs{font-size:16px;font-weight:700;opacity:.95;margin-top:6px}
+#v-home .hb-ds-main .hd-jobs span{font-family:var(--mono),monospace;font-size:22px;font-weight:900}
+/* mini spark chart 7 วัน */
+#v-home .hb-spark{margin-top:18px;position:relative;z-index:2;max-width:62%}
+#v-home .hb-spark .spark-hd{font-size:12px;font-weight:700;opacity:.85;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+#v-home .hb-spark .spark-bars{display:flex;align-items:flex-end;gap:6px;height:60px}
+#v-home .hb-spark .spark-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:default}
+#v-home .hb-spark .spark-bar{width:100%;border-radius:5px 5px 0 0;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.45));min-height:3px;transition:height .6s;position:relative}
+#v-home .hb-spark .spark-bar.today{background:linear-gradient(180deg,#fde68a,#fbbf24);box-shadow:0 0 12px rgba(251,191,36,.6)}
+#v-home .hb-spark .spark-val{font-size:9px;font-family:var(--mono),monospace;font-weight:700;opacity:.9;margin-bottom:3px;white-space:nowrap}
+#v-home .hb-spark .spark-labels{display:flex;gap:6px;margin-top:5px}
+#v-home .hb-spark .spark-lbl{flex:1;text-align:center;font-size:10px;opacity:.7;font-weight:600}
+#v-home .hb-spark .spark-lbl.today{opacity:1;color:#fde68a;font-weight:800}
+/* Bud/FC/Actual ในการ์ดขวา */
+#v-home .hb-bfa-v{margin:6px 0 10px}
+#v-home .hb-bfa-v .bfav-row{display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+#v-home .hb-bfa-v .bfav-row:last-child{border:0}
+#v-home .hb-bfa-v .bfav-l{font-size:12px;color:var(--hb-mu);font-weight:600;padding-top:2px}
+#v-home .hb-bfa-v .bfav-nm{text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+#v-home .hb-bfa-v .bfav-n{font-family:var(--mono),monospace;font-size:16px;font-weight:800;color:var(--hb-mu2);line-height:1.1}
+#v-home .hb-bfa-v .bfav-n.fc{color:var(--hb-ylw)}
+#v-home .hb-bfa-v .bfav-n.ac{color:var(--hb-green)}
+#v-home .hb-bfa-v .bfav-in{font-family:var(--mono),monospace;font-size:10px;color:var(--hb-mu);opacity:.7;margin-top:1px}
+#v-home .bfav-ex-note{font-size:10px;color:var(--hb-mu);text-align:right;margin:2px 0 8px;opacity:.8}
+#v-home .bfav-pct{font-family:var(--mono),monospace;font-size:24px;font-weight:900;color:var(--hb-green)}
+#v-home .bfav-pct .bfav-pl{font-size:12px;color:var(--hb-mu);font-weight:600;font-family:var(--font)}
+#v-home .hb-ds-side{background:var(--hb-card);border:1.5px solid var(--hb-line);border-radius:18px;padding:20px;display:flex;flex-direction:column;justify-content:center}
+#v-home .hb-ds-side .sl{font-size:13px;color:var(--hb-mu);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+#v-home .hb-ds-side .sv{font-size:46px;font-weight:900;font-family:var(--mono),monospace;line-height:1}
+#v-home .hb-ds-side.cnt .sv{color:var(--hb-blue)}
+#v-home .hb-ds-side.bgt .sv{font-size:34px;color:var(--hb-green)}
+#v-home .hb-ds-side .sd{font-size:13px;color:var(--hb-mu2);margin-top:6px;font-weight:600}
+#v-home .hb-ds-side .sbar{margin-top:10px;height:9px;background:rgba(255,255,255,.08);border-radius:5px;overflow:hidden}
+#v-home .hb-ds-side .sbar-f{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--hb-green),var(--hb-teal));transition:width .8s}
+
+/* section header */
+#v-home .hb-sech{font-size:19px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+
+/* Pending 4 */
+#v-home .hb-pending{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:18px}
+#v-home .hb-pcard{background:var(--hb-card);border:1.5px solid var(--hb-line);border-radius:18px;padding:20px 22px;position:relative;overflow:hidden;transition:transform .2s}
+#v-home .hb-pcard:hover{transform:translateY(-4px)}
+#v-home .hb-pcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px}
+#v-home .hb-pcard.pquo::before{background:var(--hb-red)}
+#v-home .hb-pcard.contract::before{background:var(--hb-orange)}
+#v-home .hb-pcard.psc::before{background:var(--hb-blue)}
+#v-home .hb-pcard.psp::before{background:var(--hb-purple)}
+#v-home .hb-pcard.pbill::before{background:var(--hb-green)}
+#v-home .hb-pcard .ph2{margin-bottom:14px;padding-right:64px}
+#v-home .hb-pcard .ptag{font-size:14px;font-weight:800}
+#v-home .hb-pcard.pquo .ptag{color:var(--hb-red)}#v-home .hb-pcard.contract .ptag{color:var(--hb-orange)}#v-home .hb-pcard.psc .ptag{color:var(--hb-blue)}#v-home .hb-pcard.psp .ptag{color:var(--hb-purple)}#v-home .hb-pcard.pbill .ptag{color:var(--hb-green)}
+#v-home .hb-pcard .psub{font-size:11px;color:var(--hb-mu);font-weight:600;margin-top:2px}
+#v-home .hb-pcard .pbig{font-size:50px;font-weight:900;font-family:var(--mono),monospace;line-height:1}
+#v-home .hb-pcard .punit{font-size:17px;color:var(--hb-mu);font-weight:600}
+#v-home .hb-pcard .pmoney{font-size:15px;margin-top:10px;padding-top:10px;border-top:1px solid var(--hb-line);display:flex;justify-content:space-between;align-items:center}
+#v-home .hb-pcard .pmoney2{margin-top:10px;padding-top:10px;border-top:1px solid var(--hb-line)}
+#v-home .hb-pcard .pm-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+#v-home .hb-pcard .pm-row:last-child{margin:0}
+#v-home .hb-pcard .pm-lbl.hl{color:var(--hb-orange);font-weight:700}
+#v-home .hb-pcard .pm-val.full{color:var(--hb-orange);font-family:var(--mono),monospace;font-weight:800;font-size:15px}
+#v-home .hb-pcard .pm-val.back{color:var(--hb-ylw);font-family:var(--mono),monospace;font-weight:800;font-size:17px}
+#v-home .hb-pcard .pm-lbl.urg{font-size:13px;font-weight:700;color:var(--hb-mu)}
+#v-home .hb-pcard .pm-lbl.urg.on{color:var(--hb-red)}
+#v-home .hb-pcard .pm-lbl.urg.warn{color:var(--hb-ylw)}
+#v-home .hb-pcard .pm-lbl{font-size:12px;color:var(--hb-mu)}
+#v-home .hb-pcard .pm-val{font-family:var(--mono),monospace;font-weight:800}
+#v-home .hb-pcard.pquo .pm-val{color:var(--hb-red)}#v-home .hb-pcard.contract .pm-val{color:var(--hb-orange)}#v-home .hb-pcard.psc .pm-val{color:var(--hb-blue)}#v-home .hb-pcard.psp .pm-val{color:var(--hb-purple)}#v-home .hb-pcard.pbill .pm-val{color:var(--hb-green)}
+#v-home .hb-pmascot{position:absolute;right:12px;top:12px}
+
+/* mascot animations */
+@keyframes hb-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes hb-busy{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes hb-wiggle{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes hb-blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes hb-wave{0%,100%{transform:rotate(0)}50%{transform:rotate(-18deg)}}
+#v-home .m-bounce{animation:hb-bounce 2s ease-in-out infinite}
+#v-home .m-busy{animation:hb-busy .5s ease-in-out infinite}
+#v-home .m-wiggle{animation:hb-wiggle 2.2s ease-in-out infinite;transform-origin:bottom center}
+#v-home .m-eye{animation:hb-blink 4s infinite;transform-origin:center}
+#v-home .arm-wave{animation:hb-wave 1.8s ease-in-out infinite;transform-origin:top center}
+
+/* Service 1/2/3 */
+#v-home .hb-svc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px}
+/* [C11] การ์ดทีม — 3 กลุ่ม เน้น "ยังไม่จบ" */
+#v-home .svc-hero{margin:10px 0 8px;cursor:pointer}
+#v-home .svc-hero .sh-n{font-family:var(--mono),monospace;font-size:36px;font-weight:900;color:var(--hb-ylw);line-height:1;
+  text-shadow:0 0 20px rgba(250,204,21,.28)}
+#v-home .svc-hero .sh-l{font-size:12px;color:var(--hb-mu);font-weight:800;margin-top:1px}
+#v-home .svc-sub{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px;padding-bottom:9px;border-bottom:1px dashed var(--hb-line)}
+#v-home .svc-sub .ss{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;
+  padding:3px 9px;border-radius:20px;cursor:pointer;transition:.12s;line-height:1.5}
+#v-home .svc-sub .ss:hover{transform:translateY(-1px);filter:brightness(1.2)}
+#v-home .svc-sub .ss b{font-family:var(--mono),monospace;font-size:12.5px}
+#v-home .svc-sub .ss-done{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(74,222,128,.35)}
+#v-home .svc-sub .ss-cancel{background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.35)}
+#v-home .svc-sub .ss.dim{opacity:.4}
+#v-home .svc-tp{font-size:11px;color:var(--hb-mu);font-weight:600}
+#v-home .svc-tp b{font-family:var(--mono),monospace;color:#94a3b8}
+
+/* [C13] Critical Down — การ์ดใหญ่ + รูป */
+#v-home .hb-cd-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+#v-home .hb-cd{position:relative;background:linear-gradient(160deg,var(--hb-card2,#141f36),var(--hb-card));
+  border:1px solid var(--hb-line);border-radius:18px;padding:16px 16px 13px;cursor:pointer;overflow:hidden;
+  transition:transform .16s,border-color .16s,box-shadow .16s;display:flex;flex-direction:column;min-height:180px}
+#v-home .hb-cd::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 90% at 100% 0%, var(--cdc,#64748b) 0%, transparent 58%);opacity:.13}
+#v-home .hb-cd::after{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cdc,#64748b)}
+#v-home .hb-cd:hover{transform:translateY(-3px);border-color:var(--cdc,#64748b);box-shadow:0 14px 34px rgba(0,0,0,.45)}
+#v-home .hb-cd:hover .cd-art{transform:scale(1.07) rotate(-1.5deg)}
+#v-home .hb-cd.zero{opacity:.45}
+#v-home .hb-cd.zero:hover{transform:none;box-shadow:none;border-color:var(--hb-line)}
+#v-home .hb-cd .cd-top{display:flex;align-items:flex-start;gap:10px;position:relative;z-index:1}
+#v-home .hb-cd .cd-art{width:80px;height:72px;flex-shrink:0;transition:transform .22s ease}
+#v-home .hb-cd .cd-num{margin-left:auto;text-align:right}
+#v-home .hb-cd .cd-n{font-family:var(--mono),monospace;font-size:40px;font-weight:900;color:var(--cdc,#e2e8f0);line-height:.95}
+#v-home .hb-cd .cd-u{font-size:10.5px;color:var(--hb-mu);font-weight:700}
+#v-home .hb-cd .cd-body{margin-top:auto;position:relative;z-index:1}
+#v-home .hb-cd .cd-t{font-size:15px;font-weight:800;color:var(--hb-tx,#e6edf7)}
+#v-home .hb-cd .cd-d{font-size:11px;color:var(--hb-mu);margin-top:1px}
+#v-home .hb-cd .cd-go{display:flex;align-items:center;margin-top:9px;padding-top:9px;
+  border-top:1px dashed var(--hb-line);font-size:11px;font-weight:800;color:var(--cdc,#94a3b8);opacity:.85}
+#v-home .hb-cd .cd-go .ar{margin-left:auto;transition:transform .16s}
+#v-home .hb-cd:hover .cd-go .ar{transform:translateX(4px)}
+
+/* [C15] แท่งกราฟกดได้ */
+#v-home .spark-col.clickable{cursor:pointer}
+#v-home .spark-col.clickable:hover .spark-bar{background:rgba(255,255,255,.72)}
+#v-home .hb-svc-card{background:var(--hb-card);border:1.5px solid var(--hb-line);border-radius:18px;padding:18px 20px;display:flex;align-items:center;gap:14px}
+#v-home .hb-svc-card.t1{border-top:4px solid var(--hb-t1)}
+#v-home .hb-svc-card.t2{border-top:4px solid var(--hb-t2)}
+#v-home .hb-svc-card.t3{border-top:4px solid var(--hb-t3)}
+#v-home .hb-svc-eng{flex-shrink:0;transform:scale(1.35);transform-origin:center left;margin-right:6px}
+#v-home .hb-svc-info{flex:1;min-width:0}
+#v-home .hb-svc-info .sn{font-size:16px;font-weight:800}
+#v-home .hb-svc-card.t1 .sn{color:var(--hb-t1)}#v-home .hb-svc-card.t2 .sn{color:var(--hb-t2)}#v-home .hb-svc-card.t3 .sn{color:var(--hb-t3)}
+#v-home .hb-svc-info .steam{font-size:11px;font-weight:700;padding:2px 9px;border-radius:14px;display:inline-block;margin-top:3px}
+#v-home .hb-svc-card.t1 .steam{background:rgba(14,165,233,.15);color:var(--hb-t1)}
+#v-home .hb-svc-card.t2 .steam{background:rgba(16,185,129,.15);color:var(--hb-t2)}
+#v-home .hb-svc-card.t3 .steam{background:rgba(167,139,250,.15);color:var(--hb-t3)}
+#v-home .hb-svc-info .sjob{font-size:32px;font-weight:900;font-family:var(--mono),monospace;line-height:1;margin:6px 0 2px}
+#v-home .hb-svc-info .sjlbl{font-size:11px;color:var(--hb-mu)}
+#v-home .hb-svc-info .sbgt{font-size:11px;color:var(--hb-mu);margin-top:6px;display:flex;justify-content:space-between}
+#v-home .hb-svc-info .sbgt b{color:var(--hb-green);font-family:var(--mono),monospace}
+#v-home .hb-svc-info .sbar{height:7px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;margin-top:4px}
+#v-home .hb-svc-info .sbar-f{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--hb-blue),var(--hb-teal));transition:width .7s}
+
+/* bottleneck / งานกองที่ไหน */
+#v-home .hb-bn-hero{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,rgba(248,113,113,.18),rgba(220,38,38,.1));border:1.5px solid rgba(248,113,113,.3);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+#v-home .hb-bn-hero .bn-eng{flex-shrink:0}
+#v-home .hb-bn-hero .bn-tx{flex:1}
+#v-home .hb-bn-hero .bn-t1{font-size:11px;color:var(--hb-red);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+#v-home .hb-bn-hero .bn-t2{font-size:20px;font-weight:900;margin:2px 0}
+#v-home .hb-bn-hero .bn-t3{font-size:12px;color:var(--hb-mu)}
+#v-home .hb-bn-hero .bn-num{text-align:right}
+#v-home .hb-bn-hero .bn-num .v{font-size:40px;font-weight:900;font-family:var(--mono),monospace;color:var(--hb-red);line-height:1}
+#v-home .hb-bn-hero .bn-num .l{font-size:11px;color:var(--hb-mu)}
+/* bar rows */
+#v-home .hb-bnbar{margin-bottom:11px}
+#v-home .hb-bnbar:last-child{margin:0}
+#v-home .hb-bnbar .bnb-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+#v-home .hb-bnbar .bnb-nm{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
+#v-home .hb-bnbar .bnb-val{font-family:var(--mono),monospace;font-weight:800;font-size:15px}
+#v-home .hb-bnbar .bnb-track{height:12px;background:var(--hb-card2);border-radius:6px;overflow:hidden}
+#v-home .hb-bnbar .bnb-fill{height:100%;border-radius:6px;transition:width .7s}
+#v-home .hb-bnbar .bnb-pct{font-size:10px;color:var(--hb-mu);font-family:var(--mono),monospace}
+#v-home .hb-bnbar .bnb-det{font-size:10px;color:var(--hb-mu);margin-top:4px;line-height:1.4}
+
+/* popup รายการ pending */
+#v-home #hb-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center}
+#v-home .hb-modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)}
+#v-home .hb-modal-box{position:relative;background:var(--hb-card);border:1.5px solid var(--hb-line);border-radius:18px;width:min(860px,92vw);max-height:84vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#v-home .hb-modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--hb-line)}
+#v-home .hb-modal-title{font-size:18px;font-weight:800}
+#v-home .hb-modal-sum{font-size:12px;color:var(--hb-mu);margin-top:3px}
+#v-home .hb-modal-x{background:rgba(255,255,255,.06);border:1px solid var(--hb-line);color:var(--hb-tx);width:32px;height:32px;border-radius:9px;cursor:pointer;font-size:14px}
+#v-home .hb-modal-x:hover{background:rgba(255,255,255,.12)}
+#v-home .hb-modal-body{overflow:auto;padding:8px 0}
+#v-home .hb-mtbl{width:100%;border-collapse:collapse;font-size:13px}
+#v-home .hb-mtbl th{text-align:left;font-size:11px;color:var(--hb-mu);font-weight:700;padding:8px 16px;border-bottom:1px solid var(--hb-line);position:sticky;top:0;background:var(--hb-card)}
+#v-home .hb-mtbl th.r,#v-home .hb-mtbl td.r{text-align:right}
+#v-home .hb-mtbl td{padding:9px 16px;border-bottom:1px solid rgba(36,51,82,.4)}
+#v-home .hb-mtbl tr.prob-hi{background:rgba(248,113,113,.06)}
+#v-home .hb-mtbl tr.prob-mid{background:rgba(251,191,36,.05)}
+#v-home .hb-mtbl tr:hover{background:rgba(255,255,255,.03)}
+#v-home .hb-mtbl .ic{font-size:13px;width:24px;text-align:center}
+#v-home .hb-mtbl .cu{font-weight:600;max-width:210px;white-space:normal;word-break:break-word;line-height:1.3}
+#v-home .hb-mtbl .qn{font-family:var(--mono),monospace;font-size:11px;color:var(--hb-mu2);white-space:nowrap}
+#v-home .hb-mtbl .st{font-size:11px;color:var(--hb-mu)}
+#v-home .hb-mtbl td.r,#v-home .hb-mtbl .amt{white-space:nowrap}
+#v-home .hb-mtbl .amt{font-family:var(--mono),monospace;font-weight:700}
+#v-home .hb-mtbl .amt.back{color:var(--hb-ylw)}
+#v-home .hb-modal-empty{padding:40px;text-align:center;color:var(--hb-mu)}
+#v-home .hb-modal-foot{padding:12px 22px;border-top:1px solid var(--hb-line);display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+#v-home .hb-modal-foot .ft-amt{font-family:var(--mono),monospace;color:var(--hb-teal)}
+
+/* bottom: คอขวด + activity */
+#v-home .hb-btm{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#v-home .hb-panel{background:var(--hb-card);border:1.5px solid var(--hb-line);border-radius:18px;padding:22px 24px}
+#v-home .hb-ph{font-size:17px;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+#v-home .hb-trow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--hb-line)}
+#v-home .hb-trow:last-child{border:0}
+#v-home .hb-tic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;color:#fff;flex-shrink:0}
+#v-home .hb-tic.sales{background:var(--hb-blue2)}#v-home .hb-tic.admin{background:#0d9488}#v-home .hb-tic.product{background:var(--hb-purple)}#v-home .hb-tic.service{background:#d97706}
+#v-home .hb-tinfo{flex:1;min-width:0}
+#v-home .hb-tinfo .tn{font-size:15px;font-weight:800}
+#v-home .hb-tinfo .tc{font-size:12px;color:var(--hb-mu)}
+#v-home .hb-tbar{flex:1;max-width:140px}
+#v-home .hb-tbar-bg{height:12px;background:var(--hb-card2);border-radius:6px;overflow:hidden}
+#v-home .hb-tbar-f{height:100%;border-radius:6px;transition:width .7s}
+#v-home .hb-tbar-f.ok{background:linear-gradient(90deg,var(--hb-green),var(--hb-teal))}
+#v-home .hb-tbar-f.warn{background:linear-gradient(90deg,var(--hb-ylw),#f59e0b)}
+#v-home .hb-tbar-f.over{background:linear-gradient(90deg,var(--hb-red),#dc2626)}
+#v-home .hb-tpct{font-family:var(--mono),monospace;font-weight:800;font-size:18px;min-width:50px;text-align:right}
+#v-home .hb-tpct.ok{color:var(--hb-green)}#v-home .hb-tpct.warn{color:var(--hb-ylw)}#v-home .hb-tpct.over{color:var(--hb-red)}
+#v-home .hb-aitem{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--hb-line)}
+#v-home .hb-aitem:last-child{border:0}
+#v-home .hb-aic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+#v-home .hb-aic.done{background:rgba(52,211,153,.15)}#v-home .hb-aic.bill{background:rgba(45,212,191,.15)}#v-home .hb-aic.new{background:rgba(251,191,36,.15)}
+#v-home .hb-ainfo{flex:1}
+#v-home .hb-ainfo .a1{font-size:15px;font-weight:700}
+#v-home .hb-ainfo .a2{font-size:12px;color:var(--hb-mu)}
+#v-home .hb-an{font-family:var(--mono),monospace;font-weight:900;font-size:24px}
+#v-home .hb-an.done{color:var(--hb-green)}#v-home .hb-an.bill{color:var(--hb-teal)}#v-home .hb-an.new{color:var(--hb-ylw)}
+
+/* ══════════════════════════════════════════════════════════════
+   [C31] COMPACT — ย่อ Daily Board ให้พอดีจอเดียว (~1,450px -> ~860px)
+   override ท้ายสุด -> ไม่แก้ CSS เดิม (ลบบล็อกนี้ = กลับแบบเดิมทันที)
+   ไม่แตะ: สี · ข้อมูล · การกด · popup · logic — ย่อขนาด/ระยะเท่านั้น
+   ══════════════════════════════════════════════════════════════ */
+/* ── header ── */
+#v-home .hbh{gap:14px;margin-bottom:9px}
+#v-home .hbh h1{font-size:19px}
+#v-home .hbh .sub{font-size:11px;margin-top:0}
+#v-home .hb-live{font-size:10.5px;padding:4px 11px;gap:5px}
+#v-home .hb-refresh{font-size:10.5px;padding:4px 11px}
+#v-home .hb-clock .time{font-size:20px}
+#v-home .hb-clock .date{font-size:9.5px;margin-top:0}
+
+/* ── ① hero ── */
+#v-home .hb-dsales{gap:11px;margin-bottom:10px}
+#v-home .hb-ds-main{padding:13px 17px;border-radius:15px}
+#v-home .hb-ds-main .hl{font-size:11.5px}
+#v-home .hb-ds-main .hv{font-size:34px;margin:1px 0}
+#v-home .hb-ds-main .hv small{font-size:16px}
+#v-home .hb-ds-main .hd{font-size:11.5px}
+#v-home .hb-ds-main .hd-jobs{font-size:12px;margin-top:2px}
+#v-home .hb-ds-main .hd-jobs span{font-size:16px}
+#v-home .hb-spark{margin-top:8px}
+#v-home .hb-spark .spark-hd{font-size:10.5px;margin-bottom:4px}
+#v-home .hb-spark .spark-bars{height:40px;gap:5px}
+#v-home .hb-spark .spark-val{font-size:8.5px;margin-bottom:2px}
+#v-home .hb-spark .spark-labels{gap:5px;margin-top:2px}
+#v-home .hb-spark .spark-lbl{font-size:9px}
+#v-home .mascot-team{transform:scale(1.15);transform-origin:right bottom;right:16px;bottom:10px}
+/* เทียบเป้า */
+#v-home .hb-ds-side{padding:12px 15px;border-radius:15px}
+#v-home .hb-ds-side .sl{font-size:11.5px;margin-bottom:5px}
+#v-home .hb-ds-side .sv{font-size:22px}
+#v-home .hb-ds-side.bgt .sv{font-size:20px}
+#v-home .hb-ds-side .sd{font-size:10.5px;margin-top:3px}
+#v-home .hb-ds-side .sbar{margin-top:6px;height:6px}
+#v-home .hb-bfa-v{margin:3px 0 5px}
+#v-home .hb-bfa-v .bfav-row{padding:3px 0}
+#v-home .hb-bfa-v .bfav-l{font-size:10.5px;padding-top:1px}
+#v-home .hb-bfa-v .bfav-n{font-size:13px}
+#v-home .hb-bfa-v .bfav-in{font-size:9px}
+
+/* ── section header ── */
+#v-home .hb-sech{font-size:14px;margin:10px 0 7px;gap:7px}
+
+/* ── ② critical down ── */
+#v-home .hb-cd-row{gap:10px;margin-bottom:0}
+#v-home .hb-cd{padding:11px 12px 9px;min-height:132px;border-radius:14px}
+#v-home .hb-cd .cd-top{gap:8px}
+#v-home .hb-cd .cd-art{width:56px;height:50px}
+#v-home .hb-cd .cd-n{font-size:28px}
+#v-home .hb-cd .cd-u{font-size:9px}
+#v-home .hb-cd .cd-t{font-size:13px}
+#v-home .hb-cd .cd-d{font-size:9.5px}
+#v-home .hb-cd .cd-go{margin-top:6px;padding-top:6px;font-size:9.5px}
+
+/* ── ③ ทีม service ── */
+#v-home .hb-svc-row{gap:11px;margin-bottom:0}
+#v-home .hb-svc-card{padding:11px 13px;gap:9px;min-height:150px;align-items:center}
+#v-home .hb-svc-card svg{width:60px !important;height:60px !important;flex-shrink:0}
+#v-home .hb-svc-info{flex:1;min-width:0}
+#v-home .hb-svc-info .sn{font-size:14px}
+#v-home .hb-svc-info .steam{font-size:9.5px;padding:1px 7px;margin-top:1px}
+#v-home .hb-svc-info .sbgt{font-size:10px;margin-top:5px}
+#v-home .hb-svc-info .sbar{height:5px;margin-top:3px}
+/* เลข "ยังไม่จบ" + chips อยู่บรรทัดเดียว */
+#v-home .svc-hero{margin:4px 0 5px;display:inline-flex;align-items:center;gap:11px;vertical-align:middle}
+#v-home .svc-hero .sh-n{font-size:28px}
+#v-home .svc-hero .sh-l{font-size:10px}
+#v-home .svc-sub{display:inline-flex;gap:5px;margin:0 0 5px 0;padding-bottom:5px;border-bottom:1px dashed var(--hb-line);width:100%}
+#v-home .svc-sub .ss{font-size:10px;padding:2px 8px;gap:3px}
+#v-home .svc-sub .ss b{font-size:11.5px}
+#v-home .svc-tp{font-size:10px}
+
+/* ── ④ pending ── */
+#v-home .hb-pending{gap:10px;margin-bottom:0}
+#v-home .hb-pcard{padding:10px 13px;border-radius:12px}
+#v-home .hb-pcard .ph2{margin-bottom:5px;padding-right:48px}
+#v-home .hb-pcard .ptag{font-size:12.5px}
+#v-home .hb-pcard .psub{font-size:10px;margin-top:0}
+#v-home .hb-pcard .pbig{font-size:30px}
+#v-home .hb-pcard .punit{font-size:11px}
+#v-home .hb-pcard .pmoney,#v-home .hb-pcard .pmoney2{font-size:11px;margin-top:6px;padding-top:6px}
+#v-home .hb-pcard .pm-row{margin-bottom:2px}
+#v-home .hb-pcard .pm-val.full{font-size:11.5px}
+#v-home .hb-pcard .pm-val.back{font-size:12.5px}
+#v-home .hb-pcard .pm-lbl,#v-home .hb-pcard .pm-lbl.urg{font-size:10px}
+#v-home .hb-pmascot{transform:scale(.72);transform-origin:top right}
+
+</style>
+
+<div class="hb">
+  <!-- HEADER -->
+  <div class="hbh">
+    <div class="ttl">
+      <h1><span class="hb-ico">🏁</span> BJH Service Commercial — Daily Board</h1>
+      <div class="sub">Daily Sales · งานค้างเดือนนี้ที่ต้องตาม (Pending)</div>
+    </div>
+    <div class="hb-live">LIVE</div>
+    <button class="hb-refresh" onclick="bjhHardRefresh()">🔄 รีเฟรช</button>
+    <div class="hb-clock"><div class="time" id="hb-clock">--:--</div><div class="date" id="hb-date">—</div></div>
+  </div>
+
+  <!-- DAILY SALES -->
+  <div class="hb-dsales">
+    <div class="hb-ds-main" style="cursor:pointer" onclick="hbShowDaily()">
+      <div class="hl">💰 ยอดขายวันนี้ · Daily Sales <span style="font-size:11px;opacity:.7">(กดดูรายวัน)</span></div>
+      <div class="hv" id="hb-today-money">฿0</div>
+      <div class="hd-jobs">📋 <span id="hb-today-jobs">0</span> งาน ที่ออกบิลวันนี้</div>
+      <div class="hb-spark">
+        <div class="spark-hd">📊 ยอดบิล 7 วันล่าสุด</div>
+        <div class="spark-bars" id="hb-spark-bars"></div>
+        <div class="spark-labels" id="hb-spark-labels"></div>
+      </div>
+      <svg class="mascot-team" width="216" height="58" viewBox="0 0 216 58">
+        <!-- 4 mascot จากการ์ด Pending: Quotation(แดง) / Contract(ส้ม) / SC(ฟ้า) / SP(ม่วง) -->
+        <!-- Quotation (red) -->
+        <g transform="translate(0,2)"><g class="m-bounce">
+          <rect x="15" y="24" width="24" height="24" rx="8" fill="#f87171"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
+          <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
+          <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
+          <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#7f1d1d"/>
+          <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
+          <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+          <g transform="rotate(8 42 34)"><rect x="37" y="27" width="13" height="17" rx="1.5" fill="#fecaca" stroke="#b91c1c" stroke-width="1.3"/><line x1="40" y1="32" x2="47" y2="32" stroke="#b91c1c" stroke-width="1"/><line x1="40" y1="36" x2="47" y2="36" stroke="#b91c1c" stroke-width="1"/><line x1="40" y1="40" x2="44" y2="40" stroke="#b91c1c" stroke-width="1"/></g>
+        </g></g>
+        <!-- Contract (orange) -->
+        <g transform="translate(54,2)"><g class="m-wiggle">
+          <rect x="15" y="24" width="24" height="24" rx="8" fill="#fb923c"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
+          <rect x="29" y="26" width="9" height="6" rx="1" fill="#fff"/>
+          <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
+          <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
+          <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#3a2a1a"/>
+          <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
+          <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+          <g transform="rotate(10 42 34)"><rect x="37" y="28" width="13" height="16" rx="1.5" fill="#fed7aa" stroke="#c2410c" stroke-width="1.3"/><line x1="40" y1="33" x2="47" y2="33" stroke="#c2410c" stroke-width="1"/><line x1="40" y1="37" x2="47" y2="37" stroke="#c2410c" stroke-width="1"/></g>
+        </g></g>
+        <!-- SC (blue) -->
+        <g transform="translate(108,2)"><g class="m-bounce">
+          <rect x="15" y="24" width="24" height="24" rx="8" fill="#0ea5e9"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
+          <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
+          <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
+          <path d="M16 11 Q27 2 38 11 L38 13 Q27 9 16 13Z" fill="#0369a1"/><rect x="15" y="11" width="24" height="2.5" rx="1" fill="#075985"/>
+          <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
+          <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+          <g transform="rotate(35 42 32)"><rect x="39" y="24" width="4.5" height="16" rx="2" fill="#94a3b8"/><circle cx="41" cy="24" r="4.5" fill="none" stroke="#94a3b8" stroke-width="2.5"/></g>
+        </g></g>
+        <!-- SP (purple) -->
+        <g transform="translate(162,2)"><g class="m-busy">
+          <rect x="15" y="24" width="24" height="24" rx="8" fill="#a78bfa"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
+          <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
+          <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
+          <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#1a1a1a"/>
+          <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
+          <path d="M24 18 Q27 19 30 18" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+          <g transform="rotate(-8 41 34)"><rect x="35" y="28" width="15" height="13" rx="1.5" fill="#c4b5fd" stroke="#7c3aed" stroke-width="1.3"/><line x1="35" y1="33" x2="50" y2="33" stroke="#7c3aed" stroke-width="1.2"/><line x1="42.5" y1="28" x2="42.5" y2="33" stroke="#7c3aed" stroke-width="1.2"/></g>
+        </g></g>
+      </svg>
+    </div>
+    <div class="hb-ds-side bgt">
+      <div class="sl">🎯 เทียบเป้า <span id="hb-bgt-mo">เดือนนี้</span></div>
+      <div class="hb-bfa-v">
+        <div class="bfav-row"><span class="bfav-l">Budget</span><span class="bfav-nm"><span class="bfav-n" id="hb-bfa-bud">฿0</span><span class="bfav-in" id="hb-bfa-bud-in">In ฿0</span></span></div>
+        <div class="bfav-row"><span class="bfav-l">Forecast</span><span class="bfav-nm"><span class="bfav-n fc" id="hb-bfa-fc">฿0</span><span class="bfav-in" id="hb-bfa-fc-in">In ฿0</span></span></div>
+        <div class="bfav-row"><span class="bfav-l">Actual</span><span class="bfav-nm"><span class="bfav-n ac" id="hb-bfa-ac">฿0</span><span class="bfav-in" id="hb-bfa-ac-in">In ฿0</span></span></div>
+      </div>
+      <div class="bfav-ex-note">หน่วย: Ex.VAT</div>
+      <div class="bfav-pct"><span id="hb-bgt-pct">0%</span> <span class="bfav-pl">ของเป้า</span></div>
+      <div class="sbar"><div class="sbar-f" id="hb-bgt-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- [C3] CRITICAL DOWN -->
+  <div class="hb-sech">🚨 Critical Down — เครื่องที่ต้องตาม <span style="font-size:11px;font-weight:600;opacity:.6">(กดเพื่อดูรายการ)</span></div>
+  <div class="hb-cd-row" id="hb-cd-row"><!-- render by JS --></div>
+
+  <!-- SERVICE 1/2/3 -->
+  <div class="hb-sech">🔧 ทีม Service 1 / 2 / 3 <span style="font-size:11px;font-weight:600;opacity:.6">(ยังไม่จบ · จบแล้ว · ยกเลิก — กดดูรายการได้)</span></div>
+  <div class="hb-svc-row" id="hb-svc-row"><!-- render by JS --></div>
+
+  <!-- PENDING 4 -->
+  <div class="hb-sech">📌 งานค้างเดือนนี้ที่ต้องตาม — Pending</div>
+  <div class="hb-pending">
+    <!-- Pending Quotation -->
+    <div class="hb-pcard pquo" style="cursor:pointer" onclick="hbShowPending('quo')">
+      <svg class="hb-pmascot m-bounce" width="54" height="54" viewBox="0 0 54 54">
+        <rect x="15" y="24" width="24" height="24" rx="8" fill="#f87171"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
+        <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
+        <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
+        <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#7f1d1d"/>
+        <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
+        <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <g transform="rotate(8 42 34)"><rect x="37" y="27" width="13" height="17" rx="1.5" fill="#fecaca" stroke="#b91c1c" stroke-width="1.3"/><line x1="40" y1="32" x2="47" y2="32" stroke="#b91c1c" stroke-width="1"/><line x1="40" y1="36" x2="47" y2="36" stroke="#b91c1c" stroke-width="1"/><line x1="40" y1="40" x2="44" y2="40" stroke="#b91c1c" stroke-width="1"/></g>
+      </svg>
+      <div class="ph2"><div class="ptag">🧾 Pending Quotation</div><div class="psub">Team Sales</div></div>
+      <div class="pbig"><span id="hb-pen-quo">0</span> <span class="punit">ใบ</span></div>
+      <div class="pmoney2"><div class="pm-row"><span class="pm-lbl">SC</span><span class="pm-val1" id="hb-pen-quo-sc">0 ใบเสนอราคา</span></div><div class="pm-row"><span class="pm-lbl">SP</span><span class="pm-val1" id="hb-pen-quo-sp">0 ใบเสนอราคา</span></div></div>
+    </div>
+    <!-- Pending Contract -->
+    <div class="hb-pcard contract" style="cursor:pointer" onclick="hbShowPending('contract')">
+      <svg class="hb-pmascot m-wiggle" width="54" height="54" viewBox="0 0 54 54">
+        <rect x="15" y="24" width="24" height="24" rx="8" fill="#fb923c"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
+        <rect x="29" y="26" width="9" height="6" rx="1" fill="#fff"/>
+        <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
+        <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
+        <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#3a2a1a"/>
+        <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
+        <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <g transform="rotate(10 42 34)"><rect x="37" y="28" width="13" height="16" rx="1.5" fill="#fed7aa" stroke="#c2410c" stroke-width="1.3"/><line x1="40" y1="33" x2="47" y2="33" stroke="#c2410c" stroke-width="1"/><line x1="40" y1="37" x2="47" y2="37" stroke="#c2410c" stroke-width="1"/></g>
+      </svg>
+      <div class="ph2"><div class="ptag">📋 Pending Contract</div><div class="psub">Team Sales</div></div>
+      <div class="pbig"><span id="hb-pen-contract">0</span> <span class="punit">สัญญา</span></div>
+      <div class="pmoney2">
+        <div class="pm-row"><span class="pm-lbl">มูลค่าสัญญา</span><span class="pm-val full" id="hb-pen-contract-amt">฿0</span></div>
+        <div class="pm-row"><span class="pm-lbl urg" id="hb-pen-contract-urg">—</span></div>
+      </div>
+    </div>
+    <!-- Pending SC -->
+    <div class="hb-pcard psc" style="cursor:pointer" onclick="hbShowPending('sc')">
+      <svg class="hb-pmascot m-bounce" width="54" height="54" viewBox="0 0 54 54">
+        <rect x="15" y="24" width="24" height="24" rx="8" fill="#0ea5e9"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
+        <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
+        <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
+        <path d="M16 11 Q27 2 38 11 L38 13 Q27 9 16 13Z" fill="#0369a1"/><rect x="15" y="11" width="24" height="2.5" rx="1" fill="#075985"/>
+        <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
+        <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <g transform="rotate(35 42 32)"><rect x="39" y="24" width="4.5" height="16" rx="2" fill="#94a3b8"/><circle cx="41" cy="24" r="4.5" fill="none" stroke="#94a3b8" stroke-width="2.5"/></g>
+      </svg>
+      <div class="ph2"><div class="ptag">🔧 Pending SC</div><div class="psub">Team Service</div></div>
+      <div class="pbig"><span id="hb-pen-sc">0</span> <span class="punit">งาน</span></div>
+      <div class="pmoney2"><div class="pm-row"><span class="pm-lbl">มูลค่ารวม</span><span class="pm-val1" id="hb-pen-sc-amt">฿0</span></div><div class="pm-row"><span class="pm-lbl urg" id="hb-pen-sc-urg">—</span></div></div>
+    </div>
+    <!-- Pending SP -->
+    <div class="hb-pcard psp" style="cursor:pointer" onclick="hbShowPending('sp')">
+      <svg class="hb-pmascot m-busy" width="54" height="54" viewBox="0 0 54 54">
+        <rect x="15" y="24" width="24" height="24" rx="8" fill="#a78bfa"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
+        <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
+        <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
+        <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#1a1a1a"/>
+        <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
+        <path d="M24 18 Q27 19 30 18" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        <g transform="rotate(-8 41 34)"><rect x="35" y="28" width="15" height="13" rx="1.5" fill="#c4b5fd" stroke="#7c3aed" stroke-width="1.3"/><line x1="35" y1="33" x2="50" y2="33" stroke="#7c3aed" stroke-width="1.2"/><line x1="42.5" y1="28" x2="42.5" y2="33" stroke="#7c3aed" stroke-width="1.2"/></g>
+      </svg>
+      <div class="ph2"><div class="ptag">📦 Pending SP</div><div class="psub">Team Product</div></div>
+      <div class="pbig"><span id="hb-pen-sp">0</span> <span class="punit">งาน</span></div>
+      <div class="pmoney2"><div class="pm-row"><span class="pm-lbl">มูลค่ารวม</span><span class="pm-val1" id="hb-pen-sp-amt">฿0</span></div><div class="pm-row"><span class="pm-lbl urg" id="hb-pen-sp-urg">—</span></div></div>
+    </div>
+  </div>
+
+  <!-- [C16] ลบบล็อก "คอขวด" + "ความเคลื่อนไหววันนี้" ออกตามคำขอ -->
+
+  <!-- POPUP รายการ Pending -->
+  <div id="hb-modal" style="display:none">
+    <div class="hb-modal-bg" onclick="hbCloseModal()"></div>
+    <div class="hb-modal-box">
+      <div class="hb-modal-head">
+        <div><div class="hb-modal-title" id="hb-modal-title">รายการ</div><div class="hb-modal-sum" id="hb-modal-sum"></div></div>
+        <button class="hb-modal-x" onclick="hbCloseModal()">✕</button>
+      </div>
+      <div class="hb-modal-body" id="hb-modal-body"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// HOME / DAILY BOARD (Commercial) — render เชื่อมข้อมูลจริง
+// ═══════════════════════════════════════════════════════════
+(function(){
+  function _hbMoney(v){
+    v=Number(v)||0;
+    return '฿'+Math.round(v).toLocaleString('en-US');
+  }
+  function _hbToday(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function _hbParseDate(s){if(!s)return null;var d=new Date(s);if(isNaN(d))return null;return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+  // ── กรอง "เดือนนี้" ──
+  // _HB_MO / _HB_YR ถูก set ตอน homeRender
+  var _HB_MO=0, _HB_YR=0;
+  // สำหรับ Billed (ตรง Orders Billed) = fmo||mo
+  function _inMonth(r){
+    var m=Number(r.fmo||r.mo||0), y=Number(r.fyr||r.yr||0);
+    return m===_HB_MO && y===_HB_YR;
+  }
+  // สำหรับงานค้าง SC/SP/Bill (ตรง Orders pill เจาะจง) = mo เท่านั้น
+  function _inMonthWork(r){
+    return Number(r.mo||0)===_HB_MO && Number(r.yr||0)===_HB_YR;
+  }
+  //  [V546] งานนี้ "เกิดในเดือนนี้จริง" ไหม (ไม่ใช่ carry ที่ถูกย้ายเดือนมา)
+  //     SC Carry ถูก set mo=CUR_MO ตอน classify แต่ om/oy เก็บเดือนต้นทางไว้
+  function _isCarryIn(r){
+    if(!r) return false;
+    var om=Number(r.om||0), oy=Number(r.oy||0);
+    if(!om || !oy) return false;                       // ไม่มีข้อมูลต้นทาง -> ถือว่าเดือนนี้
+    return (om!==_HB_MO || oy!==_HB_YR);               // ต้นทางคนละเดือน = carry
+  }
+
+  // ── สถานะรอทำสัญญา (Pending Contract) ──
+  var _OFFER_ST={'รอใบสั่งจ้าง / รอทำสัญญา':1,'รอทำสัญญา':1,'อยู่ระหว่างทำสัญญา':1,'ส่งเอกสารให้ลูกค้า':1,'เอกสารรอส่งลูกค้า':1,'มอบอำนาจ / BG':1,'Customer Accept':1,'Send to Customer':1};
+
+  function _isExcluded(r){ return r.st==='Excluded'||r.st==='Data Issue'; }
+  function _isBilled(r){ return r.st==='Billed'||r.st==='Actual FAD'||r.st==='Actual FAD (CN)'||r.st==='Actual FAD (Not Found)'; }
+
+  // ── Pending mapping ย้ายไปอยู่ใน loop (1 record เข้าได้หลายการ์ด) ──
+  // contract: Offer/SC Offer (ไม่กรองเดือน, นับ unique qn, 2 มูลค่า)
+  // sc: SC Ordered/Ordered + SC Carry(Pending) + Prospect ip=Waiting PM (กรองเดือน)
+  // sp: SP Ordered/Forward (Ordering/Pending) (กรองเดือน)
+  // bill: Backlog + ip Bill/Billing + SC Carry (กรองเดือน)
+
+  // ── 4 ฝ่าย (stage) ──
+  function _stage(r){
+    if(_isExcluded(r)) return 'excluded';
+    if(_isBilled(r)) return 'billed';
+    var st=r.st||'', ip=r.ip||'';
+    if(/^RP:/.test(ip)) return 'product';
+    if(st==='Backlog'||st==='Backlog (Confirmed)'||ip==='Waiting Bill'||ip==='SC Billing'||ip==='SP Billing') return 'admin';
+    if(st==='SC Ordered'||st==='SC Carry'||st==='SC Carry (Pending)'||st==='SP Ordered (Pending)'||st==='SP Ordered (Ordering)'||st==='Ordered'||ip==='Waiting PM') return 'service';
+    if(st==='Offer'||st==='SC Offer') return 'sales';
+    return 'service';
+  }
+
+  // ── ช่าง SVG (เลขบนหมวก + ทีม + เครื่องมือ) ──
+  function _engSvg(team, busy){
+    var col=team===1?'#0ea5e9':team===2?'#10b981':'#a78bfa';
+    var colD=team===1?'#0369a1':team===2?'#047857':'#7c3aed';
+    var skin=team===1?'#ffe0b8':team===2?'#f0c8a0':'#e8b890';
+    var label=team===1?'IMAGING':team===2?'NON-IMG':'MED IT';
+    var anim=busy?'m-busy':'m-bounce';
+    var sweat=busy?'<ellipse cx="84" cy="50" rx="3.5" ry="6" fill="#7dd3fc"/>':'';
+    var mouth=busy?'M58 63 Q65 59 72 63':'M58 60 Q65 66 72 60';
+    // เครื่องมือตามทีม
+    var tool='';
+    if(team===1) tool='<g transform="rotate(35 102 68)"><rect x="99" y="54" width="6" height="20" rx="2" fill="#cbd5e1"/><circle cx="102" cy="54" r="6" fill="none" stroke="#cbd5e1" stroke-width="3.5"/></g>'; // multimeter ในมือซ้ายแล้ว + ประแจขวา
+    else if(team===2) tool='<g transform="rotate(35 102 68)"><rect x="99" y="56" width="6" height="18" rx="2" fill="#cbd5e1"/><circle cx="102" cy="56" r="5" fill="none" stroke="#cbd5e1" stroke-width="3"/></g>';
+    else tool='<g transform="rotate(35 102 68)"><rect x="99" y="56" width="6" height="18" rx="2" fill="#cbd5e1"/><circle cx="102" cy="56" r="5" fill="none" stroke="#cbd5e1" stroke-width="3"/></g>';
+    var handItem = team===3
+      ? '<rect x="28" y="96" width="20" height="13" rx="2" fill="#1e293b" stroke="'+col+'" stroke-width="1.5"/><rect x="31" y="99" width="14" height="7" fill="'+col+'" opacity=".4"/><text x="38" y="105" font-size="6" text-anchor="middle" fill="#c4b5fd" font-family="monospace">&lt;/&gt;</text>'
+      : team===1
+      ? '<rect x="28" y="96" width="18" height="14" rx="2" fill="#fbbf24" stroke="#d97706" stroke-width="1.5"/><rect x="31" y="99" width="12" height="5" fill="#1a1228"/>'
+      : '<g transform="rotate(-35 28 100)"><rect x="25" y="96" width="6" height="11" rx="2" fill="#a78bfa"/><rect x="27.5" y="86" width="2.5" height="12" fill="#cbd5e1"/></g>';
+    return '<svg class="hb-svc-eng '+anim+'" width="125" height="135" viewBox="0 0 130 140">'
+      +'<ellipse cx="65" cy="134" rx="30" ry="4" fill="rgba(0,0,0,.25)"/>'
+      +'<rect x="55" y="112" width="9" height="20" rx="3" fill="#334155"/><rect x="67" y="112" width="9" height="20" rx="3" fill="#334155"/>'
+      +'<rect x="32" y="80" width="10" height="26" rx="4" fill="'+col+'"/><circle cx="37" cy="106" r="6" fill="'+skin+'"/>'
+      +handItem
+      +'<g class="arm-wave"><rect x="88" y="78" width="10" height="24" rx="4" fill="'+col+'"/><circle cx="93" cy="76" r="6" fill="'+skin+'"/>'+tool+'</g>'
+      +'<rect x="42" y="76" width="46" height="44" rx="12" fill="'+col+'"/>'
+      +'<path d="M55 76 L65 85 L75 76Z" fill="#fff"/>'
+      +'<rect x="42" y="76" width="46" height="8" rx="3" fill="'+colD+'"/>'
+      +'<text x="65" y="103" font-size="8" text-anchor="middle" fill="#fff" font-weight="bold" font-family="monospace">'+label+'</text>'
+      /* [V479.72] เอากระเป๋าเสื้อออก (rect ขาว 11x9) — บังตัวการ์ตูน/ข้อความ label */
+      +'<rect x="60" y="66" width="11" height="11" fill="'+skin+'"/>'
+      +'<circle cx="65" cy="52" r="21" fill="'+skin+'"/>'
+      +'<path d="M44 48 Q65 26 86 48 L86 51 Q65 43 44 51Z" fill="'+col+'"/>'
+      +'<rect x="42" y="48" width="46" height="4.5" rx="2" fill="'+colD+'"/>'
+      +'<circle cx="65" cy="34" r="9" fill="#fff"/>'
+      +'<text x="65" y="39" font-size="13" text-anchor="middle" fill="'+col+'" font-weight="900" font-family="monospace">'+team+'</text>'
+      +sweat
+      +'<g class="m-eye"><circle cx="57" cy="53" r="3" fill="#1a1228"/><circle cx="73" cy="53" r="3" fill="#1a1228"/></g>'
+      +'<path d="'+mouth+'" stroke="#1a1228" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
+      +'<circle cx="51" cy="58" r="4" fill="#ff9eb0" opacity=".5"/><circle cx="79" cy="58" r="4" fill="#ff9eb0" opacity=".5"/>'
+      +'</svg>';
+  }
+
+  // ── main render ──
+  window.homeRender = function(passedD){
+    var D = (Array.isArray(passedD) && passedD.length) ? passedD : (window.D || []);
+    if(!Array.isArray(D) || D.length===0){ return; }
+    var CUR_MO=window.CUR_MO||(new Date().getMonth()+1);
+    var CUR_YR=window.CUR_YR||(new Date().getFullYear());
+    _HB_MO=CUR_MO; _HB_YR=CUR_YR;
+    var today=_hbToday();
+    function _set(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+
+    // ===== Daily Sales (Billed วันนี้ + เดือนนี้ — ใช้ fmo||mo เหมือน Orders) =====
+    var billedToday=0, billedTodayAmt=0, billedMonth=0, billedMonthAmt=0;
+    D.forEach(function(r){
+      if(!_isBilled(r)) return;
+      var amt=_exVat(r);  // [v254] Ex.VAT (ตรง Summary)
+      if(_inMonth(r)){ billedMonth++; billedMonthAmt+=amt; }
+      if(_hbParseDate(r.bd)===today){ billedToday++; billedTodayAmt+=amt; }
+    });
+    _set('hb-today-money', _hbMoney(billedTodayAmt));
+    _set('hb-today-jobs', billedToday);
+
+    // ===== Budget เป้าเดือนนี้ (คำนวณเองจาก BVF_TEMPLATE — getBudgetByTeam อยู่ iframe เรียกไม่ได้) =====
+    // BVF_TEMPLATE['Budget YYYY'] = [{team,type,months[12]}] · months เป็น K (×1000) · Ex.VAT
+    function _hbBudget(yr){
+      var teams={};
+      try{
+        var bvf=window.BVF_TEMPLATE||{};
+        var rows=bvf['Budget '+yr]||[];
+        rows.forEach(function(r){
+          var tm=String(r.team||'').trim(), tp=String(r.type||'').trim().toUpperCase();
+          if(!tm||tm==='Total'||tm==='SubTotal') return;
+          if(tp!=='SC'&&tp!=='SP') return;
+          if(!teams[tm]) teams[tm]={SC:[0,0,0,0,0,0,0,0,0,0,0,0],SP:[0,0,0,0,0,0,0,0,0,0,0,0]};
+          (r.months||[]).forEach(function(v,i){ if(typeof v==='number') teams[tm][tp][i]+=v*1000; });
+        });
+      }catch(e){}
+      return teams;
+    }
+    var bgtTotal=0, _bgtData=_hbBudget(CUR_YR), mi=CUR_MO-1;
+    Object.keys(_bgtData).forEach(function(tm){
+      bgtTotal+=((_bgtData[tm].SC&&_bgtData[tm].SC[mi])||0)+((_bgtData[tm].SP&&_bgtData[tm].SP[mi])||0);
+    });
+    var bgtPct=bgtTotal>0?Math.round((billedMonthAmt/bgtTotal)*100):0;
+    _set('hb-bgt-pct', bgtPct+'%');
+    var bb=document.getElementById('hb-bgt-bar'); if(bb) bb.style.width=Math.min(100,bgtPct)+'%';
+    var MO_TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    _set('hb-bgt-mo', MO_TH[CUR_MO-1]+' '+(CUR_YR+543));
+
+    // ===== Bud / Forecast / Actual (เดือนนี้) — Ex.VAT หลัก + In.VAT เล็ก =====
+    // Budget = Ex.VAT อยู่แล้ว (In = ×1.07) · Forecast/Actual: Ex = px/1.07 (หรือ _sp_fix_exvat), In = px
+    // _exVat helper: ตรง Dashboard
+    function _exVat(r){ return (r._sp_fix_exvat!=null) ? Number(r._sp_fix_exvat||0) : (Number(r.px||0)/1.07); }
+    var fcEx=0, fcIn=0, acEx=0, acIn=0, dailyMap={};
+    D.forEach(function(r){
+      var st=r.st||'', px=Number(r.px)||0, ex=_exVat(r);
+      var fm=Number(r.fmo||r.mo||0), fy=Number(r.fyr||r.yr||0);
+      var inFc=(fm===CUR_MO && fy===CUR_YR);
+      // Forecast = Billed+Backlog+Backlog(Confirmed)+SC Ordered (fmo)
+      if(inFc && (_isBilled(r)||st==='Backlog'||st==='Backlog (Confirmed)'||st==='SC Ordered'||st==='Ordered')){ fcEx+=ex; fcIn+=px; }
+      // Actual = Billed (fmo)
+      if(inFc && _isBilled(r)){ acEx+=ex; acIn+=px; }
+      // daily (Billed by bill date เดือนนี้) — แสดง Ex
+      if(_isBilled(r)){
+        var bd=_hbParseDate(r.bd);
+        if(bd){ var bdM=Number(bd.split('-')[1]), bdY=Number(bd.split('-')[0]);
+          if(bdM===CUR_MO&&bdY===CUR_YR){ if(!dailyMap[bd]) dailyMap[bd]={n:0,amt:0,amtIn:0,rows:[]}; dailyMap[bd].n++; dailyMap[bd].amt+=ex; dailyMap[bd].amtIn+=px; dailyMap[bd].rows.push(r); }  // [C15] เก็บรายใบ
+        }
+      }
+    });
+    // Budget = Ex.VAT อยู่แล้ว · In = ×1.07
+    function _set2(exId,inId,exV,inV){ var e=document.getElementById(exId); if(e)e.textContent=_hbMoney(exV); var i=document.getElementById(inId); if(i){ if(inV==null){ i.style.display='none'; } else { i.style.display=''; i.textContent='In '+_hbMoney(inV); } } }
+    _set2('hb-bfa-bud','hb-bfa-bud-in', bgtTotal, null);
+    _set2('hb-bfa-fc','hb-bfa-fc-in', fcEx, null);
+    _set2('hb-bfa-ac','hb-bfa-ac-in', acEx, null);
+    window._hbDaily=dailyMap;
+
+    // ===== Mini spark chart 7 วันล่าสุด (Ex.VAT) =====
+    (function(){
+      var bars=document.getElementById('hb-spark-bars'), labs=document.getElementById('hb-spark-labels');
+      if(!bars||!labs) return;
+      var WD=['อา','จ','อ','พ','พฤ','ศ','ส'];
+      var days=[], maxV=0;
+      for(var i=6;i>=0;i--){
+        var d=new Date(); d.setDate(d.getDate()-i);
+        var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        var o=dailyMap[key]||{n:0,amt:0};
+        days.push({key:key,wd:WD[d.getDay()],dd:d.getDate(),amt:o.amt,n:o.n,isToday:(i===0)});
+        if(o.amt>maxV) maxV=o.amt;
+      }
+      function _short(v){ v=Number(v)||0; if(v>=1e6) return (v/1e6).toFixed(1)+'M'; if(v>=1e3) return Math.round(v/1e3)+'K'; return v>0?Math.round(v):''; }
+      var bh='', lh='';
+      days.forEach(function(d){
+        var pct=maxV>0?Math.round((d.amt/maxV)*100):0;
+        if(d.amt>0&&pct<8) pct=8;
+        // [C15] กดแท่ง -> popup รายบิลของวันนั้น
+        var _clk = d.n>0
+          ? ' style="cursor:pointer" onclick="event.stopPropagation();hbShowDayBills(\''+d.key+'\')"'
+          : '';
+        bh+='<div class="spark-col'+(d.n>0?' clickable':'')+'"'+_clk
+          +' title="'+d.dd+' '+d.wd+' · '+d.n+' งาน · ฿'+(Number(d.amt)||0).toLocaleString('en-US')+(d.n>0?' · กดดูรายบิล':'')+'">'
+          +(d.amt>0?'<span class="spark-val">'+_short(d.amt)+'</span>':'')
+          +'<div class="spark-bar'+(d.isToday?' today':'')+'" style="height:'+pct+'%"></div></div>';
+        lh+='<div class="spark-lbl'+(d.isToday?' today':'')+'">'+d.wd+'</div>';
+      });
+      bars.innerHTML=bh; labs.innerHTML=lh;
+    })();
+
+    // ===== Pending 4 (จำนวน + มูลค่า) =====
+    // ===== Pending 4 (1 record เข้าได้หลายการ์ด) =====
+    // Contract: ไม่กรองเดือน · นับ unique qn · มูลค่าสัญญา + มูลค่ารอปิดสัญญา(om<เดือนนี้)
+    var conSeen={}, conQn=0, conFull=0, conBack=0;
+    var sc={n:0,amt:0}, sp={n:0,amt:0}, bill={n:0,amt:0};
+    // SC แยกทีม (สัมพันธ์กับการ์ด Pending SC): เหลือ = Pending SC ของทีม · เสร็จ = SC Billed เดือนนี้ของทีม
+    var scTeam={'Service 1':{rem:0,done:0},'Service 2':{rem:0,done:0},'Service 3':{rem:0,done:0}};
+    // [C4] การ์ดทีม: SC = SR ยังไม่ Completed · SP = SR ยังไม่ Completed + Backlog
+    //   r.sn = JOB_STATUS (สถานะงาน/SR) — ค่าเดียวกับคอลัมน์ "สถานะงาน" ในตารางหลัก
+    // [C4/C9] สถานะงาน SR (r.sn = JOB_STATUS) — ค่าจริงจากระบบ:
+    //   Completed · PO Completed · Contract Completed  -> ✅ จบแล้ว
+    //   Canceled                                       -> ❌ ยกเลิก
+    //   Delegated                                      -> 👤 มอบหมายต่อ
+    //   อื่น ๆ                                          -> ⏳ กำลังทำ
+    //   ว่าง / None                                    -> — ไม่มี SR
+    // 🔴 FIX: เดิมเช็คแค่ sn==='completed' -> "PO Completed"/"Contract Completed" ถูกนับเป็นยังไม่จบ (ผิด)
+    function _srBucket(sn){
+      var s=String(sn==null?'':sn).trim();
+      if(!s || s==='None' || s==='-') return 'none';
+      var L=s.toLowerCase();
+      if(L.indexOf('completed')>=0) return 'done';
+      if(L==='canceled'||L==='cancelled') return 'cancel';
+      if(L==='delegated') return 'deleg';
+      return 'wip';
+    }
+    function _srDone(r){ return _srBucket(r.sn)==='done'; }
+    window._SR_META={
+      done:  {i:'✅', l:'จบแล้ว',    c:'#4ade80', bg:'rgba(34,197,94,.15)'},
+      wip:   {i:'⏳', l:'กำลังทำ',   c:'#fbbf24', bg:'rgba(251,191,36,.15)'},
+      deleg: {i:'👤', l:'มอบหมายต่อ', c:'#a78bfa', bg:'rgba(167,139,250,.15)'},
+      cancel:{i:'❌', l:'ยกเลิก',    c:'#f87171', bg:'rgba(248,113,113,.15)'},
+      none:  {i:'—',  l:'ไม่มี SR',  c:'#94a3b8', bg:'rgba(148,163,184,.12)'}
+    };
+    var _srZero=function(){ return {done:0,wip:0,deleg:0,cancel:0,none:0}; };
+    var svcT={'Service 1':{scAll:0,scOpen:0,spAll:0,spOpen:0,sr:_srZero(),srRaw:{}},
+              'Service 2':{scAll:0,scOpen:0,spAll:0,spOpen:0,sr:_srZero(),srRaw:{}},
+              'Service 3':{scAll:0,scOpen:0,spAll:0,spOpen:0,sr:_srZero(),srRaw:{}}};
+    window._hbSvcList={
+      'Service 1':{sc:[],sp:[],sr:{done:[],wip:[],deleg:[],cancel:[],none:[]}},
+      'Service 2':{sc:[],sp:[],sr:{done:[],wip:[],deleg:[],cancel:[],none:[]}},
+      'Service 3':{sc:[],sp:[],sr:{done:[],wip:[],deleg:[],cancel:[],none:[]}}
+    };
+    var urg={contract:0, sc:0, sp:0, bill:0}; // เคสเร่งด่วน
+    var spCrit=0, spWarn=0, spSoon=0; // SP 3 ระดับ
+    var scCrit=0, scWarn=0; // SC 2 ระดับ (Carry≥500k=วิกฤต, เลยเดือน=เตือน)
+    function _isUrgent(r){ return r.overdue===1||r.overdue==='1'||r._eta_late; }
+    var moKey=(CUR_YR*100)+CUR_MO;
+    // เก็บ records สำหรับ popup drill-down
+    window._hbPenList={contract:{}, sc:[], sp:[], bill:[], quo:[], scByTeam:{'Service 1':[],'Service 2':[],'Service 3':[]}}; // contract เป็น map by qn
+    D.forEach(function(r){
+      if(_isExcluded(r)||_isBilled(r)) return;
+      var st=r.st||'', ip=r.ip||'', px=Number(r.px)||0;
+
+      // ── Contract (Offer/SC Offer ที่ High เท่านั้น — ตัด Medium+Low) — ไม่กรองเดือน ──
+      var _hmMap = window._FC_HM_STATUS_LOCAL || {};
+      var _stg = (String(r.sc||'').trim() ? _hmMap[String(r.sc||'').trim()] : null) || (String(r.qs||'').trim() ? _hmMap[String(r.qs||'').trim()] : null) || null;
+      var _isHigh = (_stg === 'H');
+      // [v148] ใบยืนยันบิลแล้ว (Backlog Confirmed) ใช้สถานะเดิม _orig_st เพื่อยังนับใน Pending Contract (confirmed = plan บิลเดือนนี้ แต่สัญญายังขั้น Offer/ตีตราสาร)
+      var _effSt = (r._confirmed_billing && r._orig_st) ? r._orig_st : st;
+      // [v158] Pending Contract = ทุก SC ที่ HM config=High (ไม่ผูกกับ classify Offer); กัน SP/อื่นด้วย t==='SC'
+      if(_isHigh && !r._isLow && r.t==='SC'){
+        var k=r.qn||('__c'+conQn+'_'+Math.random());
+        var _pmC=(window._proMap||{})[r.qn];
+        var _cval=(_pmC && _pmC.px!=null) ? (Number(_pmC.px)||0) : px;
+        if(!conSeen[k]){ conSeen[k]=true; conQn++; conFull+=_cval; }
+        var om=Number(r.om||r.carry_from_mo||0), oy=Number(r.oy||r.carry_from_yr||0);
+        var isBack=(om&&oy&&((oy*100+om)<moKey));
+        if(isBack) conBack+=px;
+        // เดือนนับจากวันเริ่มสัญญา (startDate ใน _proMap)
+        var monthsLate=0, _sd=null, _ed=null, _cst='';
+        try{
+          var pm=(window._proMap||{})[r.qn];
+          if(pm){
+            _sd=pm.startDate||null; _ed=pm.endDate||null;
+            _cst=pm.status||r.sc||r.sc_contract||'';
+            var sdo=_sd?new Date(_sd):null;
+            if(sdo && !isNaN(sdo)){
+              monthsLate=(CUR_YR*12+CUR_MO)-(sdo.getFullYear()*12+(sdo.getMonth()+1));
+              if(monthsLate<0) monthsLate=0;
+            }
+          }
+        }catch(e){}
+        if(!_cst) _cst=r.sc||r.sc_contract||'';
+        if(!window._hbPenList.contract[k]) window._hbPenList.contract[k]={qn:r.qn||'-',cu:r.cu||'-',full:0,back:0,ngvd:0,maxLate:0,sev:0,sd:_sd,ed:_ed,cst:_cst,r:r};
+        var c=window._hbPenList.contract[k]; c.full=_cval; c.ngvd++; if(isBack) c.back+=px;
+        if(monthsLate>c.maxLate) c.maxLate=monthsLate;
+        if(_sd&&!c.sd) c.sd=_sd; if(_ed&&!c.ed) c.ed=_ed; if(_cst&&!c.cst) c.cst=_cst;
+      }
+
+      // ── การ์ดอื่น (SC/SP/Bill) กรองเดือนนี้ ด้วย mo (ตรง Orders pill) ──
+      if(!_inMonthWork(r)) return;
+      if(ip==='Waiting PM' && (st==='SC Ordered'||st==='SC Carry (Pending)'||st==='SC Offer'||st==='Offer')){
+        if(!_hbScStOn(st)) return;
+        if(_hbPenCfg().scNoBill && _hbNoBillPeriod(r)) return;
+        sc.n++; sc.amt+=px; window._hbPenList.sc.push(r);
+        if(scTeam[r.tm]) scTeam[r.tm].rem++;
+        // SC 2 ระดับ: 🔴 Carry(PM Pending) ≥500k · ⚠️ เลยเดือน (overdue)
+        if(st==='SC Carry (Pending)' && px>=500000) scCrit++;
+        else if(r.overdue===1||r.overdue==='1') scWarn++;
+      }
+      if((ip==='RP:Wait Stock-In'||ip==='RP:Processing'||ip==='RP:Stock In') && (st==='Backlog (Confirmed)'||st==='SP Ordered (Ordering)'||st==='SP Ordered (Pending)')){
+        sp.n++; sp.amt+=px; window._hbPenList.sp.push(r);
+        // SP 2 ระดับ: 🔴 เกินกำหนดส่ง (_eta_late) · ⏳ ไม่มี ETA (_eta_missing)
+        if(r._eta_late) spCrit++;
+        else if(r._eta_soon) spSoon++;
+        else if(r._eta_missing) spWarn++;
+      }
+      if(st==='Backlog'||st==='Backlog (Confirmed)'||st==='SC Carry'||ip==='Waiting Bill'||ip==='SC Billing'||ip==='SP Billing'){
+        bill.n++; bill.amt+=px; window._hbPenList.bill.push(r);
+        // Bill เร่งด่วน = เฉพาะเลยกำหนด (overdue)
+        if(r.overdue===1||r.overdue==='1') urg.bill++;
+      }
+    });
+    _set('hb-pen-contract', conQn);
+    _set('hb-pen-contract-amt', _hbMoney(conFull));
+    // ── Pending Quotation: นับใบเสนอราคาสถานะ Request/Verified/Revise (จาก _proMap, ไม่รวม Send to Customer) ──
+    var quoN=0, quoAmt=0, quoSC=0, quoSP=0, quoOther=0;
+    (function(){
+      var pm=window._proMap||{};
+      Object.keys(pm).forEach(function(dn){
+        var q=pm[dn]; if(!q) return;
+        var sl=String(q.status||'').toLowerCase();
+        if(/verified|revise|request/.test(sl)){
+          quoN++; quoAmt+=(Number(q.px)||0);
+          var _qp=String(dn||'').toUpperCase();
+          if(_qp.indexOf('QSC')===0) quoSC++; else if(_qp.indexOf('QSP')===0) quoSP++; else quoOther++;
+          window._hbPenList.quo.push(q);
+        }
+      });
+    })();
+    _set('hb-pen-quo', quoN);
+    _set('hb-pen-quo-sc', quoSC+' ใบเสนอราคา'); _set('hb-pen-quo-sp', quoSP+' ใบเสนอราคา');
+    // Contract: คำนวณระดับเร่งด่วนจากงวดเก่าสุดที่เลย (3+ เดือน=วิกฤต, 1-2=เตือน)
+    var conCrit=0, conWarn=0;
+    Object.keys(window._hbPenList.contract).forEach(function(k){
+      var c=window._hbPenList.contract[k];
+      if(c.maxLate>=3){ c.sev=2; conCrit++; }
+      else if(c.maxLate>=1){ c.sev=1; conWarn++; }
+      else c.sev=0;
+    });
+    _set('hb-pen-sc', sc.n); _set('hb-pen-sc-amt', _hbMoney(sc.amt));
+    _set('hb-pen-sp', sp.n); _set('hb-pen-sp-amt', _hbMoney(sp.amt));
+    _set('hb-pen-bill', bill.n); _set('hb-pen-bill-amt', _hbMoney(bill.amt));
+    // บรรทัด 2: เคสเร่งด่วน (🔴 overdue + ⚠️ eta late)
+    function _urgTxt(n){ return n>0 ? '🔴 '+n+' เคสเร่งด่วน' : '✓ ไม่มีเร่งด่วน'; }
+    function _urgSet(id,n){ var e=document.getElementById(id); if(e){ e.textContent=_urgTxt(n); e.className='pm-lbl urg'+(n>0?' on':''); } }
+    // Contract: แสดง 2 ระดับ
+    (function(){
+      var e=document.getElementById('hb-pen-contract-urg'); if(!e) return;
+      var parts=[];
+      if(conCrit>0) parts.push('🔴 '+conCrit+' วิกฤต');
+      if(conWarn>0) parts.push('⚠️ '+conWarn+' เตือน');
+      e.textContent = parts.length ? parts.join(' · ') : '✓ ไม่มีเร่งด่วน';
+      e.className = 'pm-lbl urg'+((conCrit>0)?' on':(conWarn>0?' warn':''));
+    })();
+    // SC: 2 ระดับ (🔴 Carry≥500k · ⚠️ เลยเดือน)
+    (function(){
+      var e=document.getElementById('hb-pen-sc-urg'); if(!e) return;
+      var parts=[];
+      if(scCrit>0) parts.push('🔴 '+scCrit+' Carry≥500K');
+      if(scWarn>0) parts.push('⚠️ '+scWarn+' เลยเดือน');
+      e.textContent = parts.length ? parts.join(' · ') : '✓ ไม่มีเร่งด่วน';
+      e.className = 'pm-lbl urg'+((scCrit>0)?' on':(scWarn>0?' warn':''));
+    })();
+    // SP: 2 ระดับ (🔴 เกินกำหนดส่ง · ⏳ ไม่มี ETA)
+    (function(){
+      var e=document.getElementById('hb-pen-sp-urg'); if(!e) return;
+      var parts=[];
+      if(spCrit>0) parts.push('🔴 '+spCrit+' เกินกำหนด');
+      if(spSoon>0) parts.push('🟠 '+spSoon+' ใกล้กำหนด');
+      if(spWarn>0) parts.push('⏳ '+spWarn+' ไม่มี ETA');
+      e.textContent = parts.length ? parts.join(' · ') : '✓ ไม่มีเร่งด่วน';
+      e.className = 'pm-lbl urg'+((spCrit>0)?' on':(spWarn>0?' warn':''));
+    })();
+    _urgSet('hb-pen-bill-urg', urg.bill);
+
+    // ===== Service 1/2/3 — งานเดือนนี้ / เสร็จ / เหลือ (สัมพันธ์กับ Pending SC) =====
+    // เหลือ = Pending SC ของทีม (scTeam[].rem นับพร้อม sc.n) · เสร็จ = SC Billed เดือนนี้ของทีม · งานเดือนนี้ = เสร็จ + เหลือ
+    // [C3/C13] Critical Down — ใช้ _cdBuildV2() ตัวเดียวกับหน้า Alert (เลขตรงกันแน่นอน)
+    //   การ์ดใหญ่ 196px + รูป SVG เครื่องมือแพทย์ต่างกันตามสถานะ
+    function _cdArt(k){
+      var BASE = '<rect x="51" y="48" width="8" height="12" fill="C_NECK"/>'
+        + '<rect x="30" y="59" width="50" height="27" rx="6" fill="C_BODY" stroke="C_STK" stroke-width="2"/>'
+        + '<circle cx="41" cy="70" r="3.4" fill="C_DOT"/>'
+        + '<rect x="50" y="67" width="22" height="3.4" rx="1.7" fill="C_LN"/>'
+        + '<rect x="50" y="75" width="15" height="3.4" rx="1.7" fill="C_LN"/>'
+        + '<circle cx="39" cy="94" r="6.6" fill="#0b1220" stroke="C_STK" stroke-width="2.2"/>'
+        + '<circle cx="71" cy="94" r="6.6" fill="#0b1220" stroke="C_STK" stroke-width="2.2"/>';
+      function base(dot, dim){
+        return BASE.replace(/C_NECK/g, dim?'#2b3d5c':'#334155')
+                   .replace(/C_BODY/g, dim?'#0f1830':'#141f36')
+                   .replace(/C_STK/g,  dim?'#2b3d5c':'#334155')
+                   .replace(/C_DOT/g,  dim?'#475569':dot)
+                   .replace(/C_LN/g,   dim?'#233350':'#2b3d5c');
+      }
+      var S='<svg class="cd-art" viewBox="0 0 120 105">';
+      if(k==='dead'){
+        S+='<path d="M92 16 l-9 13 h7 l-6 12 14-16h-7z" fill="#fbbf24"/>'
+          +'<path d="M22 22 l4 6 M18 30 l6 2" stroke="#fbbf24" stroke-width="2.4" stroke-linecap="round"/>'
+          +'<rect x="26" y="8" width="58" height="40" rx="7" fill="#0d1424" stroke="#ef4444" stroke-width="2.6"/>'
+          +'<path d="M42 22 l26 12 M68 22 l-26 12" stroke="#ef4444" stroke-width="3.4" stroke-linecap="round"/>'
+          + base('#ef4444', false);
+      } else if(k==='check'){
+        S+='<rect x="26" y="8" width="58" height="40" rx="7" fill="#0d1424" stroke="#facc15" stroke-width="2.6"/>'
+          +'<path d="M35 32 h9 l4-11 5 20 5-14 4 7 h11" stroke="#facc15" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+          +'<circle cx="90" cy="34" r="14" fill="rgba(250,204,21,.1)" stroke="#facc15" stroke-width="2.8"/>'
+          +'<path d="M100 44 l9 9" stroke="#facc15" stroke-width="3.4" stroke-linecap="round"/>'
+          +'<text x="90" y="40" font-size="16" font-weight="800" fill="#facc15" text-anchor="middle">?</text>'
+          + base('#facc15', false);
+      } else if(k==='eol'){
+        S+='<rect x="26" y="8" width="58" height="40" rx="7" fill="#0d1424" stroke="#94a3b8" stroke-width="2.6"/>'
+          +'<path d="M48 17 h16 M48 39 h16 M50 17 c0 8 12 8 12 11 c0 3 -12 3 -12 11 M62 17 c0 8 -12 8 -12 11" stroke="#94a3b8" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
+          +'<circle cx="56" cy="28" r="2.4" fill="#94a3b8"/>'
+          +'<rect x="88" y="22" width="26" height="15" rx="4" fill="#0b1220" stroke="#94a3b8" stroke-width="2"/>'
+          +'<text x="101" y="33" font-size="9" font-weight="800" fill="#94a3b8" text-anchor="middle">EOL</text>'
+          + base('#94a3b8', true);
+      } else {
+        S+='<path d="M92 18 a16 16 0 0 1 0 26" stroke="#a78bfa" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".45"/>'
+          +'<path d="M97 12 a24 24 0 0 1 0 38" stroke="#a78bfa" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".22"/>'
+          +'<rect x="26" y="8" width="58" height="40" rx="7" fill="#0d1424" stroke="#a78bfa" stroke-width="2.6"/>'
+          +'<path d="M38 28 q17 -13 34 0 q-17 13 -34 0z" fill="rgba(167,139,250,.14)" stroke="#a78bfa" stroke-width="2.4" stroke-linejoin="round"/>'
+          +'<circle cx="55" cy="28" r="5.4" fill="#a78bfa"/><circle cx="53.4" cy="26.4" r="1.8" fill="#0d1424"/>'
+          + base('#a78bfa', false);
+      }
+      return S+'</svg>';
+    }
+    window._hbRenderCD = function(){
+      var el=document.getElementById('hb-cd-row'); if(!el) return;
+
+      // ══════════════════════════════════════════════════════════
+      // [C22b] 🔴 บั๊กจริง: _cdBuildV2() ถูกนิยาม "ข้างใน" spRenderAlert()
+      //   มันใช้ closure vars: conBySN · srStatusMap · _DONE · today
+      //   -> window._cdBuildV2 จะมีค่า "ก็ต่อเมื่อ spRenderAlert() เคยรันแล้ว"
+      //   -> เปิด Daily Board ตรง ๆ (ไม่เคยเข้า Sales Prospect › Alert) = undefined = ว่างถาวร
+      //   ✅ แก้: เรียก spRenderAlert() เงียบ ๆ ก่อน (เขียนลง #sp-alert-body ที่ซ่อนอยู่ — ไม่กระทบ UI)
+      //          เรียกซ้ำได้ จนกว่า _cdBuildV2 จะโผล่ (พอโผล่แล้วจะไม่เรียกอีก = ไม่เปลืองแรง)
+      // ══════════════════════════════════════════════════════════
+      if(typeof window._cdBuildV2 !== 'function'){
+        try{
+          if(typeof window.spRenderAlert === 'function'){
+            window.spRenderAlert();
+            if(typeof window._cdBuildV2 === 'function' && !window._hbCdPrimed){
+              window._hbCdPrimed = 1;
+              try{ console.log('%c[C22b] priming spRenderAlert() -> _cdBuildV2 พร้อมใช้แล้ว','color:#38bdf8;font-weight:bold'); }catch(e){}
+            }
+          }
+        }catch(e){ try{ console.warn('[C22b] priming spRenderAlert:', e.message); }catch(_){} }
+      }
+
+      var ready=false, rows=[], why='';
+      try{
+        ready = !!(window._spInstallRows && window._spInstallRows.length);
+        if(typeof window._cdBuildV2 !== 'function'){ why='_cdBuildV2 ยังไม่พร้อม (spRenderAlert ยังไม่รัน)'; }
+        else if(!ready){ why='Install Base ยังไม่มา'; }
+        else rows = window._cdBuildV2() || [];
+      }catch(e){ rows=[]; why=(e && e.message) || String(e); }
+
+      if(!rows.length){
+        var loading = (!ready || typeof window._cdBuildV2 !== 'function');
+        if(loading){
+          window._hbCdRetry = (window._hbCdRetry||0) + 1;
+          el.innerHTML='<div style="grid-column:1/-1;padding:22px;text-align:center;color:var(--hb-mu);font-size:12px;'
+            + 'border:1px dashed var(--hb-line);border-radius:14px">⏳ กำลังโหลดข้อมูลเครื่อง…</div>';
+          if(window._hbCdRetry <= 40){
+            setTimeout(function(){ try{ window._hbRenderCD(); }catch(e){} }, 700);
+          } else {
+            el.innerHTML='<div style="grid-column:1/-1;padding:22px;text-align:center;color:#f87171;font-size:12px;'
+              + 'border:1px dashed #7f1d1d;border-radius:14px">⚠️ โหลดไม่สำเร็จ: '+why+' — กด Update อีกครั้ง</div>';
+            try{ console.warn('[C22b] Critical Down โหลดไม่สำเร็จ:', why); }catch(e){}
+          }
+          return;
+        }
+        // ข้อมูลพร้อมแล้ว แต่ไม่มีเครื่องที่ต้องตาม = ปกติ
+        el.innerHTML='<div style="grid-column:1/-1;padding:22px;text-align:center;color:#4ade80;font-size:12.5px;font-weight:700;'
+          + 'border:1px dashed rgba(74,222,128,.35);border-radius:14px">✅ ไม่มีเครื่องที่ต้องตาม</div>';
+        return;
+      }
+      window._hbCdRetry = 0;
+      var G={dead:0,check:0,eol:0,watch:0};
+      rows.forEach(function(m){ if(G[m.mcGroup]!=null) G[m.mcGroup]++; });
+      var META=[
+        {k:'dead', l:'ใช้ไม่ได้',  d:'เครื่องหยุดทำงาน · ซ่อมด่วน',  c:'#ef4444'},
+        {k:'check',l:'ตรวจสอบ',   d:'มีอาการผิดปกติ · รอวินิจฉัย',  c:'#facc15'},
+        {k:'eol',  l:'EOL',        d:'หมดอายุสนับสนุน · ควรเปลี่ยน', c:'#94a3b8'},
+        {k:'watch',l:'เฝ้าระวัง',  d:'ใกล้หมดสัญญา · ต้องติดตาม',   c:'#a78bfa'}
+      ];
+      el.innerHTML = META.map(function(m){
+        var n=G[m.k]||0;
+        return '<div class="hb-cd'+(n?'':' zero')+'" style="--cdc:'+m.c+'" onclick="hbGoCD(\''+m.k+'\')" '
+          + 'title="เปิด Sales Prospect › Alert (กรอง '+m.l+')">'
+          + '<div class="cd-top">'+_cdArt(m.k)
+          +   '<div class="cd-num"><div class="cd-n">'+n+'</div><div class="cd-u">เครื่อง</div></div>'
+          + '</div>'
+          + '<div class="cd-body"><div class="cd-t">'+m.l+'</div><div class="cd-d">'+m.d+'</div>'
+          +   '<div class="cd-go">ดูรายการ <span class="ar">›</span></div></div>'
+          + '</div>';
+      }).join('');
+    };
+    // [C12] FIX: ฟังก์ชัน nav จริงชื่อ sv() ไม่ใช่ go()  (ปุ่ม nav ใช้ onclick="sv('sp')")
+    //   และ cdKpi(f) เป็น TOGGLE (_cdKpiF===f ? '' : f) -> เรียกซ้ำจะยกเลิก filter
+    //   -> set _cdKpiF ตรง ๆ แล้วเรียก spRenderAlert() แทน
+    window.hbGoCD = function(k){
+      try{
+        if(typeof sv==='function') sv('sp');
+        else if(typeof window.sv==='function') window.sv('sp');
+        setTimeout(function(){
+          try{ if(typeof window.spTab==='function') window.spTab('alert'); }catch(e){}
+          setTimeout(function(){
+            try{
+              window._cdKpiF = k;
+              if(typeof window.spRenderAlert==='function') window.spRenderAlert();
+            }catch(e){ try{ console.warn('[C12] cdKpi:', e); }catch(_){} }
+          }, 160);
+        }, 80);
+      }catch(e){ try{ console.warn('[C12] hbGoCD:', e); }catch(_){} }
+    };
+
+    var svcMeta={'Service 1':{team:1,name:'Imaging',icon:'🩻'},
+                 'Service 2':{team:2,name:'Non-Imaging',icon:'🩺'},
+                 'Service 3':{team:3,name:'Medical IT',icon:'💻'}};
+    D.forEach(function(r){
+      var tm=r.tm||''; if(!scTeam[tm]) return;
+      if(_isExcluded(r)) return;
+      if(!_inMonthWork(r)) return;
+      var st=r.st||'', ip=r.ip||'';
+      var isPenSC=(ip==='Waiting PM' && (st==='SC Ordered'||st==='SC Carry (Pending)'||st==='SC Offer'||st==='Offer'))
+        && _hbScStOn(st) && !(_hbPenCfg().scNoBill && _hbNoBillPeriod(r));  // [v149] filter ตรงกับการ์ด (rem) ให้ detail = การ์ด
+      var isDoneSC=(_isBilled(r) && r.t==='SC');
+      if(isDoneSC) scTeam[tm].done++;
+      if(isPenSC || isDoneSC){ window._hbPenList.scByTeam[tm].push(r); }
+
+      // ── [C4] นับใหม่: SC = SR ยังไม่ Completed · SP = SR ยังไม่ Completed + Backlog ──
+      var T=svcT[tm], bk=_srBucket(r.sn), open=(bk!=='done');
+      var inCard=false;
+      if(r.t==='SC'){
+        T.scAll++; inCard=true;
+        if(open){ T.scOpen++; window._hbSvcList[tm].sc.push(r); }
+      } else if(r.t==='SP' && st==='Backlog'){
+        T.spAll++; inCard=true;
+        if(open){ T.spOpen++; window._hbSvcList[tm].sp.push(r); }
+      }
+      // [C9] สถานะงาน SR — นับเฉพาะใบที่อยู่ในขอบเขตการ์ด (SC ทั้งหมด + SP Backlog)
+      if(inCard){
+        //  [V546] ❌ ยกเลิก = เฉพาะงานที่เกิดเดือนนี้จริง ไม่เอา carry จากเดือนก่อน
+        //     (ยังไม่จบ / จบแล้ว ยังนับ carry เหมือนเดิม — ต้องเห็นงานค้าง)
+        if(bk==='cancel' && _isCarryIn(r)){ /* ข้าม */ }
+        else {
+        T.sr[bk]++;
+        window._hbSvcList[tm].sr[bk].push(r);
+        }
+        var _raw=String(r.sn==null?'':r.sn).trim() || '(ไม่มี SR)';
+        T.srRaw[_raw]=(T.srRaw[_raw]||0)+1;
+      }
+    });
+    // [C11] การ์ดทีม — 3 กลุ่ม: ยังไม่จบ (เน้น) / จบแล้ว / ยกเลิก
+    //   ยังไม่จบ = Delegated + Pending* + ไม่มี SR   (ทุกอย่างที่ไม่ใช่ done และไม่ใช่ cancel)
+    //   จบแล้ว  = Completed / PO Completed / Contract Completed
+    //   ยกเลิก  = Canceled
+    var svcHtml='';
+    ['Service 1','Service 2','Service 3'].forEach(function(tm){
+      var m=svcMeta[tm], T=svcT[tm];
+      var S=T.sr;
+      var nOpen  = (S.wip||0)+(S.deleg||0)+(S.none||0);   // ยังไม่จบ
+      var nDone  = (S.done||0);
+      var nCancel= (S.cancel||0);
+      var totAll = nOpen+nDone+nCancel;
+      var pct    = totAll>0 ? Math.round((nDone/totAll)*100) : 0;
+      var busy   = (nOpen>0);
+      // tooltip: ชื่อสถานะจริงในกลุ่ม "ยังไม่จบ"
+      var tips=[];
+      Object.keys(T.srRaw||{}).forEach(function(rn){
+        var bk=_srBucket(rn==='(ไม่มี SR)'?'':rn);
+        if(bk!=='done' && bk!=='cancel') tips.push(rn+' ('+T.srRaw[rn]+')');
+      });
+      svcHtml+='<div class="hb-svc-card t'+m.team+'" style="cursor:pointer" onclick="hbShowSvcSr(\''+tm+'\',\'open\')">'
+        + _engSvg(m.team,busy)
+        + '<div class="hb-svc-info">'
+        +   '<div class="sn">'+tm+'</div><div class="steam">'+m.icon+' '+m.name+'</div>'
+        // ── ยังไม่จบ (เน้น) ──
+        +   '<div class="svc-hero" title="'+(tips.length?'ยังไม่จบ — '+tips.join(' · '):'ยังไม่จบ')+'">'
+        +     '<div class="sh-n">'+nOpen+'</div><div class="sh-l">ยังไม่จบ</div>'
+        +   '</div>'
+        // ── จบแล้ว / ยกเลิก ──
+        +   '<div class="svc-sub">'
+        +     '<span class="ss ss-done" onclick="event.stopPropagation();hbShowSvcSr(\''+tm+'\',\'done\')">✅ จบแล้ว <b>'+nDone+'</b></span>'
+        +     '<span class="ss ss-cancel'+(nCancel?'':' dim')+'" onclick="event.stopPropagation();hbShowSvcSr(\''+tm+'\',\'cancel\')">❌ ยกเลิก <b>'+nCancel+'</b></span>'
+        +   '</div>'
+        // ── รวม + SC/SP ──
+        +   '<div class="sbgt"><span>งานทั้งหมด <b>'+totAll+'</b></span>'
+        +     '<span class="svc-tp">SC <b>'+T.scAll+'</b> · SP <b>'+T.spAll+'</b></span></div>'
+        +   '<div class="sbar"><div class="sbar-f" style="width:'+Math.min(100,pct)+'%"></div></div>'
+        +   '<div class="sbgt" style="margin-top:4px"><span></span><span>จบแล้ว <b style="color:var(--hb-green)">'+pct+'%</b></span></div>'
+        + '</div></div>';
+    });
+    var svcEl=document.getElementById('hb-svc-row'); if(svcEl) svcEl.innerHTML=svcHtml;
+
+    // ── [C3] Critical Down สรุป (กดเข้าไปดูได้) ──
+    try{ window._hbRenderCD(); }catch(e){}
+
+    // ===== คอขวด / งานรอใคร — ยึดตัวเลขเดียวกับการ์ด Pending =====
+    // รอ Sales = Quotation + Contract · รอ Service = Pending SC · รอ Product = Pending SP · รอ Admin = Pending Bill
+    var groups=[
+      {key:'sales',  ic:'💰', nm:'รอ Sales',   sub:'ใบเสนอราคา / ทำสัญญา', col:'#38bdf8', n:(quoN+conQn), det:{}},
+      {key:'service',ic:'🔧', nm:'รอ Service',  sub:'รอเข้างาน / PM',       col:'#fbbf24', n:sc.n, det:{}},
+      {key:'product',ic:'📦', nm:'รอ Product',  sub:'สั่งของ / รอ ETA',     col:'#a78bfa', n:sp.n, det:{}},
+      {key:'admin',  ic:'🧾', nm:'รอ Admin',    sub:'ออกบิล / ยืนยัน',      col:'#2dd4bf', n:bill.n, det:{}}
+    ];
+    var gIdx={}; groups.forEach(function(g,i){ gIdx[g.key]=i; });
+    // detail ย่อย: รอ Sales = ใบเสนอราคา X · รอปิดสัญญา Y
+    if(quoN>0) groups[gIdx['sales']].det['ใบเสนอราคา']=quoN;
+    if(conQn>0) groups[gIdx['sales']].det['รอปิดสัญญา']=conQn;
+
+    // เรียงมาก→น้อย หาคอขวด
+    var sorted=groups.slice().sort(function(a,b){ return b.n-a.n; });
+    var totalPending=groups.reduce(function(a,g){return a+g.n;},0)||1;
+    var maxN=sorted[0]?sorted[0].n:1; if(maxN<=0) maxN=1;
+    var bn=sorted[0]||{nm:'—',n:0,ic:'📊',sub:''};
+    // ช่างหน้าเครียดที่คอขวด
+    var bnEng='<svg class="bn-eng m-busy" width="60" height="64" viewBox="0 0 60 64">'
+      +'<ellipse cx="30" cy="60" rx="15" ry="3" fill="rgba(0,0,0,.25)"/>'
+      +'<rect x="20" y="32" width="20" height="22" rx="7" fill="#dc2626"/>'
+      +'<circle cx="30" cy="22" r="13" fill="#ffe0b8"/>'
+      +'<path d="M19 18 Q30 7 41 18 L41 21 Q30 14 19 21Z" fill="#b91c1c"/><rect x="18" y="18" width="24" height="3" rx="1.5" fill="#7f1d1d"/>'
+      +'<ellipse cx="40" cy="20" rx="2.5" ry="4.5" fill="#7dd3fc"/>'
+      +'<g class="m-eye"><circle cx="25" cy="22" r="2" fill="#1a1228"/><circle cx="35" cy="22" r="2" fill="#1a1228"/></g>'
+      +'<path d="M25 29 Q30 26 35 29" stroke="#1a1228" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
+      +'</svg>';
+    var bnHtml='<div class="hb-bn-hero">'+bnEng
+      +'<div class="bn-tx"><div class="bn-t1">🚨 คอขวดตอนนี้ · งานกองมากสุด</div>'
+      +'<div class="bn-t2">'+bn.ic+' '+bn.nm+'</div>'
+      +'<div class="bn-t3">'+bn.sub+' · '+Math.round((bn.n/totalPending)*100)+'% ของงานค้าง</div></div>'
+      +'<div class="bn-num"><div class="v">'+bn.n+'</div><div class="l">งาน</div></div></div>';
+    // bars 4 กลุ่ม + detail ย่อย
+    sorted.forEach(function(g){
+      var pct=Math.round((g.n/maxN)*100);
+      var shareP=Math.round((g.n/totalPending)*100);
+      // detail ย่อย เรียงมาก→น้อย
+      var detArr=Object.keys(g.det).map(function(k){return {d:k,n:g.det[k]};}).sort(function(a,b){return b.n-a.n;});
+      var detTxt=detArr.map(function(x){return x.d+' '+x.n;}).join(' · ');
+      bnHtml+='<div class="hb-bnbar"><div class="bnb-top">'
+        +'<span class="bnb-nm">'+g.ic+' '+g.nm+'</span>'
+        +'<span class="bnb-val" style="color:'+g.col+'">'+g.n+' <span class="bnb-pct">('+shareP+'%)</span></span></div>'
+        +'<div class="bnb-track"><div class="bnb-fill" style="width:'+pct+'%;background:'+g.col+'"></div></div>'
+        +(detTxt?'<div class="bnb-det">'+detTxt+'</div>':'')+'</div>';
+    });
+    var bnEl=document.getElementById('hb-bottleneck'); if(bnEl) bnEl.innerHTML=bnHtml;
+
+    // ===== ความเคลื่อนไหววันนี้ =====
+    var inProgress=sc.n+sp.n; // กำลังดำเนินการ = Pending SC + Pending SP
+    var actHtml=
+      '<div class="hb-aitem"><div class="hb-aic bill">🏁</div><div class="hb-ainfo"><div class="a1">Billed วันนี้</div><div class="a2">ออกบิลแล้ว</div></div><div class="hb-an bill">'+billedToday+'</div></div>'
+      +'<div class="hb-aitem"><div class="hb-aic done">📋</div><div class="hb-ainfo"><div class="a1">Billed เดือนนี้</div><div class="a2">รวมทั้งเดือน</div></div><div class="hb-an done">'+billedMonth+'</div></div>'
+      +'<div class="hb-aitem"><div class="hb-aic new">⚙️</div><div class="hb-ainfo"><div class="a1">กำลังดำเนินการ</div><div class="a2">Pending SC + SP</div></div><div class="hb-an new">'+inProgress+'</div></div>'
+      +'<div class="hb-aitem"><div class="hb-aic done">🧾</div><div class="hb-ainfo"><div class="a1">รอออกบิล</div><div class="a2">Pending Bill</div></div><div class="hb-an done">'+bill.n+'</div></div>';
+    var actEl=document.getElementById('hb-activity'); if(actEl) actEl.innerHTML=actHtml;
+  };
+
+  // นาฬิกา + วันที่
+  function _hbClock(){
+    var d=new Date();
+    var c=document.getElementById('hb-clock'); if(c) c.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    var MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    var WD=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+    var dt=document.getElementById('hb-date'); if(dt) dt.textContent=WD[d.getDay()]+' '+d.getDate()+' '+MO[d.getMonth()]+' '+(d.getFullYear()+543);
+  }
+  _hbClock(); setInterval(_hbClock,10000);
+
+  // ── popup รายวัน (Daily Sales) ──
+  // [C15] popup รายบิลของวันที่กด (จากแท่งกราฟ 7 วัน)
+  window.hbShowDayBills=function(key){
+    try{
+      var dm=window._hbDaily||{}, o=dm[key];
+      if(!o || !o.rows || !o.rows.length){ return; }
+      var arr=o.rows.slice().sort(function(a,b){ return (Number(b.px)||0)-(Number(a.px)||0); });
+      var WD=['อา','จ','อ','พ','พฤ','ศ','ส'], MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      var dt=new Date(key);
+      var lbl=(isNaN(dt)?key:(WD[dt.getDay()]+'. '+dt.getDate()+' '+MO[dt.getMonth()]));
+      var h='<table class="hb-mtbl"><thead><tr>'
+        +'<th>เลขบิล</th><th>ลูกค้า</th><th>Brand</th><th>Model</th><th>QN</th><th class="r">มูลค่า</th>'
+        +'</tr></thead><tbody>';
+      var tot=0;
+      arr.forEach(function(r){
+        var px=Number(r.px)||0; tot+=px;
+        var bm=(typeof resolveBM==='function')?resolveBM(r):{br:r.br||'',ml:r.ml||''};
+        h+='<tr>'
+         +'<td style="font-family:var(--mono),monospace;font-size:11px;color:#7dd3fc">'+(r.bn||'—')+'</td>'
+         +'<td class="cu">'+(r.cu||'—')+'</td>'
+         +'<td style="font-size:11px;color:var(--hb-mu)">'+((bm.br||r.br)||'—')+'</td>'
+         +'<td style="font-size:11px;color:var(--hb-mu)">'+((bm.ml||r.ml)||'—')+'</td>'
+         +'<td style="font-family:var(--mono),monospace;font-size:11px;color:#a78bfa">'+(r.qn||'—')+'</td>'
+         +'<td class="r amt">'+_hbMoney(px)+'</td></tr>';
+      });
+      h+='</tbody></table>';
+      document.getElementById('hb-modal-title').textContent='🧾 บิลวันที่ '+lbl;
+      document.getElementById('hb-modal-sum').textContent=arr.length+' งาน · รวม '+_hbMoney(tot)+'  ·  📋 กดที่เลขบิล / QN เพื่อคัดลอก';
+      document.getElementById('hb-modal-body').innerHTML=h
+        +'<div class="hb-modal-foot"><span>รวม '+arr.length+' งาน</span><span class="ft-amt">'+_hbMoney(tot)+'</span></div>';
+      document.getElementById('hb-modal').style.display='flex';
+    }catch(e){ try{ console.warn('[C15] hbShowDayBills:', e); }catch(_){} }
+  };
+
+  window.hbShowDaily=function(){
+    var dm=window._hbDaily||{};
+    var days=Object.keys(dm).sort(); // วันที่ 1 → ปัจจุบัน
+    var total=0, cnt=0;
+    var html='';
+    if(!days.length){ html='<div class="hb-modal-empty">เดือนนี้ยังไม่มีการออกบิล</div>'; }
+    else{
+      html='<table class="hb-mtbl"><thead><tr><th>วันที่</th><th class="r">จำนวนงาน</th><th class="r">ยอดบิล</th></tr></thead><tbody>';
+      var WD=['อา','จ','อ','พ','พฤ','ศ','ส'];
+      days.forEach(function(d){
+        var o=dm[d]; total+=o.amt; cnt+=o.n;
+        var dt=new Date(d); var lbl=dt.getDate()+'/'+(dt.getMonth()+1)+' ('+WD[dt.getDay()]+')';
+        html+='<tr><td class="cu">'+lbl+'</td><td class="r" style="color:var(--hb-mu)">'+o.n+'</td><td class="r amt">'+_hbMoney(o.amt)+'</td></tr>';
+      });
+      html+='</tbody></table>';
+    }
+    document.getElementById('hb-modal-title').textContent='💰 ยอดขายรายวัน · เดือนนี้';
+    document.getElementById('hb-modal-sum').textContent=days.length+' วันที่มีบิล · '+cnt+' งาน · รวม '+_hbMoney(total);
+    document.getElementById('hb-modal-body').innerHTML=html
+      +(days.length?'<div class="hb-modal-foot"><span>รวม '+cnt+' งาน</span><span class="ft-amt">'+_hbMoney(total)+'</span></div>':'');
+    document.getElementById('hb-modal').style.display='flex';
+  };
+
+  // ── icon ความรุนแรงเคส (ตาม type) ──
+  function _hbProbIcon(r, type){
+    // SC: 🔴 Carry(PM Pending)≥500k · ⚠️ เลยเดือน (overdue)
+    if(type==='sc'){
+      if(r.st==='SC Carry (Pending)' && (Number(r.px)||0)>=500000) return {ic:'🔴',sev:2,tip:'Carry เงินสูง ≥500K'};
+      if(r.overdue===1||r.overdue==='1') return {ic:'⚠️',sev:1,tip:'เลยเดือนที่ต้องเข้า'};
+      return {ic:'',sev:0,tip:''};
+    }
+    // SP: 🔴 เกินกำหนดส่ง · ⏳ ไม่มี ETA
+    if(type==='sp'){
+      if(r._eta_late) return {ic:'🔴',sev:2,tip:'ETA เกินกำหนดส่ง'};
+      if(r._eta_soon) return {ic:'🟠',sev:2,tip:'ใกล้ครบกำหนดส่ง (เหลือ <=7 วัน)'};
+      if(r._eta_missing) return {ic:'⏳',sev:1,tip:'ไม่มีกำหนด ETA'};
+      return {ic:'',sev:0,tip:''};
+    }
+    // อื่นๆ (Bill): overdue/eta
+    if(r.overdue===1||r.overdue==='1') return {ic:'🔴',sev:2,tip:'เลยกำหนด'};
+    if(r._eta_late) return {ic:'⚠️',sev:2,tip:'ETA มาหลังกำหนดส่ง'};
+    if(r._eta_missing) return {ic:'⏳',sev:1,tip:'ไม่มีกำหนด ETA'};
+    return {ic:'',sev:0,tip:''};
+  }
+  function _esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+  // ── Pending config (ติ๊กเองใน Config → Pending) ──
+  function _hbPenCfg(){
+    var c={chips:true, scNoBill:false, scSt:{'SC Ordered':true,'SC Carry (Pending)':true,'SC Offer':true,'Offer':true}};
+    try{ var j=JSON.parse(localStorage.getItem('_bjhPendingCfg')||'{}');
+      if(typeof j.chips==='boolean') c.chips=j.chips;
+      if(typeof j.scNoBill==='boolean') c.scNoBill=j.scNoBill;
+      if(j.scSt && typeof j.scSt==='object'){
+        ['SC Ordered','SC Carry (Pending)','SC Offer','Offer'].forEach(function(k){
+          if(typeof j.scSt[k]==='boolean') c.scSt[k]=j.scSt[k];
+        });
+      }
+    }catch(e){}
+    return c;
+  }
+  // ── เช็คว่า status SC นี้ถูกเปิดให้นับไหม ──
+  function _hbScStOn(st){ var c=_hbPenCfg().scSt||{}; return c[st]!==false; }
+  // ── ตัดรายการ SC ที่ "ยังไม่มีกำหนดงวดบิล" (logic เดียวกับ periodLabel) ──
+  function _hbNoBillPeriod(r){
+    if(!(r && (r.st==='Offer'||r.st==='SC Offer') && !r._isLow)) return false;
+    try{
+      if(!window._scBillQnSet || window._scBillQnSetSrc!==window._jsupSC){
+        var _set={}; var _arr=window._jsupSC||[];
+        for(var _i=0;_i<_arr.length;_i++){
+          var _q=_arr[_i]&&_arr[_i].QH_DOC_NUMBER?String(_arr[_i].QH_DOC_NUMBER).trim():'';
+          if(_q) _set[_q]=1;
+        }
+        window._scBillQnSet=_set; window._scBillQnSetSrc=window._jsupSC;
+      }
+      var _qn=String(r.qn||'').trim();
+      return !!(_qn && !window._scBillQnSet[_qn]);
+    }catch(e){ return false; }
+  }
+  // ── popup รายการ Pending ──
+  function _hbBrk(arr, field){
+    return '';  // [v149] ปิด breakdown chips ทุก popup ตามคำขอ
+    if(!_hbPenCfg().chips) return '';
+    field=field||'st';
+    var m={}, order=[];
+    (arr||[]).forEach(function(r){
+      var k=String((r&&r[field])||'-').trim()||'-';
+      if(m[k]===undefined){ m[k]=0; order.push(k); }
+      m[k]++;
+    });
+    if(!order.length) return '';
+    order.sort(function(a,b){ return m[b]-m[a]; });
+    return '<div class="hb-brk">'+order.map(function(k){return '<span class="hb-brk-chip">'+_esc(k)+' <b>\u00d7'+m[k]+'</b></span>';}).join('')+'</div>';
+  }
+  // [v155] วันส่งมอบเต็ม (DD MO YYYY) จาก r.delivery — เฉพาะ SP status เดียวกับตารางหลัก (v152); อื่นใช้ periodLabel
+  function _hbDlvLabel(r){
+    if(!(r && r.t==='SP' && (r.st==='SP Ordered (Pending)'||r.st==='SP Ordered (Ordering)'||r.st==='Backlog'||r.st==='Backlog (Confirmed)'||r.st==='Billed'||r.st==='Actual FAD'||r.st==='Actual FAD (CN)'||r.st==='Actual FAD (Not Found)') && r.delivery)) return null;
+    var _s=String(r.delivery).trim(); var _dd=null;
+    try{
+      if(/^\d{4}-\d{1,2}-\d{1,2}/.test(_s)){ _dd=new Date(_s); }
+      else if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(_s)){ var _p=_s.split(/[\/\-\s]/); var _y=parseInt(_p[2],10); if(_y>2400)_y-=543; _dd=new Date(_y,parseInt(_p[1],10)-1,parseInt(_p[0],10)); }
+      else { _dd=new Date(_s); }
+    }catch(e){ _dd=null; }
+    if(!_dd || isNaN(_dd.getTime())) return null;
+    return _dd.getDate()+' '+MO[_dd.getMonth()]+' '+_dd.getFullYear();
+  }
+  // [C9] กด chip สถานะ SR -> popup เฉพาะกลุ่มนั้น
+  window.hbShowSvcSr=function(tm,bk){
+    try{
+      var L=(window._hbSvcList||{})[tm]||{};
+      var SR=L.sr||{};
+      // [C11] 'open' = ยังไม่จบ (wip + deleg + none)
+      var arr = ((bk==='open')
+        ? (SR.wip||[]).concat(SR.deleg||[]).concat(SR.none||[])
+        : ((SR[bk]||[]).slice()))
+        .map(function(r){return Object.assign({},r,{_k:'sc'});});
+      window._hbPenList=window._hbPenList||{}; window._hbPenList.scByTeam=window._hbPenList.scByTeam||{};
+      window._hbPenList.scByTeam[tm]=arr;
+      var TT={open:'🔥 ยังไม่จบ', done:'✅ จบแล้ว', cancel:'❌ ยกเลิก'};
+      var M=(window._SR_META||{})[bk];
+      window._hbSvcSrTitle = TT[bk] || (M ? (M.i+' '+M.l) : bk);
+      if(typeof window.hbShowPending==='function') window.hbShowPending('svc'+String(tm).slice(-1));
+      window._hbSvcSrTitle=null;
+    }catch(e){}
+  };
+  // [C4] กดการ์ดทีม -> ใช้ popup เดิม แต่ป้อนรายการใหม่ (SC ยังไม่จบ + SP Backlog ยังไม่จบ)
+  window.hbShowSvc=function(tm){
+    try{
+      var L=(window._hbSvcList||{})[tm]||{sc:[],sp:[]};
+      window._hbPenList=window._hbPenList||{}; window._hbPenList.scByTeam=window._hbPenList.scByTeam||{};
+      window._hbPenList.scByTeam[tm]=(L.sc||[]).map(function(r){return Object.assign({},r,{_k:'sc'});}).concat((L.sp||[]).map(function(r){return Object.assign({},r,{_k:'sp'});}));
+      if(typeof window.hbShowPending==='function') window.hbShowPending('svc'+String(tm).slice(-1));
+    }catch(e){}
+  };
+  window.hbShowPending=function(type){
+    var L=window._hbPenList||{}; var title='', html='', sumLine='', footAmt=0, cnt=0;
+    var probHi=0, probMid=0;
+    if(type==='svc1'||type==='svc2'||type==='svc3'){
+      var _tn=type.slice(3), _tmKey='Service '+_tn;
+      var _meta={'1':'🩻 Service 1 (Imaging)','2':'🩺 Service 2 (Non-Imaging)','3':'💻 Service 3 (Medical IT)'};
+      title=(_meta[_tn]||_tmKey)+' — '+(window._hbSvcSrTitle || 'งานที่ยังไม่จบเดือนนี้ (SC + SP Backlog)');
+      var arr=((window._hbPenList.scByTeam||{})[_tmKey]||[]).slice();
+      arr.sort(function(a,b){ return (Number(b.px)||0)-(Number(a.px)||0); });
+      cnt=arr.length; var _doneN=0;
+      if(!cnt){ html='<div class="hb-modal-empty">ไม่มีงานค้างเดือนนี้ ✅</div>'; }
+      else{
+        html=_hbBrk(arr,'st')+'<table class="hb-mtbl"><thead><tr><th>ลูกค้า</th><th>ยี่ห้อ</th><th>รุ่น</th><th>สถานะ</th><th class="r">มูลค่า</th></tr></thead><tbody>';
+        arr.forEach(function(r){
+          var px=Number(r.px)||0; footAmt+=px;
+          var done=_isBilled(r); if(done) _doneN++;
+          var stTxt=done?'Billed':(r.st||'-');
+          html+='<tr><td class="cu">'+_esc(r.cu||'-')+'</td><td class="st">'+_esc(r.br||'-')+'</td><td class="st">'+_esc(r.ml||'-')+'</td><td class="st">'+_esc(stTxt)+'</td><td class="r amt">'+_hbMoney(px)+'</td></tr>';
+        });
+        html+='</tbody></table>';
+      }
+      var _scN=0,_spN=0; arr.forEach(function(r){ (r&&r._k==='sp')?_spN++:_scN++; });
+      sumLine=cnt+' งาน · SC '+_scN+' · SP '+_spN+' · มูลค่ารวม '+_hbMoney(footAmt);
+    } else if(type==='quo'){
+      title='🧾 Pending Quotation — ใบเสนอราคา';
+      var arr=(L.quo||[]).slice();
+      arr.sort(function(a,b){ return (Number(b.px)||0)-(Number(a.px)||0); });
+      cnt=arr.length;
+      if(!cnt){ html='<div class="hb-modal-empty">ไม่มีใบเสนอราคาค้าง</div>'; }
+      else{
+        html='<table class="hb-mtbl"><thead><tr><th>ใบเสนอราคา (QN)</th><th>ลูกค้า</th><th>Sales</th><th>สถานะ</th><th class="r">มูลค่า</th></tr></thead><tbody>';
+        arr.forEach(function(q){
+          var px=Number(q.px)||0; footAmt+=px;
+          html+='<tr><td class="qn">'+_esc(q.qn||'-')+'</td>'
+            +'<td class="cu">'+_esc(q.cu||'-')+'</td>'
+            +'<td class="st">'+_esc(q.sa||'-')+'</td>'
+            +'<td class="st">'+_esc(q.status||'-')+'</td>'
+            +'<td class="r amt">'+_hbMoney(px)+'</td></tr>';
+        });
+        html+='</tbody></table>';
+      }
+      sumLine=cnt+' ใบ · มูลค่ารวม '+_hbMoney(footAmt);
+    } else if(type==='contract'){
+      title='📋 Pending Contract — รายสัญญา';
+      var arr=Object.keys(L.contract||{}).map(function(k){return L.contract[k];});
+      // เรียง: วิกฤต(sev2)→เตือน(sev1)→ปกติ → มูลค่ามาก→น้อย
+      var cCrit=0, cWarn=0;
+      arr.forEach(function(c){ if(c.sev===2)cCrit++; else if(c.sev===1)cWarn++; });
+      arr.sort(function(a,b){
+        if((b.sev||0)!==(a.sev||0)) return (b.sev||0)-(a.sev||0);
+        return b.full-a.full;
+      });
+      cnt=arr.length;
+      if(!cnt){ html='<div class="hb-modal-empty">ไม่มีสัญญาค้าง</div>'; }
+      else{
+        html=_hbBrk(arr,'cst')+'<table class="hb-mtbl"><thead><tr><th></th><th>สัญญา (QN)</th><th>ลูกค้า</th><th>Sales</th><th>งวด</th><th class="r">มูลค่าสัญญา</th><th>วันเริ่ม</th><th>วันสิ้นสุด</th><th>สถานะล่าสุด</th></tr></thead><tbody>';
+        function _fmtD(s){ if(!s) return '-'; var d=new Date(s); if(isNaN(d)) return '-'; return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getFullYear()).slice(2); }
+        arr.forEach(function(c){
+          footAmt+=c.full;
+          var ic=c.sev===2?'🔴':c.sev===1?'⚠️':'';
+          var cls=c.sev===2?'prob-hi':c.sev===1?'prob-mid':'';
+          var sa=(c.r&&c.r.sa)?c.r.sa:'-';
+          html+='<tr class="'+cls+'"><td class="ic">'+ic+'</td><td class="qn">'+_esc(c.qn)+'</td><td class="cu">'+_esc(c.cu)+'</td>'
+            +'<td class="st">'+_esc(sa)+'</td>'
+            +'<td style="color:var(--hb-mu)">'+c.ngvd+'</td>'
+            +'<td class="r amt">'+_hbMoney(c.full)+'</td>'
+            +'<td class="st">'+_fmtD(c.sd)+'</td>'
+            +'<td class="st">'+_fmtD(c.ed)+'</td>'
+            +'<td class="st">'+_esc(c.cst||'-')+'</td></tr>';
+        });
+        html+='</tbody></table>';
+      }
+      var cParts=[]; if(cCrit)cParts.push('🔴 '+cCrit+' วิกฤต'); if(cWarn)cParts.push('⚠️ '+cWarn+' เตือน');
+      sumLine=cnt+' สัญญา'+(cParts.length?' · '+cParts.join(' · '):'')+' · มูลค่ารวม '+_hbMoney(footAmt);
+    } else {
+      var map={sc:'🔧 Pending SC',sp:'📦 Pending SP',bill:'🧾 Pending Bill'};
+      title=map[type]||'รายการ';
+      var arr=(L[type]||[]).slice();
+      // เรียง: เคสปัญหา (sev สูง) ขึ้นบน → แล้วเงินมาก→น้อย
+      arr.forEach(function(r){var p=_hbProbIcon(r,type); if(p.sev===2)probHi++; else if(p.sev===1)probMid++;});
+      arr.sort(function(a,b){
+        var pa=_hbProbIcon(a,type).sev, pb=_hbProbIcon(b,type).sev;
+        if(pb!==pa) return pb-pa;
+        return (Number(b.px)||0)-(Number(a.px)||0);
+      });
+      cnt=arr.length;
+      if(!cnt){ html='<div class="hb-modal-empty">ไม่มีรายการ</div>'; }
+      else{
+        var _pl=(typeof window.periodLabel==='function')?window.periodLabel:null;
+        html=_hbBrk(arr,'st')+'<table class="hb-mtbl"><thead><tr><th></th><th>ลูกค้า</th><th>QN</th><th>สถานะ</th><th>รอบบิล / ส่งมอบ</th><th class="r">มูลค่า</th></tr></thead><tbody>';
+        arr.forEach(function(r){
+          var p=_hbProbIcon(r,type); var px=Number(r.px)||0; footAmt+=px;
+          var cls=p.sev===2?'prob-hi':p.sev===1?'prob-mid':'';
+          var plTxt=''; try{ plTxt=_hbDlvLabel(r) || (_pl?_pl(r):''); }catch(e){}  // [v155] SP -> วันส่งมอบเต็ม
+          html+='<tr class="'+cls+'"><td class="ic" title="'+_esc(p.tip)+'">'+p.ic+'</td>'
+            +'<td class="cu">'+_esc(r.cu||'-')+'</td>'
+            +'<td class="qn">'+_esc(r.qn||'-')+'</td>'
+            +'<td class="st">'+_esc(r.st||'-')+(r.ip?' · '+_esc(r.ip):'')+'</td>'
+            +'<td class="st" style="font-size:11px">'+(plTxt||'-')+'</td>'
+            +'<td class="r amt">'+_hbMoney(px)+'</td></tr>';
+        });
+        html+='</tbody></table>';
+      }
+      // สรุปหัว — ตาม type
+      var probTxt=[];
+      if(type==='sc'){ if(probHi)probTxt.push('🔴 '+probHi+' Carry≥500K'); if(probMid)probTxt.push('⚠️ '+probMid+' เลยเดือน'); }
+      else if(type==='sp'){ if(probHi)probTxt.push('🔴 '+probHi+' เกิน/ใกล้กำหนด'); if(probMid)probTxt.push('⏳ '+probMid+' ไม่มี ETA'); }
+      else { if(probHi)probTxt.push('🔴 '+probHi+' เลยกำหนด'); }
+      sumLine=cnt+' รายการ'+(probTxt.length?' · '+probTxt.join(' · '):'')+' · รวม '+_hbMoney(footAmt);
+    }
+    document.getElementById('hb-modal-title').textContent=title;
+    document.getElementById('hb-modal-sum').textContent=sumLine;
+    document.getElementById('hb-modal-body').innerHTML=html
+      +(cnt?'<div class="hb-modal-foot"><span>รวม '+cnt+' รายการ</span><span class="ft-amt">'+_hbMoney(footAmt)+'</span></div>':'');
+    document.getElementById('hb-modal').style.display='flex';
+    try{ _hbBindSort(); }catch(_e){}  // [v150] เรียง popup ทุกตาราง
+  };
+
+  // [v150] เรียงตาราง popup — คลิกหัวคอลัมน์ toggle asc/desc (numeric/เงิน/วันที่/ข้อความไทย)
+  function _hbSortVal(td){
+    var t=(td? (td.textContent||'') : '').trim();
+    if(t==='' || t==='-') return {n:null,s:''};
+    var cl=t.replace(/[฿,\s]/g,'');
+    if(/^-?\d+(\.\d+)?$/.test(cl)) return {n:parseFloat(cl), s:t};  // ตัวเลข/เงิน
+    var dm=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);            // วันที่ DD/MM/YYYY
+    if(dm){ var yy=+dm[3]; if(yy<100) yy+=2000; return {n:yy*10000+(+dm[2])*100+(+dm[1]), s:t}; }
+    return {n:null, s:t};
+  }
+  function _hbBindSort(){
+    var body=document.getElementById('hb-modal-body'); if(!body) return;
+    var tbl=body.querySelector('table.hb-mtbl'); if(!tbl) return;
+    var ths=tbl.querySelectorAll('thead th');
+    var tb=tbl.querySelector('tbody'); if(!tb) return;
+    ths.forEach(function(th,ci){
+      if(!th.textContent.trim()) return;  // ข้ามคอลัมน์ไอคอน (หัวว่าง)
+      th.style.cursor='pointer'; th.style.userSelect='none';
+      th.onclick=function(){
+        var asc = th.getAttribute('data-sd')!=='asc';
+        ths.forEach(function(x){ x.removeAttribute('data-sd'); x.innerHTML=x.innerHTML.replace(/\s*[▲▼]$/,''); });
+        th.setAttribute('data-sd', asc?'asc':'desc');
+        th.innerHTML=th.innerHTML.replace(/\s*[▲▼]$/,'')+(asc?' ▲':' ▼');
+        var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));
+        rows.sort(function(a,b){
+          var va=_hbSortVal(a.children[ci]), vb=_hbSortVal(b.children[ci]);
+          var r;
+          if(va.n!==null && vb.n!==null) r=va.n-vb.n;
+          else if(va.n!==null) r=-1;
+          else if(vb.n!==null) r=1;
+          else r=va.s.localeCompare(vb.s,'th');
+          return asc? r : -r;
+        });
+        rows.forEach(function(tr){ tb.appendChild(tr); });
+      };
+    });
+  }
+  window.hbCloseModal=function(){ var m=document.getElementById('hb-modal'); if(m) m.style.display='none'; };
+
+  window.homeInit=function(passedD){ _hbClock(); try{ homeRender(passedD); }catch(e){ console.error('homeRender error:',e); } };
+})();
+</script>

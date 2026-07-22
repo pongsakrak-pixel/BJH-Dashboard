@@ -1,0 +1,1314 @@
+<!-- ═══════════════════════════════════════════════════════════
+     Mobile.html  —  [V506] Mobile shell (standalone view)
+     • แยก DOM จาก desktop ทั้งหมด — overlay เต็มจอ (z-index สูง)
+     • 9 เมนู grid 3x3 · BJH Contact ใช้งานได้จริง (config: mobile_links)
+     • role: sales เห็นของตัวเอง / manager+admin เห็นทั้งหมด
+     • เมนูที่ยังไม่มีแหล่งข้อมูล -> หน้า "กำลังพัฒนา"
+     ═══════════════════════════════════════════════════════════ -->
+<style>
+  #mb-root{
+    --mb-bg:#0b1220; --mb-sur:#131c2e; --mb-sur2:#1b2740; --mb-bd:#243350;
+    --mb-tx:#e8eefc; --mb-mu:#8ba0c4;
+    --mb-pri:#38bdf8; --mb-urg:#f43f5e; --mb-warn:#fbbf24; --mb-ok:#34d399; --mb-vio:#a78bfa;
+    position:fixed; inset:0; z-index:2147483000;   /* [V509] ต้องสูงกว่า #boot-loading (2147483647-ish) ไม่งั้นโดนบัง = จอดำ */
+    background:var(--mb-bg); color:var(--mb-tx);
+    font-family:'Noto Sans Thai','Sarabun',-apple-system,BlinkMacSystemFont,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  #mb-root *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+  /* ── header ── */
+  #mb-root .mb-hd{flex-shrink:0;padding:16px 18px 13px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  #mb-root .mb-hi{font-size:13px;color:var(--mb-mu)}
+  #mb-root .mb-nm{font-size:18px;font-weight:800;letter-spacing:-.3px;margin-top:1px}
+  #mb-root .mb-av{width:34px;height:34px;border-radius:11px;flex-shrink:0;
+    background:linear-gradient(135deg,#38bdf8,#a78bfa);display:flex;align-items:center;
+    justify-content:center;font-size:14px;font-weight:800;color:#07101f;cursor:pointer}
+  #mb-root .mb-rolechip{font-size:12.5px;font-weight:700;padding:2px 7px;border-radius:6px;
+    background:rgba(56,189,248,.15);color:var(--mb-pri);margin-left:6px;vertical-align:middle}
+
+  /* ── body scroll ── */
+  #mb-root .mb-bd{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 14px 16px}
+  #mb-root .mb-bd::-webkit-scrollbar{display:none}
+
+  /* ── manager filter ── */
+  #mb-root .mb-mgr{display:flex;gap:7px;align-items:center;margin-bottom:12px}
+  #mb-root .mb-mgr select{flex:1;background:var(--mb-sur);color:var(--mb-tx);
+    border:1px solid var(--mb-bd);border-radius:10px;padding:8px 10px;font-size:13.5px;
+    font-family:inherit;outline:none}
+
+  /* ── hero (งานด่วน) ── */
+  #mb-root .mb-hero{background:linear-gradient(160deg,#2a1220,#1a1526);border:1px solid #4b2036;
+    border-radius:18px;padding:14px;margin-bottom:12px;position:relative;overflow:hidden}
+  #mb-root .mb-hero::after{content:"";position:absolute;right:-34px;top:-34px;width:110px;height:110px;
+    background:radial-gradient(circle,rgba(244,63,94,.22),transparent 70%);pointer-events:none}
+  #mb-root .mb-hlbl{display:flex;align-items:center;justify-content:space-between;position:relative}
+  #mb-root .mb-hlbl .L{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;
+    color:var(--mb-urg);letter-spacing:.8px}
+  #mb-root .mb-hlbl .T{font-size:12.5px;color:#c08a9c}
+  #mb-root .mb-dot{width:6px;height:6px;border-radius:50%;background:var(--mb-urg);animation:mbp 1.8s infinite}
+  @keyframes mbp{0%{box-shadow:0 0 0 0 rgba(244,63,94,.55)}70%{box-shadow:0 0 0 9px rgba(244,63,94,0)}100%{box-shadow:0 0 0 0 rgba(244,63,94,0)}}
+  #mb-root .mb-cust{font-size:17px;font-weight:800;margin:7px 0 1px;line-height:1.25;position:relative}
+  #mb-root .mb-sub{font-size:13px;color:#c9b6bf;position:relative}
+  #mb-root .mb-what{background:rgba(0,0,0,.28);border-left:2.5px solid var(--mb-urg);
+    border-radius:0 9px 9px 0;padding:8px 10px;margin-top:9px;position:relative}
+  #mb-root .mb-what .q{font-size:12.5px;color:#c08a9c;font-weight:700;letter-spacing:.5px;margin-bottom:3px}
+  #mb-root .mb-what .a{font-size:13.5px;line-height:1.5;color:#f0dde3}
+  #mb-root .mb-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;position:relative}
+  #mb-root .mb-chip{font-size:12.5px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.09);color:#dcc8d0}
+  #mb-root .mb-chip.hot{background:rgba(244,63,94,.2);color:#ffb3c1;font-weight:700}
+  #mb-root .mb-acts{display:flex;gap:7px;margin-top:11px;position:relative}
+  #mb-root .mb-btn{border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;
+    font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+  #mb-root .mb-btn.call{flex:1.3;background:var(--mb-urg);color:#fff}
+  #mb-root .mb-btn.gh{flex:1;background:rgba(255,255,255,.09);color:var(--mb-tx)}
+
+  /* ── empty hero ── */
+  #mb-root .mb-heroE{background:var(--mb-sur);border:1px solid var(--mb-bd);border-radius:18px;
+    padding:20px 16px;margin-bottom:12px;text-align:center}
+  #mb-root .mb-heroE .i{font-size:26px;opacity:.5}
+  #mb-root .mb-heroE .t{font-size:14px;font-weight:700;margin-top:7px}
+  #mb-root .mb-heroE .s{font-size:13px;color:var(--mb-mu);margin-top:3px;line-height:1.5}
+
+  /* ── section title ── */
+  #mb-root .mb-st{display:flex;align-items:center;justify-content:space-between;margin:0 2px 9px}
+  #mb-root .mb-st h3{margin:0;font-size:13.5px;font-weight:700;color:var(--mb-mu);letter-spacing:.5px}
+
+  /* ── 9 menu grid ── */
+  /*  [V554] 3 -> 2 คอลัมน์ · ปุ่มใหญ่เต็มความกว้าง (เดิมเล็กมากบนมือถือ) */
+  #mb-root .mb-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:16px}
+  /*  [V554] ปุ่มเป็นจัตุรัส ยืดเต็มความกว้างที่มี — เนื้อหาจัดกลางแนวตั้ง */
+  #mb-root .mb-tile{background:var(--mb-sur);border:1px solid var(--mb-bd);border-radius:22px;
+    padding:0;text-align:center;position:relative;cursor:pointer;transition:.12s;
+    aspect-ratio:1/.92;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+  #mb-root .mb-tile:active{transform:scale(.96);background:var(--mb-sur2)}
+  #mb-root .mb-tile.soon{opacity:.5}
+  #mb-root .mb-tile .ic{width:78px;height:78px;border-radius:24px;margin:0;
+    display:flex;align-items:center;justify-content:center;font-size:40px}
+  #mb-root .mb-tile .tt{font-size:18px;font-weight:700;line-height:1.3}
+  #mb-root .mb-tile .sb{font-size:12.5px;color:var(--mb-mu);margin-top:-4px}
+
+  /*  [V554] responsive — เขียนใหม่ให้เข้ากับ tile จัตุรัส (ไม่ใช้ padding แล้ว ใช้ aspect-ratio)
+      วางไว้ 'หลัง' base rule เพื่อให้ override ได้จริง */
+  /* จอเล็กมาก (iPhone SE ~320px) */
+  @media (max-width:359px){
+    #mb-root .mb-grid{gap:10px}
+    #mb-root .mb-tile{aspect-ratio:1/.95;gap:7px;border-radius:18px}
+    #mb-root .mb-tile .ic{width:62px;height:62px;border-radius:19px;font-size:32px}
+    #mb-root .mb-tile .tt{font-size:15px}
+    #mb-root .mb-tile .sb{font-size:11px}
+    #mb-root .mb-nm{font-size:17px}
+    #mb-root .mb-wrap{padding:11px}
+  }
+  /* จอกลาง (แท็บเล็ตแนวตั้ง / มือถือใหญ่) — 3 คอลัมน์ พื้นที่พอ */
+  @media (min-width:600px) and (max-width:899px){
+    #mb-root .mb-grid{grid-template-columns:repeat(3,1fr);gap:15px}
+    #mb-root .mb-tile .ic{width:74px;height:74px;font-size:38px}
+    #mb-root .mb-tile .tt{font-size:17px}
+  }
+  /* จอกว้าง / แท็บเล็ตใหญ่ — จำกัดความกว้าง จัดกลาง */
+  @media (min-width:900px){
+    #mb-root .mb-wrap{max-width:720px;margin-left:auto;margin-right:auto}
+    #mb-root .mb-grid{grid-template-columns:repeat(3,1fr);gap:16px}
+    #mb-root .mb-tile .ic{width:76px;height:76px;font-size:38px}
+    #mb-root .mb-tile .tt{font-size:17px}
+  }
+  /* แนวนอน จอเตี้ย — เตี้ยลง ไม่ให้ล้นจอ */
+  @media (orientation:landscape) and (max-height:500px){
+    #mb-root .mb-grid{grid-template-columns:repeat(4,1fr);gap:10px}
+    #mb-root .mb-tile{aspect-ratio:1/.62;gap:5px;border-radius:16px}
+    #mb-root .mb-tile .ic{width:46px;height:46px;border-radius:14px;font-size:24px}
+    #mb-root .mb-tile .tt{font-size:13px}
+    #mb-root .mb-tile .sb{font-size:10px}
+    #mb-root .mb-bdg{top:6px;right:6px;min-width:20px;height:20px;font-size:11px}
+  }
+  @media (orientation:landscape) and (min-width:820px) and (max-height:500px){
+    #mb-root .mb-grid{grid-template-columns:repeat(5,1fr)}
+  }
+  #mb-root .mb-bdg{position:absolute;top:11px;right:11px;min-width:28px;height:28px;border-radius:14px;
+    background:var(--mb-urg);color:#fff;font-size:12.5px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;padding:0 5px}
+  #mb-root .mb-bdg.w{background:var(--mb-warn);color:#3a2a00}
+  #mb-root .mb-bdg.q{background:var(--mb-sur2);color:var(--mb-mu)}
+  #mb-root .mb-bdg.g{background:var(--mb-ok);color:#04291d}
+
+  /* ── bottom nav ── */
+  #mb-root .mb-nav{flex-shrink:0;background:rgba(19,28,46,.97);border-top:1px solid var(--mb-bd);
+    display:flex;padding:9px 4px calc(14px + env(safe-area-inset-bottom,0px))}
+  #mb-root .mb-nv{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+    padding:7px 2px;border-radius:12px;cursor:pointer;position:relative}
+  #mb-root .mb-nv .i{font-size:22px;opacity:.5}
+  #mb-root .mb-nv .l{font-size:12.5px;color:var(--mb-mu);font-weight:600}
+  #mb-root .mb-nv.on .i{opacity:1}
+  #mb-root .mb-nv.on .l{color:var(--mb-pri)}
+  #mb-root .mb-nv.on::before{content:"";position:absolute;top:-7px;width:22px;height:2.5px;
+    border-radius:2px;background:var(--mb-pri)}
+
+  /* ── sub page ── */
+  #mb-root .mb-bk{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;
+    padding:2px 0 12px;cursor:pointer}
+  #mb-root .mb-bk .x{font-size:18px;color:var(--mb-mu)}
+  #mb-root .mb-soon{background:var(--mb-sur);border:1px solid var(--mb-bd);border-radius:16px;
+    padding:32px 20px;text-align:center;margin-top:6px}
+  #mb-root .mb-soon .i{font-size:34px;opacity:.55}
+  #mb-root .mb-soon .t{font-size:16px;font-weight:800;margin-top:11px}
+  #mb-root .mb-soon .s{font-size:13.5px;color:var(--mb-mu);margin-top:7px;line-height:1.65}
+  #mb-root .mb-soon .n{font-size:13px;color:var(--mb-mu);margin-top:14px;padding-top:13px;
+    border-top:1px solid var(--mb-bd);line-height:1.6}
+
+  /* ── toast ── */
+  #mb-root .mb-toast{position:fixed;left:50%;bottom:82px;transform:translateX(-50%);
+    background:var(--mb-sur2);border:1px solid var(--mb-bd);color:var(--mb-tx);
+    font-size:13.5px;padding:10px 16px;border-radius:11px;z-index:99500;
+    max-width:82%;text-align:center;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+
+  /* ── [V511] หน้าย่อย ── */
+  #mb-root .mb-bk{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;
+    padding:2px 0 11px;cursor:pointer}
+  #mb-root .mb-bk .x{font-size:17px;color:var(--mb-mu)}
+
+  #mb-root .mb-fbar{display:flex;gap:5px;margin-bottom:11px;overflow-x:auto;padding-bottom:2px}
+  #mb-root .mb-fbar::-webkit-scrollbar{display:none}
+  #mb-root .mb-fb{flex-shrink:0;font-size:13px;font-weight:700;padding:6px 11px;border-radius:8px;
+    background:var(--mb-sur);border:1px solid var(--mb-bd);color:var(--mb-mu);cursor:pointer;white-space:nowrap}
+  #mb-root .mb-fb.on{background:rgba(56,189,248,.15);border-color:var(--mb-pri);color:var(--mb-pri)}
+  #mb-root .mb-fb .n{opacity:.75;margin-left:3px}
+
+  #mb-root .mb-lc{background:var(--mb-sur);border:1px solid var(--mb-bd);border-radius:13px;
+    padding:11px 12px;margin-bottom:8px;position:relative;cursor:pointer}
+  #mb-root .mb-lc:active{background:var(--mb-sur2)}
+  #mb-root .mb-lb{position:absolute;left:0;top:11px;bottom:11px;width:3px;border-radius:0 2px 2px 0}
+  #mb-root .mb-r1{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  #mb-root .mb-r1 .t{font-size:14px;font-weight:700;line-height:1.35;flex:1;min-width:0;
+    overflow-wrap:anywhere}
+  #mb-root .mb-pill{font-size:12.5px;font-weight:700;padding:3px 7px;border-radius:6px;
+    flex-shrink:0;white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+  #mb-root .mb-m{font-size:13px;color:var(--mb-mu);margin-top:4px;line-height:1.5;overflow-wrap:anywhere}
+  #mb-root .mb-m code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;font-size:12.5px}
+  #mb-root .mb-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    margin-top:8px;padding-top:8px;border-top:1px solid var(--mb-bd)}
+  #mb-root .mb-foot .k{font-size:12.5px;color:var(--mb-mu2,#5f739a);flex:1;min-width:0}
+  #mb-root .mb-foot .v{font-size:13px;font-weight:700;flex-shrink:0}
+  #mb-root .mb-minicall{font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:7px;
+    background:rgba(244,63,94,.15);color:#ff8ba3;border:none;font-family:inherit;
+    cursor:pointer;text-decoration:none;flex-shrink:0}
+
+  #mb-root .mb-sbox{display:flex;gap:7px;margin-bottom:12px}
+  #mb-root .mb-sbox input{flex:1;min-width:0;background:var(--mb-sur);border:1px solid var(--mb-bd);
+    border-radius:10px;padding:10px 12px;font-size:14px;color:var(--mb-tx);font-family:inherit;outline:none}
+  #mb-root .mb-sbox input::placeholder{color:var(--mb-mu2,#5f739a)}
+  #mb-root .mb-sbox button{background:var(--mb-pri);border:none;border-radius:10px;
+    padding:0 15px;font-size:16px;cursor:pointer;flex-shrink:0}
+
+  #mb-root .mb-fld{margin-bottom:11px}
+  #mb-root .mb-fld label{display:block;font-size:13px;color:var(--mb-mu);font-weight:600;margin-bottom:5px}
+  #mb-root .mb-fld .box{background:var(--mb-sur);border:1px solid var(--mb-bd);border-radius:9px;
+    padding:10px 12px;font-size:14px;color:var(--mb-mu2,#5f739a)}
+
+  #mb-root .mb-more{font-size:13px;color:var(--mb-mu);text-align:center;padding:10px 4px}
+  #mb-root{--mb-mu2:#5f739a}
+</style>
+
+<!-- [V515] inline style สำรอง: ถ้า HtmlService ตัด style block ทิ้ง อย่างน้อย layout/สีพื้นยังอยู่ ไม่จอดำ -->
+<div id="mb-root" style="display:none;position:fixed;inset:0;z-index:2147483000;background:#0b1220;color:#e8eefc;flex-direction:column;overflow:hidden;font-family:'Noto Sans Thai',-apple-system,BlinkMacSystemFont,sans-serif">
+  <!-- header -->
+  <div class="mb-hd">
+    <div style="min-width:0">
+      <div class="mb-hi" id="mb-greet">สวัสดี</div>
+      <div class="mb-nm"><span id="mb-user">—</span><span class="mb-rolechip" id="mb-role"></span></div>
+    </div>
+    <div class="mb-av" id="mb-avatar" onclick="mbSwitchToDesktop()" title="สลับไปหน้าจอใหญ่">🖥️</div>
+  </div>
+
+  <!-- body -->
+  <div class="mb-bd" id="mb-body"></div>
+
+  <!-- bottom nav -->
+  <div class="mb-nav">
+    <div class="mb-nv on" id="mb-nv-home" onclick="mbGo('home')"><div class="i">🏠</div><div class="l">หน้าแรก</div></div>
+    <div class="mb-nv" id="mb-nv-sr" onclick="mbGo('sr')"><div class="i">🔔</div><div class="l">งานใหม่</div></div>
+    <div class="mb-nv" id="mb-nv-search" onclick="mbGo('sn')"><div class="i">🔍</div><div class="l">ค้นหา</div></div>
+    <div class="mb-nv" id="mb-nv-me" onclick="mbGo('me')"><div class="i">👤</div><div class="l">ของฉัน</div></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ── [V511] เมนู 9 ช่อง ──
+  //  [V554] เมนูอังกฤษ 5 ปุ่ม (เดิม 9)
+  //     ตัดออก: quo (ดูใน SmartFlow ตรงกว่า) · cust (รู้อยู่แล้ว) · ctr (ไม่เร่งด่วนบนมือถือ)
+  //             mine (ซ้อนกับ SP Stock In — ดึงจาก mbParts() เหมือนกัน ต่างแค่จัดกลุ่ม)
+  //     soon:1 = ยังไม่เปิดใช้ กดแล้วขึ้น Coming Soon
+  var MB_MENU = [
+    { k:'sr',      ic:'🔔', tt:'New SR',      sub:'Coming soon', soon:1, bg:'rgba(244,63,94,.15)'  },
+    { k:'alert',   ic:'⚠️', tt:'Alert',                                  bg:'rgba(251,191,36,.15)' },
+    { k:'spstock', ic:'📦', tt:'SP Stock In',                            bg:'rgba(52,211,153,.15)' },
+    { k:'sn',      ic:'🔍', tt:'SN History',  sub:'Coming soon', soon:1, bg:'rgba(167,139,250,.15)'},
+    { k:'contact', ic:'☎️', tt:'BJH Contact',                            bg:'rgba(167,139,250,.12)'}
+  ];
+
+  var mbView = 'home';
+  var mbFilter = {};          // ตัวกรองในแต่ละหน้าย่อย
+  var mbSalesPick = '';       // manager เลือกดูของใคร ('' = ทุกคน)
+
+  function el(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function num(v){ return (parseFloat(v)||0).toLocaleString('en-US',{maximumFractionDigits:0}); }
+
+  // ── user / role ──────────────────────────────────────
+  function mbUser(){
+    var u = window._currentUser || {};
+    return { name: u.name || u.empId || 'ผู้ใช้', role: u.role || window._USER_ROLE || 'sales' };
+  }
+  function mbIsManager(){ var r = mbUser().role; return r==='manager' || r==='admin'; }
+
+  //  ชื่อ sales ที่ใช้กรอง — sales ล็อกที่ตัวเอง / manager ตาม dropdown
+  function mbSalesFilterName(){
+    if (!mbIsManager()) return mbUser().name;
+    return mbSalesPick || '';
+  }
+  //  เทียบชื่อ sales แบบยืดหยุ่น (ข้อมูลบางที่มีเว้นวรรค/ชื่อเต็ม-ชื่อต้น)
+  function mbSaMatch(rowSa){
+    var want = mbSalesFilterName();
+    if (!want) return true;                       // ทุกคน
+    var a = String(rowSa||'').trim();
+    var b = String(want).trim();
+    if (!a) return false;
+    if (a === b) return true;
+    return a.indexOf(b) >= 0 || b.indexOf(a) >= 0;
+  }
+
+  function mbGreet(){
+    var h = new Date().getHours();
+    return h < 12 ? 'สวัสดีตอนเช้า' : (h < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น');
+  }
+
+  function mbToast(msg, ms){
+    var old = document.querySelector('#mb-root .mb-toast');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var d = document.createElement('div');
+    d.className = 'mb-toast';
+    d.innerHTML = esc(msg);
+    var root = el('mb-root'); if(!root) return;
+    root.appendChild(d);
+    setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); }, ms || 3200);
+  }
+
+  // ── date helpers ─────────────────────────────────────
+  function mbD(v){
+    if (!v) return null;
+    var d = (v instanceof Date) ? v : new Date(v);
+    return isNaN(d) ? null : d;
+  }
+  function mbToday(){ var t=new Date(); t.setHours(0,0,0,0); return t; }
+  function mbDaysTo(v){
+    var d = mbD(v); if(!d) return null;
+    d.setHours(0,0,0,0);
+    return Math.round((d - mbToday()) / 86400000);
+  }
+  function mbFmtD(v){
+    var d = mbD(v); if(!d) return '—';
+    var M=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    return d.getDate()+' '+M[d.getMonth()]+' '+String((d.getFullYear()+543)%100);
+  }
+
+  // ── config: mobile_links ─────────────────────────────
+  function mbLinks(){
+    try {
+      var c = (window._CONFIG && window._CONFIG.mobile_links) || {};
+      return (c && typeof c === 'object') ? c : {};
+    } catch(e){ return {}; }
+  }
+  function mbLinkUrl(key){
+    var v = mbLinks()[key];
+    if (!v) return '';
+    return String(typeof v === 'string' ? v : (v.url||'')).trim();
+  }
+
+  // ── data sources ─────────────────────────────────────
+  function mbParts()    { return window._jsupParts    || []; }
+  function mbInstall()  { return window._spInstallRows|| []; }
+  function mbContracts(){ return window._jsupContract || []; }
+  function mbD_()       { return window.D             || []; }
+  function mbMCHist()   { return window._spMCHistory  || []; }
+
+  function mbHasData(){
+    return mbParts().length || mbInstall().length || mbD_().length;
+  }
+
+  // ═════════════════════════════════════════════════════
+  //  UI helpers
+  // ═════════════════════════════════════════════════════
+  function mbBack(){
+    return '<div class="mb-bk" onclick="mbGo(\'home\')"><span class="x">‹</span> กลับหน้าแรก</div>';
+  }
+  function mbFilterBar(items, cur, fnName){
+    var h = '<div class="mb-fbar">';
+    items.forEach(function(it){
+      h += '<div class="mb-fb'+(it.k===cur?' on':'')+'" onclick="'+fnName+'(\''+it.k+'\')">'
+        +  esc(it.label) + (it.n!=null ? '<span class="n">'+it.n+'</span>' : '') + '</div>';
+    });
+    return h + '</div>';
+  }
+  function mbEmpty(icon, title, sub){
+    return '<div class="mb-soon"><div class="i">'+icon+'</div>'
+      +  '<div class="t">'+esc(title)+'</div>'
+      +  (sub ? '<div class="s">'+sub+'</div>' : '') + '</div>';
+  }
+  function mbNoData(){
+    return mbEmpty('📊','ยังไม่มีข้อมูล',
+      'หน้า Mobile ไม่ได้โหลดข้อมูลตอนเข้า (เพื่อความเร็ว)<br>'
+      + '<span style="color:var(--mb-pri);cursor:pointer;font-weight:700" onclick="mbLoadData()">⟳ โหลดข้อมูลเลย</span>');
+  }
+  //  การ์ดรายการมาตรฐาน
+  function mbCard(o){
+    var h = '<div class="mb-lc"'+(o.onclick?' onclick="'+o.onclick+'"':' style="cursor:default"')+'>';
+    if (o.bar) h += '<div class="mb-lb" style="background:'+o.bar+'"></div>';
+    h += '<div class="mb-r1"><div class="t">'+esc(o.title)+'</div>';
+    if (o.pill) h += '<div class="mb-pill" style="background:'+o.pillBg+';color:'+o.pillFg+'">'+esc(o.pill)+'</div>';
+    h += '</div>';
+    if (o.meta) h += '<div class="mb-m">'+o.meta+'</div>';
+    if (o.footL || o.footR) {
+      h += '<div class="mb-foot"><span class="k">'+(o.footL||'')+'</span>';
+      h += o.footR || '';
+      h += '</div>';
+    }
+    return h + '</div>';
+  }
+  function mbCallBtn(tel, label){
+    var t = String(tel||'').replace(/[^0-9+]/g,'');
+    if (!t) return '<span class="v" style="color:var(--mb-mu2)">ไม่มีเบอร์</span>';
+    return '<a class="mb-minicall" href="tel:'+esc(t)+'" onclick="event.stopPropagation()">📞 '+(label||'โทร')+'</a>';
+  }
+
+  // ── โหลดข้อมูล on-demand ─────────────────────────────
+  window.mbLoadData = function(){
+    mbToast('กำลังโหลดข้อมูล...', 60000);
+    try {
+      if (typeof window.bjhFullReload === 'function') {
+        window.bjhFullReload();
+        var tries = 0;
+        var iv = setInterval(function(){
+          tries++;
+          if (mbHasData() || tries > 120) {
+            clearInterval(iv);
+            var t = document.querySelector('#mb-root .mb-toast');
+            if (t && t.parentNode) t.parentNode.removeChild(t);
+            if (mbHasData()) { mbToast('โหลดข้อมูลแล้ว'); mbGo(mbView); }
+            else mbToast('โหลดไม่สำเร็จ ลองสลับไป Desktop', 5000);
+          }
+        }, 500);
+      } else {
+        mbToast('โหลดข้อมูลไม่ได้จากหน้านี้ — สลับไป Desktop', 5000);
+      }
+    } catch(e){ mbToast('โหลดไม่สำเร็จ: '+e.message, 5000); }
+  };
+
+  // ═════════════════════════════════════════════════════
+  //  หน้าแรก
+  // ═════════════════════════════════════════════════════
+  function mbRenderHeader(){
+    var u = mbUser();
+    if (el('mb-greet')) el('mb-greet').textContent = mbGreet();
+    if (el('mb-user'))  el('mb-user').textContent  = u.name;
+    var rc = el('mb-role');
+    if (rc) rc.textContent = u.role === 'admin' ? 'Admin' : (u.role === 'manager' ? 'Manager' : 'Sales');
+  }
+
+  function mbRenderHome(){
+    var h = '';
+
+    if (mbIsManager()){
+      h += '<div class="mb-mgr"><select id="mb-f-sales" onchange="mbOnSalesFilter()">'
+        +  '<option value="">👥 ทุกคน</option></select></div>';
+    }
+
+    // การ์ดงานด่วน — SR ยังไม่มีข้อมูล -> โชว์เครื่องดาวน์นานสุดแทน
+    h += mbHeroHtml();
+
+    h += '<div class="mb-st"><h3>เมนู</h3></div><div class="mb-grid">';
+    var badge = mbBadges();
+    for (var i=0;i<MB_MENU.length;i++){
+      var m = MB_MENU[i];
+      var b = badge[m.k];
+      h += '<div class="mb-tile'+(m.soon?' soon':'')+'" onclick="mbGo(\''+m.k+'\')">'
+        +    '<div class="ic" style="background:'+m.bg+'">'+m.ic+'</div>'
+        +    '<div class="tt">'+m.tt+'</div>'
+        +    (m.sub ? '<div class="sb">'+m.sub+'</div>' : '')
+        +    (b ? '<div class="mb-bdg '+(b.c||'')+'">'+b.n+'</div>' : '')
+        +  '</div>';
+    }
+    h += '</div>';
+
+    el('mb-body').innerHTML = h;
+    if (mbIsManager()) mbFillSalesFilter();
+  }
+
+  //  hero: เครื่องดาวน์นานสุดของ sales คนนั้น
+  function mbHeroHtml(){
+    if (!mbHasData()) {
+      return '<div class="mb-heroE"><div class="i">📊</div>'
+        + '<div class="t">ยังไม่ได้โหลดข้อมูล</div>'
+        + '<div class="s">แตะเพื่อโหลด แล้วเมนูทั้งหมดจะใช้ได้<br>'
+        + '<span style="color:var(--mb-pri);font-weight:700;cursor:pointer" onclick="mbLoadData()">⟳ โหลดข้อมูลเลย</span></div></div>';
+    }
+    var downs = mbAlertRows().filter(function(r){ return r.down; });
+    downs.sort(function(a,b){ return (b.days||0)-(a.days||0); });
+    if (!downs.length){
+      return '<div class="mb-heroE"><div class="i">✅</div>'
+        + '<div class="t">ไม่มีเครื่องดาวน์</div>'
+        + '<div class="s">ตอนนี้ไม่มีเครื่องที่ต้องรีบตามงาน</div></div>';
+    }
+    var t = downs[0];
+    var h = '<div class="mb-hero">'
+      + '<div class="mb-hlbl"><div class="L"><span class="mb-dot"></span> ต้องติดตามด่วน</div>'
+      + '<div class="T">'+(downs.length>1?('+ อีก '+(downs.length-1)+' เครื่อง'):'')+'</div></div>'
+      + '<div class="mb-cust">'+esc(t.cu)+'</div>'
+      + '<div class="mb-sub">'+esc(t.brand)+(t.sn?(' · SN '+esc(t.sn)):'')+'</div>';
+    h += '<div class="mb-chips">'
+      +  '<span class="mb-chip hot">ดาวน์ '+(t.days!=null?t.days+' วัน':'—')+'</span>'
+      +  (t.inSC ? '<span class="mb-chip">อยู่ในสัญญา</span>' : '')
+      +  (t.waitPart ? '<span class="mb-chip">รออะไหล่</span>' : '')
+      +  '</div>';
+    h += '<div class="mb-acts">'
+      +  '<button class="mb-btn gh" onclick="mbGo(\'alert\')">ดูเครื่อง Alert ทั้งหมด</button>'
+      +  '</div></div>';
+    return h;
+  }
+
+  function mbBadges(){
+    if (!mbHasData()) return {};
+    var b = {};
+    var al = mbAlertRows().filter(function(r){return r.down;}).length;
+    if (al) b.alert = { n:al, c:'w' };
+    var sp = mbStockRows().length;
+    if (sp) b.spstock = { n:sp, c:'g' };
+    var qn = mbQuoRows().filter(function(r){return r.wait;}).length;
+    if (qn) b.quo = { n:qn, c:'q' };
+    var ct = mbContractRows(90).length;
+    if (ct) b.ctr = { n:ct, c:'w' };
+    var mn = mbMineRows().length;
+    if (mn) b.mine = { n:mn, c:'q' };
+    return b;
+  }
+
+  function mbFillSalesFilter(){
+    var sel = el('mb-f-sales'); if(!sel) return;
+    var names = [], seen = {};
+    try {
+      (window._SA_NAMES||[]).forEach(function(n){ if(n&&!seen[n]){seen[n]=1;names.push(n);} });
+    } catch(e){}
+    if (!names.length){
+      mbD_().forEach(function(r){ var n=r&&r.sa; if(n&&!seen[n]){seen[n]=1;names.push(n);} });
+      names.sort();
+    }
+    names.forEach(function(n){
+      var o = document.createElement('option');
+      o.value = n; o.textContent = n;
+      if (n === mbSalesPick) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  function mbOnSalesFilter(){
+    var sel = el('mb-f-sales');
+    mbSalesPick = sel ? sel.value : '';
+    mbRenderHome();
+  }
+
+  // ═════════════════════════════════════════════════════
+  //  📦 SP Stock In
+  //     STATUS_DT_NAME -> กลุ่ม (ตาม Data Dictionary ของระบบ)
+  // ═════════════════════════════════════════════════════
+  var MB_STOCK_GRP = {
+    'stock in':'in', 'parts ready(wg2)':'in', 'parts ready':'in', 'admin process':'in',
+    'wait stock-in':'wait', 'wait stock in':'wait',
+    'อนุมัติสั่งซื้อ':'proc', 'pr process(k2)':'proc', 'pr process':'proc', 'requested':'proc'
+  };
+  var MB_STOCK_SKIP = { 'canceled':1, 'rejected':1, 'engineer receive':1 };
+
+  function mbStockGrp(status){
+    var s = String(status||'').trim().toLowerCase();
+    if (MB_STOCK_SKIP[s]) return null;
+    return MB_STOCK_GRP[s] || 'proc';
+  }
+
+  function mbStockRows(){
+    var out = [];
+    mbParts().forEach(function(p){
+      if (!p) return;
+      var g = mbStockGrp(p.STATUS_DT_NAME);
+      if (!g) return;
+      if (!mbSaMatch(p.SALES_SERVICE_NAME)) return;
+      var eta = p.ETA_DATE || '';
+      var dlv = p.QH_SEND_TO_DATE || '';
+      var late = false;
+      if (eta && dlv){
+        var e = mbD(eta), d = mbD(dlv);
+        if (e && d && e.getTime() > d.getTime()) late = true;
+      }
+      out.push({
+        g: late ? 'late' : g,
+        grpRaw: g,
+        name: p.PARTS_NAME || p.PARTS_MAT_NO || '(ไม่ระบุชื่ออะไหล่)',
+        qty : p.PARTS_QTY || '',
+        cu  : p.CUSTOMER_NAME || '—',
+        brand: [p.BRAND_NAME, p.MODEL_NAME].filter(Boolean).join(' '),
+        qn  : p.QH_DOC_NUMBER || '',
+        eta : eta, dlv: dlv, late: late,
+        status: p.STATUS_DT_NAME || '',
+        sn  : p.MACHINE_SN || p.SN || ''
+      });
+    });
+    //  เรียง: ช้ากว่ากำหนด > ของถึง > รอเข้า > ดำเนินการ
+    var rank = { late:0, in:1, wait:2, proc:3 };
+    out.sort(function(a,b){
+      // [V511] ระวัง: rank.late = 0 เป็น falsy -> ห้ามใช้ ||9 ต้องเช็ค undefined ตรง ๆ
+      var ra = (rank[a.g] === undefined) ? 9 : rank[a.g];
+      var rb = (rank[b.g] === undefined) ? 9 : rank[b.g];
+      var d = ra - rb;
+      if (d) return d;
+      var ea = mbD(a.eta), eb = mbD(b.eta);
+      if (ea && eb) return ea - eb;
+      return ea ? -1 : (eb ? 1 : 0);
+    });
+    return out;
+  }
+
+  function mbRenderStock(){
+    if (!mbHasData()) { el('mb-body').innerHTML = mbBack() + mbNoData(); return; }
+    var rows = mbStockRows();
+    var cnt = { all:rows.length, in:0, wait:0, proc:0, late:0 };
+    rows.forEach(function(r){ cnt[r.g] = (cnt[r.g]||0)+1; });
+
+    var cur = mbFilter.spstock || 'all';
+    var h = mbBack();
+    h += mbFilterBar([
+      { k:'all',  label:'ทั้งหมด',      n:cnt.all  },
+      { k:'late', label:'🔴 ช้ากว่ากำหนด', n:cnt.late },
+      { k:'in',   label:'✅ ของถึง',    n:cnt.in   },
+      { k:'wait', label:'⏳ รอเข้า',    n:cnt.wait },
+      { k:'proc', label:'🔄 ดำเนินการ', n:cnt.proc }
+    ], cur, 'mbFilterStock');
+
+    var list = rows.filter(function(r){ return cur==='all' || r.g===cur; });
+    if (!list.length){
+      h += mbEmpty('📦','ไม่มีรายการ','ไม่มีอะไหล่ในกลุ่มนี้');
+    } else {
+      list.slice(0,120).forEach(function(r){
+        var st = {
+          late: { bar:'var(--mb-urg)',  pill:'🔴 ช้ากว่ากำหนด', bg:'rgba(244,63,94,.16)',  fg:'#ff8ba3' },
+          in  : { bar:'var(--mb-ok)',   pill:'✅ '+(r.status||'Stock In'), bg:'rgba(52,211,153,.15)', fg:'var(--mb-ok)' },
+          wait: { bar:'var(--mb-warn)', pill:'⏳ รอของเข้า',   bg:'rgba(251,191,36,.15)', fg:'var(--mb-warn)' },
+          proc: { bar:'var(--mb-vio)',  pill:'🔄 '+(r.status||'ดำเนินการ'), bg:'rgba(167,139,250,.15)',fg:'var(--mb-vio)' }
+        }[r.g] || {};
+        var meta = esc(r.cu) + (r.brand ? (' · '+esc(r.brand)) : '') + '<br>'
+          + (r.qn ? '<code>'+esc(r.qn)+'</code>' : '')
+          + (r.qty ? (' · จำนวน '+esc(r.qty)) : '');
+        var footL = r.eta ? ('ETA '+mbFmtD(r.eta)) : 'ยังไม่มี ETA';
+        if (r.dlv) footL += ' · ส่ง '+mbFmtD(r.dlv);
+        var right = '';
+        if (r.late){
+          var dd = mbDaysTo(r.dlv);
+          right = '<span class="v" style="color:var(--mb-urg)">'+(dd!=null&&dd<0?('เลย '+Math.abs(dd)+' วัน'):'ช้า')+'</span>';
+        } else if (r.g==='in'){
+          right = '<span class="v" style="color:var(--mb-ok)">พร้อมส่ง</span>';
+        } else if (r.eta){
+          var de = mbDaysTo(r.eta);
+          right = '<span class="v" style="color:var(--mb-warn)">'+(de!=null?(de>=0?('อีก '+de+' วัน'):('เลย '+Math.abs(de)+' วัน')):'—')+'</span>';
+        } else {
+          right = '<span class="v" style="color:var(--mb-mu)">รอดำเนินการ</span>';
+        }
+        h += mbCard({ bar:st.bar, title:r.name, pill:st.pill, pillBg:st.bg, pillFg:st.fg,
+                      meta:meta, footL:footL, footR:right });
+      });
+      if (list.length > 120) h += '<div class="mb-more">แสดง 120 จาก '+list.length+' รายการ</div>';
+    }
+    el('mb-body').innerHTML = h;
+  }
+  function mbFilterStock(k){ mbFilter.spstock = k; mbRenderStock(); }
+
+  // ═════════════════════════════════════════════════════
+  //  ⚠️ เครื่อง Alert
+  // ═════════════════════════════════════════════════════
+  function mbAlertRows(){
+    var out = [];
+    var partsBySn = {};
+    mbParts().forEach(function(p){
+      var sn = String(p.MACHINE_SN||p.SN||'').trim().toUpperCase();
+      if (!sn) return;
+      var g = mbStockGrp(p.STATUS_DT_NAME);
+      if (g==='wait' || g==='proc') partsBySn[sn] = true;
+    });
+
+    mbInstall().forEach(function(it){
+      if (!it) return;
+      if (!mbSaMatch(it.SALE_SERVICE_NAME)) return;
+      var st = String(it.MC_STATUS_NAME || it.MC_STATUS || '').trim();
+      var low = st.toLowerCase();
+      var isDown = /down|เสีย|ชำรุด|หยุด/i.test(low);
+      var isWatch= /watch|เฝ้าระวัง|repeat/i.test(low);
+      if (!isDown && !isWatch) return;
+      var sn = String(it.SN||'').trim();
+      var days = null;
+      //  หาว่าดาวน์มากี่วันจาก MC history
+      mbMCHist().forEach(function(hh){
+        if (!hh) return;
+        if (String(hh.INSTALL_DT_ID||'') !== String(it.INSTALL_DT_ID||'')) return;
+        var d = mbDaysTo(hh.CHANGED_AT);
+        if (d!=null && d<=0){
+          var ago = Math.abs(d);
+          if (days==null || ago < days) days = ago;
+        }
+      });
+      var endD = mbDaysTo(it.CON_END_DATE);
+      out.push({
+        cu: it.CUS_NAME || '—',
+        brand: [it.BRAND, it.MODEL || it.MODEL_TEMP].filter(Boolean).join(' '),
+        sn: sn,
+        down: isDown,
+        days: days,
+        status: st,
+        inSC: !!(it.CON_TYPE && endD!=null && endD>=0),
+        conEnd: it.CON_END_DATE || '',
+        waitPart: !!partsBySn[sn.toUpperCase()]
+      });
+    });
+    out.sort(function(a,b){
+      if (a.down !== b.down) return a.down ? -1 : 1;
+      return (b.days||0) - (a.days||0);
+    });
+    return out;
+  }
+
+  function mbRenderAlert(){
+    if (!mbHasData()) { el('mb-body').innerHTML = mbBack() + mbNoData(); return; }
+    var rows = mbAlertRows();
+    var nDown = rows.filter(function(r){return r.down;}).length;
+    var cur = mbFilter.alert || 'down';
+    var h = mbBack();
+    h += mbFilterBar([
+      { k:'down',  label:'🔴 Down',     n:nDown },
+      { k:'watch', label:'🟠 เฝ้าระวัง', n:rows.length-nDown },
+      { k:'all',   label:'ทั้งหมด',     n:rows.length }
+    ], cur, 'mbFilterAlert');
+
+    var list = rows.filter(function(r){
+      if (cur==='all') return true;
+      return cur==='down' ? r.down : !r.down;
+    });
+
+    if (!list.length){
+      h += mbEmpty('✅','ไม่มีเครื่องในกลุ่มนี้','');
+    } else {
+      list.slice(0,120).forEach(function(r){
+        var pill = r.down ? ('ดาวน์'+(r.days!=null?(' '+r.days+' วัน'):'')) : (r.status||'เฝ้าระวัง');
+        var meta = esc(r.brand||'—') + (r.sn ? ('<br>SN <code>'+esc(r.sn)+'</code>') : '');
+        var footL = r.inSC ? ('ในสัญญา ถึง '+mbFmtD(r.conEnd))
+                           : (r.conEnd ? ('สัญญาหมด '+mbFmtD(r.conEnd)) : 'ไม่มีสัญญา');
+        if (r.waitPart) footL += ' · รออะไหล่';
+        h += mbCard({
+          bar: r.down ? 'var(--mb-urg)' : 'var(--mb-warn)',
+          title: r.cu, pill: pill,
+          pillBg: r.down ? 'rgba(244,63,94,.16)' : 'rgba(251,191,36,.15)',
+          pillFg: r.down ? '#ff8ba3' : 'var(--mb-warn)',
+          meta: meta, footL: footL,
+          footR: r.sn ? ('<span class="v" style="color:var(--mb-pri);cursor:pointer" onclick="mbSnLookup(\''+esc(r.sn).replace(/'/g,'')+'\')">ดูประวัติ ›</span>') : ''
+        });
+      });
+      if (list.length>120) h += '<div class="mb-more">แสดง 120 จาก '+list.length+'</div>';
+    }
+    el('mb-body').innerHTML = h;
+  }
+  function mbFilterAlert(k){ mbFilter.alert = k; mbRenderAlert(); }
+
+  // ═════════════════════════════════════════════════════
+  //  🔍 เช็ค SN + ประวัติ
+  // ═════════════════════════════════════════════════════
+  function mbRenderSN(){
+    var q = mbFilter.snQuery || '';
+    var h = mbBack();
+    h += '<div class="mb-sbox">'
+      +  '<input id="mb-sn-input" placeholder="ใส่ SN หรือชื่อโรงพยาบาล..." value="'+esc(q)+'" '
+      +    'onkeydown="if(event.key===\'Enter\')mbSnSearch()">'
+      +  '<button onclick="mbSnSearch()">🔍</button></div>';
+
+    if (!mbHasData()) { el('mb-body').innerHTML = h + mbNoData(); return; }
+
+    if (!q){
+      h += mbEmpty('🔍','ค้นหาเครื่อง','ใส่ SN หรือชื่อโรงพยาบาล<br>เพื่อดูข้อมูลเครื่องและประวัติซ่อม');
+      el('mb-body').innerHTML = h;
+      return;
+    }
+
+    var qq = q.trim().toUpperCase();
+    var hits = mbInstall().filter(function(it){
+      if (!it) return false;
+      var sn = String(it.SN||'').toUpperCase();
+      var cu = String(it.CUS_NAME||'').toUpperCase();
+      return (sn && sn.indexOf(qq)>=0) || (cu && cu.indexOf(qq)>=0);
+    });
+
+    if (!hits.length){
+      h += mbEmpty('🔍','ไม่พบเครื่อง','ลองใส่ SN บางส่วน หรือชื่อโรงพยาบาล');
+      el('mb-body').innerHTML = h;
+      return;
+    }
+
+    hits.slice(0,20).forEach(function(it){
+      var endD = mbDaysTo(it.CON_END_DATE);
+      var inSC = !!(it.CON_TYPE && endD!=null && endD>=0);
+      h += mbCard({
+        title: [it.BRAND, it.MODEL||it.MODEL_TEMP].filter(Boolean).join(' ') || '(ไม่ระบุรุ่น)',
+        pill: inSC ? 'ในสัญญา' : 'ไม่มีสัญญา',
+        pillBg: inSC ? 'rgba(52,211,153,.15)' : 'rgba(255,255,255,.07)',
+        pillFg: inSC ? 'var(--mb-ok)' : 'var(--mb-mu)',
+        meta: esc(it.CUS_NAME||'—') + (it.SN ? ('<br>SN <code>'+esc(it.SN)+'</code>') : ''),
+        footL: it.CON_END_DATE ? ('สัญญาถึง '+mbFmtD(it.CON_END_DATE)) : '—',
+        footR: (inSC && endD!=null) ? ('<span class="v" style="color:var(--mb-ok)">เหลือ '+endD+' วัน</span>')
+             : (endD!=null && endD<0 ? '<span class="v" style="color:var(--mb-urg)">หมดแล้ว</span>' : '')
+      });
+
+      //  ประวัติซ่อมจาก parts + MC history
+      var sn = String(it.SN||'').trim().toUpperCase();
+      var jobs = [];
+      mbParts().forEach(function(p){
+        var psn = String(p.MACHINE_SN||p.SN||'').trim().toUpperCase();
+        if (!psn || psn !== sn) return;
+        jobs.push({
+          t: p.PARTS_NAME || p.QH_DOC_NUMBER || 'งานอะไหล่',
+          d: p.ETA_DATE || p.QH_SEND_TO_DATE || '',
+          ref: p.JOB_SR || p.QH_DOC_NUMBER || '',
+          st: p.STATUS_DT_NAME || ''
+        });
+      });
+      mbMCHist().forEach(function(hh){
+        if (!hh) return;
+        if (String(hh.INSTALL_DT_ID||'') !== String(it.INSTALL_DT_ID||'')) return;
+        jobs.push({
+          t: hh.MC_STATUS_NAME || hh.MC_STATUS || 'เปลี่ยนสถานะ',
+          d: hh.CHANGED_AT || '',
+          ref: hh.JOB_SR || '',
+          st: hh.JOB_STATUS_NAME || ''
+        });
+      });
+      jobs.sort(function(a,b){
+        var da=mbD(a.d), db=mbD(b.d);
+        if (da&&db) return db-da;
+        return da ? -1 : (db ? 1 : 0);
+      });
+
+      if (jobs.length){
+        h += '<div class="mb-st" style="margin-top:13px"><h3>ประวัติ ('+jobs.length+' รายการ)</h3></div>';
+        jobs.slice(0,15).forEach(function(j){
+          h += mbCard({
+            bar: 'var(--mb-mu2)',
+            title: j.t,
+            pill: j.st || '',
+            pillBg: 'rgba(255,255,255,.07)', pillFg: 'var(--mb-mu)',
+            meta: (j.d ? mbFmtD(j.d) : '—') + (j.ref ? (' · <code>'+esc(j.ref)+'</code>') : '')
+          });
+        });
+      } else {
+        h += '<div class="mb-more">ไม่พบประวัติของเครื่องนี้</div>';
+      }
+    });
+
+    el('mb-body').innerHTML = h;
+  }
+  function mbSnSearch(){
+    var inp = el('mb-sn-input');
+    mbFilter.snQuery = inp ? inp.value : '';
+    mbRenderSN();
+  }
+  function mbSnLookup(sn){
+    mbFilter.snQuery = sn;
+    mbGo('sn');
+  }
+
+  // ═════════════════════════════════════════════════════
+  //  📄 สัญญาใกล้หมด
+  // ═════════════════════════════════════════════════════
+  function mbContractRows(within){
+    var out = [];
+    mbInstall().forEach(function(it){
+      if (!it || !it.CON_END_DATE) return;
+      if (!mbSaMatch(it.SALE_SERVICE_NAME)) return;
+      var d = mbDaysTo(it.CON_END_DATE);
+      if (d==null || d<0 || d>within) return;
+      out.push({
+        cu: it.CUS_NAME || '—',
+        brand: [it.BRAND, it.MODEL||it.MODEL_TEMP].filter(Boolean).join(' '),
+        sn: it.SN || '',
+        end: it.CON_END_DATE,
+        days: d,
+        type: it.CON_TYPE || ''
+      });
+    });
+    out.sort(function(a,b){ return a.days - b.days; });
+    return out;
+  }
+
+  function mbRenderContract(){
+    if (!mbHasData()) { el('mb-body').innerHTML = mbBack() + mbNoData(); return; }
+    var cur = parseInt(mbFilter.ctr || '30', 10);
+    var h = mbBack();
+    h += mbFilterBar([
+      { k:'30', label:'30 วัน', n:mbContractRows(30).length },
+      { k:'60', label:'60 วัน', n:mbContractRows(60).length },
+      { k:'90', label:'90 วัน', n:mbContractRows(90).length }
+    ], String(cur), 'mbFilterContract');
+
+    var rows = mbContractRows(cur);
+    if (!rows.length){
+      h += mbEmpty('📄','ไม่มีสัญญาใกล้หมด','ในช่วง '+cur+' วันข้างหน้า');
+    } else {
+      rows.slice(0,120).forEach(function(r){
+        var urgent = r.days <= 30;
+        h += mbCard({
+          bar: urgent ? 'var(--mb-urg)' : 'var(--mb-warn)',
+          title: r.cu,
+          pill: 'เหลือ '+r.days+' วัน',
+          pillBg: urgent ? 'rgba(244,63,94,.16)' : 'rgba(251,191,36,.15)',
+          pillFg: urgent ? '#ff8ba3' : 'var(--mb-warn)',
+          meta: esc(r.brand||'—') + (r.sn ? ('<br>SN <code>'+esc(r.sn)+'</code>') : ''),
+          footL: 'หมด '+mbFmtD(r.end) + (r.type ? (' · '+esc(r.type)) : ''),
+          footR: r.sn ? ('<span class="v" style="color:var(--mb-pri);cursor:pointer" onclick="mbSnLookup(\''+esc(r.sn).replace(/'/g,'')+'\')">ดูเครื่อง ›</span>') : ''
+        });
+      });
+      if (rows.length>120) h += '<div class="mb-more">แสดง 120 จาก '+rows.length+'</div>';
+    }
+    el('mb-body').innerHTML = h;
+  }
+  function mbFilterContract(k){ mbFilter.ctr = k; mbRenderContract(); }
+
+  // ═════════════════════════════════════════════════════
+  //  📋 ใบเสนอราคา
+  // ═════════════════════════════════════════════════════
+  function mbQuoRows(){
+    var out = [], seen = {};
+    mbD_().forEach(function(r){
+      if (!r || !r.qn) return;
+      if (seen[r.qn]) return;
+      if (!mbSaMatch(r.sa)) return;
+      var st = String(r.st||'');
+      if (st==='Billed' || st==='Excluded') return;
+      seen[r.qn] = 1;
+      var qs = String(r.qs||'');
+      out.push({
+        qn: r.qn,
+        cu: r.cu || '—',
+        brand: [r.br, r.ml].filter(Boolean).join(' '),
+        st: st,
+        qs: qs,
+        px: r.px || 0,
+        wait: /Offer|Sent|รอ|Pending/i.test(st+' '+qs),
+        ok  : /Accept|Approve|อนุมัติ|Won/i.test(st+' '+qs)
+      });
+    });
+    out.sort(function(a,b){ return (b.px||0)-(a.px||0); });
+    return out;
+  }
+
+  function mbRenderQuo(){
+    if (!mbHasData()) { el('mb-body').innerHTML = mbBack() + mbNoData(); return; }
+    var rows = mbQuoRows();
+    var cur = mbFilter.quo || 'wait';
+    var h = mbBack();
+    h += mbFilterBar([
+      { k:'wait', label:'รอลูกค้า', n:rows.filter(function(r){return r.wait;}).length },
+      { k:'ok',   label:'อนุมัติ',  n:rows.filter(function(r){return r.ok;}).length },
+      { k:'all',  label:'ทั้งหมด',  n:rows.length }
+    ], cur, 'mbFilterQuo');
+
+    var list = rows.filter(function(r){
+      if (cur==='all') return true;
+      return cur==='wait' ? r.wait : r.ok;
+    });
+
+    if (!list.length){
+      h += mbEmpty('📋','ไม่มีใบเสนอราคา','ในกลุ่มนี้');
+    } else {
+      list.slice(0,120).forEach(function(r){
+        h += mbCard({
+          bar: r.ok ? 'var(--mb-ok)' : 'var(--mb-warn)',
+          title: r.cu,
+          pill: r.ok ? '✓ อนุมัติ' : (r.qs || r.st || 'รอลูกค้า'),
+          pillBg: r.ok ? 'rgba(52,211,153,.15)' : 'rgba(251,191,36,.15)',
+          pillFg: r.ok ? 'var(--mb-ok)' : 'var(--mb-warn)',
+          meta: '<code>'+esc(r.qn)+'</code>' + (r.brand ? ('<br>'+esc(r.brand)) : ''),
+          footL: esc(r.st||''),
+          footR: '<span class="v">'+num(r.px)+' ฿</span>'
+        });
+      });
+      if (list.length>120) h += '<div class="mb-more">แสดง 120 จาก '+list.length+'</div>';
+    }
+    el('mb-body').innerHTML = h;
+  }
+  function mbFilterQuo(k){ mbFilter.quo = k; mbRenderQuo(); }
+
+  // ═════════════════════════════════════════════════════
+  //  🏥 ลูกค้าของฉัน
+  // ═════════════════════════════════════════════════════
+  function mbCustRows(){
+    var byCu = {};
+    mbInstall().forEach(function(it){
+      if (!it) return;
+      if (!mbSaMatch(it.SALE_SERVICE_NAME)) return;
+      var cu = it.CUS_NAME || '—';
+      if (!byCu[cu]) byCu[cu] = { cu:cu, n:0, down:0, brands:{}, minEnd:null, sc:0 };
+      var o = byCu[cu];
+      o.n++;
+      if (it.BRAND) o.brands[it.BRAND] = (o.brands[it.BRAND]||0)+1;
+      var st = String(it.MC_STATUS_NAME||it.MC_STATUS||'');
+      if (/down|เสีย|ชำรุด/i.test(st)) o.down++;
+      var d = mbDaysTo(it.CON_END_DATE);
+      if (d!=null && d>=0){
+        o.sc++;
+        if (o.minEnd==null || d < o.minEnd) o.minEnd = d;
+      }
+    });
+    var out = Object.keys(byCu).map(function(k){ return byCu[k]; });
+    out.sort(function(a,b){
+      if (b.down !== a.down) return b.down - a.down;
+      return b.n - a.n;
+    });
+    return out;
+  }
+
+  function mbRenderCust(){
+    if (!mbHasData()) { el('mb-body').innerHTML = mbBack() + mbNoData(); return; }
+    var q = String(mbFilter.custQuery||'').trim().toUpperCase();
+    var h = mbBack();
+    h += '<div class="mb-sbox">'
+      +  '<input id="mb-cust-input" placeholder="ค้นชื่อโรงพยาบาล..." value="'+esc(mbFilter.custQuery||'')+'" '
+      +    'onkeydown="if(event.key===\'Enter\')mbCustSearch()">'
+      +  '<button onclick="mbCustSearch()">🔍</button></div>';
+
+    var rows = mbCustRows();
+    if (q) rows = rows.filter(function(r){ return String(r.cu).toUpperCase().indexOf(q)>=0; });
+
+    if (!rows.length){
+      h += mbEmpty('🏥','ไม่พบลูกค้า', q ? 'ลองค้นด้วยคำอื่น' : 'ยังไม่มีข้อมูล install base');
+    } else {
+      rows.slice(0,120).forEach(function(r){
+        var bl = Object.keys(r.brands).sort(function(a,b){ return r.brands[b]-r.brands[a]; })
+                   .slice(0,3).map(function(b){ return b+' '+r.brands[b]; }).join(' · ');
+        var pill='', pbg='', pfg='';
+        if (r.down){ pill = r.down+' ดาวน์'; pbg='rgba(244,63,94,.16)'; pfg='#ff8ba3'; }
+        else if (r.minEnd!=null && r.minEnd<=30){ pill='สัญญาใกล้หมด'; pbg='rgba(251,191,36,.15)'; pfg='var(--mb-warn)'; }
+        h += mbCard({
+          title: r.cu, pill: pill, pillBg: pbg, pillFg: pfg,
+          meta: r.n+' เครื่อง' + (bl ? ('<br>'+esc(bl)) : ''),
+          footL: 'ในสัญญา '+r.sc + (r.minEnd!=null ? (' · ใกล้สุด '+r.minEnd+' วัน') : ''),
+          footR: ''
+        });
+      });
+      if (rows.length>120) h += '<div class="mb-more">แสดง 120 จาก '+rows.length+'</div>';
+    }
+    el('mb-body').innerHTML = h;
+  }
+  function mbCustSearch(){
+    var inp = el('mb-cust-input');
+    mbFilter.custQuery = inp ? inp.value : '';
+    mbRenderCust();
+  }
+
+  // ═════════════════════════════════════════════════════
+  //  ✅ งานที่รับแล้ว (SR จาก parts ที่ยังไม่ปิด)
+  // ═════════════════════════════════════════════════════
+  function mbMineRows(){
+    var bySr = {};
+    mbParts().forEach(function(p){
+      if (!p) return;
+      var sr = p.JOB_SR || p.SERVICE_JOB_SR || '';
+      if (!sr) return;
+      if (!mbSaMatch(p.SALES_SERVICE_NAME)) return;
+      var g = mbStockGrp(p.STATUS_DT_NAME);
+      if (!g) return;                       // canceled/rejected -> ข้าม
+      if (!bySr[sr]){
+        bySr[sr] = {
+          sr: sr,
+          cu: p.CUSTOMER_NAME || '—',
+          brand: [p.BRAND_NAME, p.MODEL_NAME].filter(Boolean).join(' '),
+          sn: p.MACHINE_SN || p.SN || '',
+          jobSt: p.SERVICE_JOB_STATUS || '',
+          waitPart: false, eta: '', dlv: p.QH_SEND_TO_DATE || ''
+        };
+      }
+      var o = bySr[sr];
+      if (g==='wait' || g==='proc') o.waitPart = true;
+      if (p.ETA_DATE && (!o.eta || mbD(p.ETA_DATE) > mbD(o.eta))) o.eta = p.ETA_DATE;
+    });
+    var out = Object.keys(bySr).map(function(k){ return bySr[k]; });
+    out.sort(function(a,b){
+      if (a.waitPart !== b.waitPart) return a.waitPart ? -1 : 1;
+      var da=mbD(a.dlv), db=mbD(b.dlv);
+      if (da&&db) return da-db;
+      return da ? -1 : (db ? 1 : 0);
+    });
+    return out;
+  }
+
+  function mbRenderMine(){
+    if (!mbHasData()) { el('mb-body').innerHTML = mbBack() + mbNoData(); return; }
+    var rows = mbMineRows();
+    var cur = mbFilter.mine || 'all';
+    var h = mbBack();
+    h += mbFilterBar([
+      { k:'all',  label:'ทั้งหมด',   n:rows.length },
+      { k:'wait', label:'รออะไหล่', n:rows.filter(function(r){return r.waitPart;}).length },
+      { k:'go',   label:'พร้อมเข้างาน', n:rows.filter(function(r){return !r.waitPart;}).length }
+    ], cur, 'mbFilterMine');
+
+    var list = rows.filter(function(r){
+      if (cur==='all') return true;
+      return cur==='wait' ? r.waitPart : !r.waitPart;
+    });
+
+    if (!list.length){
+      h += mbEmpty('✅','ไม่มีงานในกลุ่มนี้','');
+    } else {
+      list.slice(0,120).forEach(function(r){
+        h += mbCard({
+          bar: r.waitPart ? 'var(--mb-warn)' : 'var(--mb-pri)',
+          title: r.cu,
+          pill: r.waitPart ? 'รออะไหล่' : (r.jobSt || 'พร้อมเข้างาน'),
+          pillBg: r.waitPart ? 'rgba(251,191,36,.15)' : 'rgba(56,189,248,.15)',
+          pillFg: r.waitPart ? 'var(--mb-warn)' : 'var(--mb-pri)',
+          meta: '<code>'+esc(r.sr)+'</code>' + (r.brand ? (' · '+esc(r.brand)) : ''),
+          footL: (r.eta ? ('ETA '+mbFmtD(r.eta)) : '') + (r.dlv ? (' · ส่ง '+mbFmtD(r.dlv)) : ''),
+          footR: r.sn ? ('<span class="v" style="color:var(--mb-pri);cursor:pointer" onclick="mbSnLookup(\''+esc(r.sn).replace(/'/g,'')+'\')">ดูเครื่อง ›</span>') : ''
+        });
+      });
+      if (list.length>120) h += '<div class="mb-more">แสดง 120 จาก '+list.length+'</div>';
+    }
+    el('mb-body').innerHTML = h;
+  }
+  function mbFilterMine(k){ mbFilter.mine = k; mbRenderMine(); }
+
+  // ═════════════════════════════════════════════════════
+  //  🔔 งานใหม่ SR — ดราฟรอเชื่อมข้อมูล
+  // ═════════════════════════════════════════════════════
+  function mbRenderSR(){
+    var h = mbBack();
+    h += mbEmpty('🔔','ยังไม่เชื่อมข้อมูล',
+        'โครงหน้าพร้อมแล้ว<br>รอส่วนกลางกำหนดวิธีส่งงาน SR');
+    h += '<div class="mb-st"><h3>ช่องข้อมูลที่เตรียมไว้</h3></div>';
+    [['เลข FR','FR26-XXXXXX'],
+     ['ชื่อโรงพยาบาล','— รอข้อมูล —'],
+     ['ชื่อผู้ติดต่อ','— รอข้อมูล —'],
+     ['อาการเสีย','— รอข้อมูล —']].forEach(function(f){
+      h += '<div class="mb-fld"><label>'+esc(f[0])+'</label><div class="box">'+esc(f[1])+'</div></div>';
+    });
+    h += '<div class="mb-more" style="text-align:left;line-height:1.6;padding:11px 13px;'
+      +  'background:var(--mb-sur);border:1px solid var(--mb-bd);border-radius:10px">'
+      +  'พอส่วนกลางส่งข้อมูลมาได้ (ไฟล์ / API / Sheet)<br>'
+      +  'หน้านี้จะขึ้นเป็นการ์ดงาน + ปุ่มโทร + ปุ่มรับงานทันที</div>';
+    el('mb-body').innerHTML = h;
+  }
+
+  // ═════════════════════════════════════════════════════
+  //  👤 ของฉัน
+  // ═════════════════════════════════════════════════════
+  function mbRenderMe(){
+    var u = mbUser();
+    var h = mbBack();
+    h += '<div class="mb-soon" style="padding:20px 18px">'
+      +   '<div class="i">👤</div>'
+      +   '<div class="t">'+esc(u.name)+'</div>'
+      +   '<div class="s">สิทธิ์: '+esc(u.role==='admin'?'Admin':(u.role==='manager'?'Manager':'Sales'))+'<br>'
+      +     (mbIsManager()?'เห็นข้อมูลของทุกคน':'เห็นเฉพาะงานของตัวเอง')+'</div>'
+      +   '<div class="n">'
+      +     '<div style="cursor:pointer;color:var(--mb-pri);font-weight:700" onclick="mbSwitchToDesktop()">🖥️ สลับไปหน้าจอใหญ่ (Desktop)</div>'
+      +     '<div style="cursor:pointer;color:var(--mb-mu);font-weight:600;margin-top:10px;font-size:13px" onclick="mbAskAgain()">♻️ ให้ถามใหม่ทุกครั้งที่เข้า</div>'
+      +   '</div>'
+      + '</div>';
+    if (!mbHasData()){
+      h += '<div class="mb-more" style="cursor:pointer;color:var(--mb-pri);font-weight:700" onclick="mbLoadData()">⟳ โหลดข้อมูล</div>';
+    }
+    el('mb-body').innerHTML = h;
+  }
+
+  // ── BJH Contact ──────────────────────────────────────
+  function mbOpenContact(){
+    var url = mbLinkUrl('contact');
+    if (!url){
+      var isAdm = (mbUser().role === 'admin');
+      mbToast(isAdm
+        ? 'ยังไม่ได้ตั้งค่า URL — ไปตั้งที่ Config › ลิงก์มือถือ (บนหน้าจอใหญ่)'
+        : 'ยังไม่ได้ตั้งค่า URL — แจ้ง admin ให้ตั้งค่าที่ Config › ลิงก์มือถือ', 4200);
+      return;
+    }
+    if (!/^https?:\/\//i.test(url)){ mbToast('URL ไม่ถูกต้อง — ต้องขึ้นต้นด้วย https://', 4000); return; }
+    try { window.open(url, '_blank', 'noopener'); }
+    catch(e){ mbToast('เปิดลิงก์ไม่สำเร็จ'); }
+  }
+
+  // ═════════════════════════════════════════════════════
+  //  router
+  // ═════════════════════════════════════════════════════
+  var MB_TITLE = {
+    home:'', sr:'🔔 งานใหม่ SR', alert:'⚠️ เครื่อง Alert', spstock:'📦 SP Stock In',
+    quo:'📋 ใบเสนอราคา', sn:'🔍 เช็ค SN', cust:'🏥 ลูกค้าของฉัน',
+    ctr:'📄 สัญญาใกล้หมด', mine:'✅ งานที่รับแล้ว', me:'👤 ของฉัน'
+  };
+
+  function mbGo(view){
+    if (view === 'contact'){ mbOpenContact(); return; }
+    //  [V554] เมนูที่ยังไม่เปิดใช้ -> แจ้งเตือน ไม่เข้าหน้าเปล่า
+    for (var _si=0; _si<MB_MENU.length; _si++){
+      if (MB_MENU[_si].k === view && MB_MENU[_si].soon){
+        mbToast('⏳ ' + MB_MENU[_si].tt + ' — ยังไม่เปิดใช้งาน กำลังพัฒนาอยู่', 2600);
+        return;
+      }
+    }
+    mbView = view;
+
+    ['mb-nv-home','mb-nv-sr','mb-nv-search','mb-nv-me'].forEach(function(id){
+      var n = el(id); if (n) n.className = 'mb-nv';
+    });
+    var navMap = { home:'mb-nv-home', sr:'mb-nv-sr', sn:'mb-nv-search', me:'mb-nv-me' };
+    var act = el(navMap[view]);
+    if (act) act.className = 'mb-nv on';
+
+    //  header ย่อย
+    var g = el('mb-greet'), n = el('mb-user'), rc = el('mb-role');
+    if (view === 'home'){
+      mbRenderHeader();
+      if (rc) rc.style.display = '';
+    } else {
+      if (g) g.textContent = MB_TITLE[view] || '';
+      if (n) n.textContent = '';
+      if (rc) rc.style.display = 'none';
+    }
+
+    var bd = el('mb-body'); if (bd) bd.scrollTop = 0;
+
+    switch(view){
+      case 'home':    mbRenderHome();     break;
+      case 'spstock': mbRenderStock();    break;
+      case 'alert':   mbRenderAlert();    break;
+      case 'sn':      mbRenderSN();       break;
+      case 'ctr':     mbRenderContract(); break;
+      case 'quo':     mbRenderQuo();      break;
+      case 'cust':    mbRenderCust();     break;
+      case 'mine':    mbRenderMine();     break;
+      case 'sr':      mbRenderSR();       break;
+      case 'me':      mbRenderMe();       break;
+      default:        mbRenderHome();
+    }
+  }
+
+  // ── show / hide ──────────────────────────────────────
+  //  [V520] 🔴 สาเหตุจอดำตัวจริง:
+  //    body_app_top เปิด <div id="app"> ค้างไว้ และไม่มีไฟล์ไหนปิด (SalesProspect/MA ก็เปิดค้าง)
+  //    -> browser ปิดให้เองท้าย body => ทุก include หลังจากนั้น (รวม Mobile) ตกไปอยู่ "ข้างใน" #app
+  //    -> _enterMobile() สั่ง app.style.display='none' => Mobile หายตาม => getBoundingClientRect = 0x0
+  //    แก้แบบปลอดภัย: ย้าย #mb-root มาเป็นลูกตรงของ <body> (ไม่ไปไล่ปิด div ที่ค้าง เสี่ยงพังหน้าอื่น)
+  function mbDetach(r){
+    try {
+      if (!r || !document.body) return;
+      if (r.parentElement === document.body) return;   // อยู่ถูกที่แล้ว
+      document.body.appendChild(r);
+    } catch(e){}
+  }
+
+  function mbShow(){
+    var r = el('mb-root'); if (!r) return;
+    mbDetach(r);
+    // [V509] boot overlay z-index สูงมาก -> ต้องซ่อนทันที ไม่รอ transition 260ms
+    try {
+      var b = document.getElementById('boot-loading');
+      if (b) { b.style.display = 'none'; b.style.opacity = '0'; b.style.pointerEvents = 'none'; }
+    } catch(e){}
+    r.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    mbRenderHeader();
+    mbGo('home');
+    mbCssCheck(r);
+  }
+
+  //  [V515] เช็คว่า style block ถูก HtmlService ตัดทิ้งไหม (สาเหตุจอดำที่ debug ยาก)
+  //  วิธี: อ่าน computed style ของ .mb-tile — ถ้า CSS โหลดจริงต้องมี border-radius
+  function mbCssCheck(root){
+    try {
+      var tile = root.querySelector('.mb-tile');
+      if (!tile) return;
+      var cs = window.getComputedStyle ? window.getComputedStyle(tile) : null;
+      if (!cs) return;
+      var br = String(cs.borderRadius || '');
+      var ok = br && br !== '0px' && br !== '0';
+      if (ok) return;
+      //  CSS ไม่ทำงาน -> แจ้งบนจอ (ไม่ปล่อยให้ดำเงียบ)
+      var warn = document.getElementById('mb-csswarn');
+      if (!warn) {
+        warn = document.createElement('div');
+        warn.id = 'mb-csswarn';
+        root.insertBefore(warn, root.firstChild);
+      }
+      warn.setAttribute('style',
+        'background:#3a1220;border:1px solid #7b2740;color:#ffd9e0;padding:11px 13px;'
+        + 'margin:10px;border-radius:10px;font-size:13.5px;line-height:1.6');
+      warn.innerHTML = '\u26a0\ufe0f CSS \u0e44\u0e21\u0e48\u0e16\u0e39\u0e01\u0e42\u0e2b\u0e25\u0e14'
+        + '<br><span style="font-size:13px;opacity:.85">\u0e2b\u0e19\u0e49\u0e32\u0e19\u0e35\u0e49\u0e08\u0e30\u0e14\u0e39\u0e44\u0e21\u0e48\u0e2a\u0e27\u0e22 \u0e41\u0e15\u0e48\u0e22\u0e31\u0e07\u0e43\u0e0a\u0e49\u0e07\u0e32\u0e19\u0e44\u0e14\u0e49 \u2014 \u0e41\u0e08\u0e49\u0e07\u0e1c\u0e39\u0e49\u0e14\u0e39\u0e41\u0e25\u0e23\u0e30\u0e1a\u0e1a</span>';
+    } catch(e){}
+  }
+  function mbHide(){
+    var r = el('mb-root'); if (!r) return;
+    r.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+  function mbSwitchToDesktop(){
+    // [V507] เข้า mobile = ข้ามโหลดข้อมูล -> สลับไป desktop ต้อง reload เพื่อโหลดข้อมูลจริง
+    try { localStorage.setItem('bjh_view_pref','desktop'); } catch(e){}
+    try { location.reload(); return; } catch(e){}
+    mbHide();
+  }
+  function mbAskAgain(){
+    try { localStorage.removeItem('bjh_view_pref'); } catch(e){}
+    try { location.reload(); } catch(e){}
+  }
+  function mbSwitchToMobile(){
+    try { localStorage.setItem('bjh_view_pref','mobile'); } catch(e){}
+    mbShow();
+  }
+  function mbInit(){
+    var pref = '';
+    try { pref = localStorage.getItem('bjh_view_pref') || ''; } catch(e){}
+    if (pref === 'mobile') mbShow();
+  }
+
+  // ── expose (IIFE -> onclick ใน HTML ต้องเรียกได้) ──
+  window.mbGo               = mbGo;
+  window.mbShow             = mbShow;
+  window.mbHide             = mbHide;
+  window.mbInit             = mbInit;
+  window.mbSwitchToDesktop  = mbSwitchToDesktop;
+  window.mbSwitchToMobile   = mbSwitchToMobile;
+  window.mbAskAgain         = mbAskAgain;
+  window.mbOnSalesFilter    = mbOnSalesFilter;
+  window.mbOpenContact      = mbOpenContact;
+  window.mbToast            = mbToast;
+  window.mbFilterStock      = mbFilterStock;
+  window.mbFilterAlert      = mbFilterAlert;
+  window.mbFilterContract   = mbFilterContract;
+  window.mbFilterQuo        = mbFilterQuo;
+  window.mbFilterMine       = mbFilterMine;
+  window.mbSnSearch         = mbSnSearch;
+  window.mbSnLookup         = mbSnLookup;
+  window.mbCustSearch       = mbCustSearch;
+  window._MB_MENU           = MB_MENU;
+  window._mbStockGrp        = mbStockGrp;
+  window._mbStockRows       = mbStockRows;
+  window._mbAlertRows       = mbAlertRows;
+  window._mbContractRows    = mbContractRows;
+  window._mbQuoRows         = mbQuoRows;
+  window._mbCustRows        = mbCustRows;
+  window._mbMineRows        = mbMineRows;
+  window._mbSaMatch         = mbSaMatch;
+  window._mbDetach          = mbDetach;
+})();
+</script>

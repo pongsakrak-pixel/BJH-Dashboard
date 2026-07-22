@@ -1,0 +1,630 @@
+<div id="cb-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:8000;align-items:flex-start;justify-content:center;padding:20px 12px;overflow-y:auto">
+  <div style="background:var(--sur);border:1px solid var(--bd2);border-radius:12px;width:min(1100px,96vw);box-shadow:0 24px 80px #000c;display:flex;flex-direction:column;max-height:90vh">
+    <div style="display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid var(--bd);background:var(--sur2);border-radius:12px 12px 0 0">
+      <div style="font-size:14px;font-weight:700;color:var(--tx);flex:1">✅ Confirm Billing — <span id="cb-month-label" style="color:#fbbf24"></span></div>
+      <button onclick="closeConfirmBilling()" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:22px;line-height:1;padding:0 4px">×</button>
+    </div>
+    <div style="padding:10px 20px;border-bottom:1px solid var(--bd);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--mu2)">เดือน:</span>
+      <select id="cb-filter-mo" onchange="cbUpdateMonthLabel();cbRenderList()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font)">
+        <option value="0">ทั้งหมด</option>
+        <option value="1">ม.ค.</option><option value="2">ก.พ.</option><option value="3">มี.ค.</option>
+        <option value="4">เม.ย.</option><option value="5">พ.ค.</option><option value="6">มิ.ย.</option>
+        <option value="7">ก.ค.</option><option value="8">ส.ค.</option><option value="9">ก.ย.</option>
+        <option value="10">ต.ค.</option><option value="11">พ.ย.</option><option value="12">ธ.ค.</option>
+      </select>
+      <select id="cb-filter-yr" onchange="cbUpdateMonthLabel();cbRenderList()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font)">
+        <option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option>
+      </select>
+      <span style="font-size:11px;color:var(--mu2)">Status:</span>
+      <select id="cb-filter-st" onchange="cbRenderList()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font)">
+        <option value="">ทั้งหมด</option>
+        <option value="Ordered">Ordered</option>
+        <option value="Backlog">Backlog</option>
+        <option value="SC Ordered">SC Ordered</option>
+        <option value="SC Carry">SC Carry (Bill Pending)</option>
+        <option value="SC Carry (Pending)">SC Carry (PM Pending)</option>
+        <option value="SP Ordered (Pending)">SP Ordered Processing</option>
+        <option value="SP Ordered (Ordering)">SP Ordered (Ordering)</option>
+        <option value="Offer">Prospect</option>
+        <option value="Backlog (Confirmed)">Backlog (Confirmed)</option>
+      </select>
+      <span style="font-size:11px;color:var(--mu2)">IP:</span>
+      <select id="cb-filter-ip" onchange="cbRenderList()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font);min-width:110px">
+        <option value="">ทั้งหมด</option>
+      </select>
+      <span style="font-size:11px;color:var(--mu2)">Sales:</span>
+      <select id="cb-filter-sa" onchange="cbRenderList()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font);min-width:120px">
+        <option value="">ทั้งหมด</option>
+      </select>
+      <input id="cb-search" type="text" placeholder="ค้นหา QN / ลูกค้า / Brand..." oninput="cbRenderList()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font);width:180px">
+      <span id="cb-count" style="font-size:11px;color:var(--mu);margin-left:auto"></span>
+    </div>
+    <div id="cb-list" style="flex:1;overflow-y:auto;padding:12px 20px;min-height:200px">
+      <div style="color:var(--mu);font-size:12px">กำลังโหลด...</div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--bd);background:var(--sur2);border-radius:0 0 12px 12px">
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:6px">Note (optional)</div>
+      <textarea id="cb-note" rows="2" placeholder="หมายเหตุการเปิดบิล..." style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px;font-size:12px;font-family:var(--font);resize:vertical;outline:none"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <button onclick="cbConfirmSelected()" style="padding:7px 22px;border-radius:7px;border:none;background:#f59e0b;color:#000;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">✅ Confirm ที่เลือก</button>
+        <button onclick="cbCancelSelected()" style="padding:7px 16px;border-radius:7px;border:1px solid #e8344a;background:transparent;color:#e8344a;font-size:12px;font-family:var(--font);cursor:pointer">❌ ยกเลิกที่เลือก</button>
+        <button onclick="closeConfirmBilling()" style="padding:7px 16px;border-radius:7px;border:1px solid var(--bd2);background:transparent;color:var(--mu2);font-size:12px;font-family:var(--font);cursor:pointer">ปิด</button>
+        <div id="cb-err" style="font-size:11px;color:#e8344a;flex:1"></div>
+        <div id="cb-ok" style="font-size:11px;color:#22c55e;flex:1;text-align:right"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIRM BILLING — Phase 3 ──────────────────────────
+var _cbSelected = {};
+
+function _cbGetCurrentMonth() {
+  var now = new Date();
+  return { mo: now.getMonth()+1, yr: now.getFullYear(),
+    label: now.toLocaleDateString('th-TH', { month:'long', year:'numeric' }) };
+}
+
+function cbUpdateMonthLabel() {
+  var mo = parseInt(document.getElementById('cb-filter-mo').value)||0;
+  var yr = document.getElementById('cb-filter-yr').value;
+  var MO_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var el = document.getElementById('cb-month-label');
+  if (el) el.textContent = mo ? MO_TH[mo]+' '+yr : 'ทุกเดือน';
+}
+
+function openConfirmBilling() {
+  _cbSelected = {};
+  var now = new Date();
+  var mo = now.getMonth()+1;
+  var yr = now.getFullYear();
+  // set month/year dropdowns to current
+  var moEl = document.getElementById('cb-filter-mo');
+  var yrEl = document.getElementById('cb-filter-yr');
+  if (moEl) moEl.value = mo;
+  if (yrEl) yrEl.value = yr;
+  cbUpdateMonthLabel();
+  document.getElementById('cb-note').value = '';
+  document.getElementById('cb-err').textContent = '';
+  document.getElementById('cb-ok').textContent = '';
+  document.getElementById('cb-filter-st').value = '';
+  var _ipReset = document.getElementById('cb-filter-ip'); if(_ipReset) _ipReset.value = '';
+  document.getElementById('cb-search').value = '';
+  // Populate Sales dropdown from D[] (unique sa values)
+  var saEl = document.getElementById('cb-filter-sa');
+  if (saEl) {
+    var saSet = {};
+    (typeof D !== 'undefined' ? D : []).forEach(function(r){
+      if(r.sa && String(r.sa).trim()) saSet[String(r.sa).trim()] = 1;
+    });
+    var saList = Object.keys(saSet).sort();
+    saEl.innerHTML = '<option value="">ทั้งหมด</option>' + saList.map(function(s){
+      return '<option value="'+s.replace(/"/g,'&quot;')+'">'+s+'</option>';
+    }).join('');
+  }
+  // Populate IP (Internal Process) dropdown auto จากข้อมูลจริง — เฉพาะ record ที่อยู่ใน pool (ไม่รวม Excluded/Data Issue)
+  var ipEl = document.getElementById('cb-filter-ip');
+  if (ipEl) {
+    var ipSet = {};
+    (typeof D !== 'undefined' ? D : []).forEach(function(r){
+      if(r.st === 'Excluded' || r.st === 'Data Issue' || !r.st) return;
+      if(r.ip && String(r.ip).trim()) ipSet[String(r.ip).trim()] = 1;
+    });
+    var ipList = Object.keys(ipSet).sort();
+    ipEl.innerHTML = '<option value="">ทั้งหมด</option>' + ipList.map(function(s){
+      return '<option value="'+s.replace(/"/g,'&quot;')+'">'+s+'</option>';
+    }).join('');
+  }
+  document.getElementById('cb-overlay').style.display = 'flex';
+  cbRenderList();
+}
+
+function closeConfirmBilling() {
+  document.getElementById('cb-overlay').style.display = 'none';
+}
+
+var _cbSort = { col: 'mo', asc: true };
+function cbSort(col) {
+  if (_cbSort.col === col) _cbSort.asc = !_cbSort.asc;
+  else { _cbSort.col = col; _cbSort.asc = true; }
+  cbRenderList();
+}
+
+function cbRenderList() {
+  var el = document.getElementById('cb-list');
+  if (!el) return;
+  var myName = _currentUser ? _currentUser.name : '';
+  var fSt   = document.getElementById('cb-filter-st').value;
+  var fIp   = (document.getElementById('cb-filter-ip')||{}).value || '';
+  var fSa   = (document.getElementById('cb-filter-sa')||{}).value || '';
+  var fSrch = (document.getElementById('cb-search').value || '').toLowerCase();
+  var fMo   = parseInt((document.getElementById('cb-filter-mo')||{}).value)||0;
+  var fYr   = parseInt((document.getElementById('cb-filter-yr')||{}).value)||0;
+
+  var pool = (typeof D !== 'undefined' ? D : []).filter(function(r) {
+    if (isSales() && r.sa !== myName) return false;
+    // รับทุก status ยกเว้น Excluded + Data Issue (เปลี่ยนจาก whitelist เป็น blacklist)
+    if (r.st === 'Excluded' || r.st === 'Data Issue' || !r.st) return false;
+    if (fSt && r.st !== fSt) return false;
+    if (fIp && r.ip !== fIp) return false;
+    // filter เดือน/ปี จาก r.mo / r.yr (fMo คือ number, ใช้ === แทน array indexOf)
+    if (fMo && Number(r.mo) !== fMo) return false;
+    if (fYr && Number(r.yr) !== fYr) return false;
+    if (fSa && r.sa !== fSa) return false;
+    if (fSrch) {
+      var hay = ((r.qn||'')+(r.cu||'')+(r.sa||'')+(r.br||'')+(r.md||'')).toLowerCase();
+      if (hay.indexOf(fSrch) < 0) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('cb-count').textContent = pool.length + ' รายการ';
+  if (!pool.length) { el.innerHTML = '<div style="color:var(--mu);font-size:12px;padding:20px 0">ไม่พบรายการ</div>'; return; }
+
+  // sort
+  pool.sort(function(a,b){
+    var va, vb;
+    if (_cbSort.col==='qn')    { va=a.qn||a.sr||''; vb=b.qn||b.sr||''; }
+    else if(_cbSort.col==='cu') { va=a.cu||''; vb=b.cu||''; }
+    else if(_cbSort.col==='sa') { va=a.sa||''; vb=b.sa||''; }
+    else if(_cbSort.col==='st') { va=a.st||''; vb=b.st||''; }
+    else if(_cbSort.col==='px') { va=a.px||0; vb=b.px||0; }
+    else { // mo default
+      va=(Number(a.yr||0)*100)+Number(a.mo||0);
+      vb=(Number(b.yr||0)*100)+Number(b.mo||0);
+    }
+    if(va<vb) return _cbSort.asc?-1:1;
+    if(va>vb) return _cbSort.asc?1:-1;
+    return 0;
+  });
+
+  function _th(col,label){ var arr=_cbSort.col===col?(_cbSort.asc?' ▲':' ▼'):''; return '<th onclick="cbSort(\''+col+'\')" style="text-align:left;padding:6px 8px;color:var(--mu);font-size:10px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap">'+label+arr+'</th>'; }
+  function _e(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  var stColor = { 'Ordered':'#22c55e','Backlog':'#38bdf8','SC Ordered':'#a78bfa',
+    'SC Carry':'#fb923c','SC Carry (Pending)':'#f59e0b',
+    'SP Ordered (Pending)':'#67e8f9','SP Ordered (Ordering)':'#67e8f9' };
+  var MO_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  function _th(col,lbl,extra){ var arr=_cbSort.col===col?(_cbSort.asc?' ▲':' ▼'):''; return '<th onclick="cbSort(\''+col+'\')" style="text-align:left;padding:6px 8px;color:var(--mu);font-size:10px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap'+(extra||'')+'">'+lbl+arr+'</th>'; }
+
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    + '<thead><tr style="border-bottom:1px solid var(--bd)">'
+    + '<th style="padding:6px 8px;width:32px"><input type="checkbox" id="cb-chk-all" onchange="cbToggleAll(this.checked)"></th>'
+    + _th('qn','QN')
+    + _th('cu','ลูกค้า')
+    + '<th style="text-align:left;padding:6px 8px;color:var(--mu);font-size:10px;font-weight:600">Brand / รุ่น</th>'
+    + _th('mo','รอบบิล')
+    + '<th onclick="cbSort(\'px\')" style="text-align:right;padding:6px 8px;color:var(--mu);font-size:10px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap">In.VAT'+(_cbSort.col==='px'?(_cbSort.asc?' ▲':' ▼'):'')+'</th>'
+    + _th('sa','Sales')
+    + _th('st','Status')
+    + '</tr></thead><tbody>'
+    + pool.map(function(r) {
+      var qkey = String(r.id || r.qn || r.sr || '');
+      var chk = _cbSelected[qkey] ? ' checked' : '';
+      var sc = stColor[r.st] || '#94a3b8';
+      var val = r.px ? r.px.toLocaleString('th-TH', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+      var brand = r.br || r.pg || '—';
+      var model = r.md || '';
+      var brandCell = _e(brand) + (model ? '<br><span style="font-size:10px;color:var(--mu)">'+_e(model)+'</span>' : '');
+      // รอบบิล: rbmo/rbyr → mo/yr เหมือนตารางหลัก
+      var rbMo=Number(r.rbmo||0), rbYr=Number(r.rbyr||0);
+      var bMo=Number(r.mo||0), bYr=Number(r.yr||0);
+      var billMo;
+      if(rbMo&&rbYr&&(rbYr*100+rbMo)!==(bYr*100+bMo)&&bMo&&bYr){
+        billMo=(MO_TH[rbMo]||'')+(rbYr?' '+rbYr:'')+' → '+(MO_TH[bMo]||'')+(bYr?' '+bYr:'');
+      } else if(bMo&&bYr){
+        billMo=(MO_TH[bMo]||'')+' '+bYr;
+      } else { billMo='—'; }
+      var cancelBtn = (r.st === 'Backlog (Confirmed)' && r._confirmed_billing)
+        ? '<button onclick="cbCancelConfirm(\''+_e(qkey)+'\')" style="font-size:10px;padding:1px 7px;border:1px solid #e8344a;border-radius:3px;background:transparent;color:#e8344a;cursor:pointer;margin-left:4px">ยกเลิก</button>'
+        : '';
+      return '<tr style="border-bottom:1px solid var(--bd)" onmouseover="this.style.background=\'var(--sur2)\'" onmouseout="this.style.background=\'\'">'
+        + '<td style="padding:6px 8px;text-align:center"><input type="checkbox" data-qn="'+_e(qkey)+'"'+chk+' onchange="cbToggleRow(this)"></td>'
+        + '<td style="padding:6px 8px;font-family:var(--mono);font-size:11px;color:var(--ac2);white-space:nowrap;cursor:pointer;text-decoration:underline" onclick="cbShowNote(\''+_e(qkey)+'\')">'+_e(r.qn||r.sr||'—')+'</td>'
+        + '<td style="padding:6px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_e(r.cu||'—')+'</td>'
+        + '<td style="padding:6px 8px;font-size:11px;min-width:120px">'+brandCell+'</td>'
+        + '<td style="padding:6px 8px;font-size:11px;color:var(--mu2);white-space:nowrap">'+billMo+'</td>'
+        + '<td style="padding:6px 8px;text-align:right;font-size:11px;white-space:nowrap">'+val+'</td>'
+        + '<td style="padding:6px 8px;font-size:11px;white-space:nowrap">'+_e(r.sa||'—')+'</td>'
+        + '<td style="padding:6px 8px;white-space:nowrap"><span style="font-size:10px;color:'+sc+';background:var(--sur3);border-radius:3px;padding:2px 6px">'+_e(r.st)+'</span>'+(r.st==='Backlog (Confirmed)'?'<span style="font-size:9px;color:#22c55e;margin-left:4px">✅</span>':'')+cancelBtn+'</td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table>';
+}
+
+function cbToggleRow(chk) {
+  var qn = chk.getAttribute('data-qn');
+  if (chk.checked) _cbSelected[qn] = true; else delete _cbSelected[qn];
+  var boxes = document.querySelectorAll('#cb-list input[data-qn]');
+  var allChk = document.getElementById('cb-chk-all');
+  if (allChk) { var sel=Object.keys(_cbSelected).length; allChk.checked=sel>0&&sel>=boxes.length; allChk.indeterminate=sel>0&&sel<boxes.length; }
+}
+
+function cbToggleAll(checked) {
+  _cbSelected = {};
+  document.querySelectorAll('#cb-list input[data-qn]').forEach(function(b){
+    b.checked = checked;
+    if (checked) _cbSelected[b.getAttribute('data-qn')] = true;
+  });
+}
+
+function cbConfirmSelected() {
+  var keys = Object.keys(_cbSelected);
+  if (!keys.length) { document.getElementById('cb-err').textContent = 'กรุณาเลือกอย่างน้อย 1 รายการ'; return; }
+  var note   = (document.getElementById('cb-note').value || '').trim();
+  var cm     = _cbGetCurrentMonth();
+  var myId   = _currentUser ? _currentUser.empId : '';
+  var myName = _currentUser ? _currentUser.name  : '';
+  var err = document.getElementById('cb-err');
+  var ok  = document.getElementById('cb-ok');
+  err.textContent = ''; ok.textContent = 'กำลังบันทึก...';
+
+  var overrideRows = [];
+  keys.forEach(function(qn) {
+    var matches = (typeof D !== 'undefined' ? D : []).filter(function(x){ return String(x.id||x.qn||x.sr) === qn; });
+    if (!matches.length) return;
+    matches.forEach(function(r) {
+      r._orig_st = r._orig_st || r.st;
+      r.st = 'Backlog (Confirmed)';
+      r._confirmed_billing = 1;
+      r._search = null;
+    });
+    var r0 = matches[0];
+    overrideRows.push({ qn: r0.qn||r0.sr||qn, rid: qn, customer:r0.cu||'', salesId:myId, salesName:myName,
+      month:(r0.rbmo!=null?r0.rbmo:cm.mo), year:(r0.rbyr!=null?r0.rbyr:cm.yr), note:note, status:'Backlog (Confirmed)', ip:r0.ip||'', origSt:r0._orig_st||'' });  // [v237] เก็บเดือนของงวด -> per-installment
+  });
+
+  // force reset pill → All แล้ว re-render เพื่อให้เห็น Backlog (Confirmed)
+  pillSt = null; pillIp = null; _pillAll = true;
+  activePill = 'all';
+  try {
+    var pallEl = document.getElementById('pill-all');
+    document.querySelectorAll('.ip-pill').forEach(function(b){ b.classList.remove('on'); });
+    if (pallEl) pallEl.classList.add('on');
+  } catch(e) {}
+  try { buildSummary(); af(); } catch(e) {}
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        try {
+          var r = typeof res === 'string' ? JSON.parse(res) : res;
+          ok.textContent = r.ok ? '✅ บันทึกสำเร็จ '+keys.length+' รายการ' : '';
+          if (!r.ok) err.textContent = r.error||'เกิดข้อผิดพลาด';
+        } catch(e) { err.textContent = 'เกิดข้อผิดพลาด'; }
+      })
+      .withFailureHandler(function(e){ err.textContent = 'ไม่สามารถเชื่อมต่อได้: '+(e&&e.message||''); })
+      .saveNotes(JSON.stringify(overrideRows));
+  } else {
+    ok.textContent = '✅ บันทึกสำเร็จ (local) '+keys.length+' รายการ';
+  }
+  _cbSelected = {};
+  setTimeout(function(){ cbRenderList(); }, 300);
+}
+
+// ── Phase 4: override status จาก salesnotes หลัง loadData ──
+var _notesOverrideMap = {}; // qn → note record
+
+function _applyNotesOverride(callback) {
+  // [v485] ใช้ผลที่มากับ getBootBundle (1 call รวม) -> ไม่ยิง getNotes() ซ้ำ
+  //   handler แยกเป็น named fn เพื่อใช้ซ้ำได้ทั้ง 2 ทาง
+  var _onRes = function(res) {
+      try {
+        var r = typeof res === 'string' ? JSON.parse(res) : res;
+        if (!r.ok || !r.notes || !r.notes.length) { if (callback) callback(); return; }
+        _notesOverrideMap = {};
+        r.notes.forEach(function(n) {
+          if (n.overrideApplied !== 'Cancelled' && n.qn) {
+            // [v237] key รายงวด = qn|เดือน|ปี (ของงวด) — เดิม key=qn เดี่ยว ทำให้ override ลามทั้งใบ
+            _notesOverrideMap[String(n.qn)+'|'+String(n.month)+'|'+String(n.year)] = n;
+          }
+        });
+        // apply override ลง D[]
+        D.forEach(function(record) {
+          // [v237] match รายงวด: qn|rbmo|rbyr (เดือน/ปีบิลของงวด) — งวดอนาคตที่ยังไม่ confirm จะไม่โดน
+          var _rm = (record.rbmo!=null?record.rbmo:(record.mo||''));
+          var _ry = (record.rbyr!=null?record.rbyr:(record.yr||''));
+          var qn = String(record.qn||record.sr||'')+'|'+String(_rm)+'|'+String(_ry);
+          var note = _notesOverrideMap[qn];
+          if (!note) return;
+          // ถ้า raw status เป็น Billed/Backlog/Billing/Actual FAD → มีบิลหรือใกล้บิลแล้ว ไม่ override
+          var noOverride = ['SC Billing','SP Billing','Backlog','Billed','Actual FAD','Actual FAD (CN)','Actual FAD (Not Found)','Actual'];
+          if (noOverride.indexOf(record.st) >= 0) return;
+          // override
+          record._orig_st = record._orig_st || record.st;
+          record.st = 'Backlog (Confirmed)';
+          record._confirmed_billing = 1;
+          record._search = null;
+          // [V525] tag เดือนที่ฝากไว้ใน note: [→M/YYYY] -> ย้ายเดือนให้ตรงกับที่ sales เลือกไว้
+          //   (key ของ salesnotes ผูกกับเดือนเดิม จึงย้ายเดือนตรง ๆ ไม่ได้ ต้องฝากผ่าน note)
+          try {
+            var _tg = String(note.note||'').match(/\[\u2192\s*(\d{1,2})\s*\/\s*(\d{4})\s*\]\s*$/);
+            if (_tg){
+              var _nm = parseInt(_tg[1],10), _ny = parseInt(_tg[2],10);
+              if (_nm>=1 && _nm<=12 && _ny>2000){
+                if (record._scf_key_mo == null){
+                  record._scf_key_mo = (record.rbmo!=null?record.rbmo:(record.mo||''));
+                  record._scf_key_yr = (record.rbyr!=null?record.rbyr:(record.yr||''));
+                }
+                if (record._orig_mo == null){
+                  record._orig_mo = record.mo; record._orig_yr = record.yr;
+                  record._orig_fmo = record.fmo; record._orig_fyr = record.fyr;   // [V529]
+                }
+                record.mo = _nm;  record.yr = _ny;
+                record.rbmo = _nm; record.rbyr = _ny;
+                //  [V529] Monthly Forecast อ่าน fmo -> ต้องย้ายด้วย ไม่งั้นนับซ้ำ 2 เดือน
+                record.fmo = _nm; record.fyr = _ny; record.fm = _nm; record.fy = _ny;
+              }
+            }
+          } catch(e){}
+        });
+      } catch(e) {}
+      if (callback) callback();
+  };
+  // [v485] มีผลจาก bootBundle แล้ว -> apply เลย (ประหยัด 1 round-trip)
+  try{
+    if (window._bootBundle && window._bootBundle.notes){
+      var _pre = window._bootBundle.notes; window._bootBundle.notes = null;
+      _onRes(_pre);
+      return;
+    }
+  }catch(e){}
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    if (callback) callback();
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(_onRes)
+    .withFailureHandler(function() { if (callback) callback(); })
+    .getNotes();
+}
+
+// ── Phase 5: override status จาก sales_manual_edit หลัง loadData ──
+var _manualEditOverrideMap = {}; // qn → manual edit record
+
+function _applyManualEditsOverride(callback) {
+  // [v485] ใช้ผลที่มากับ getBootBundle (1 call รวม) -> ไม่ยิง getManualEdits() ซ้ำ
+  //   handler แยกเป็น named fn เพื่อใช้ซ้ำได้ทั้ง 2 ทาง
+  var _onRes = function(res) {
+      try {
+        var r = typeof res === 'string' ? JSON.parse(res) : res;
+        if (!r.ok || !r.edits || !r.edits.length) { if (callback) callback(); return; }
+        _manualEditOverrideMap = {};
+        r.edits.forEach(function(e) {
+          // ใช้ rowKey (เฉพาะแถว) เท่านั้น — ข้อมูลเก่าที่ไม่มี rowKey จะถูกข้าม (เริ่มใหม่)
+          if (e.rowKey) _manualEditOverrideMap[e.rowKey] = e;
+        });
+        // apply override ลง D[]
+        D.forEach(function(record) {
+          var qn = record.qn || record.sr || '';
+          // สร้าง rowKey เดียวกับตอน save (qn + bill_number หรือ rbmo-rbyr)
+          var _rk = qn + '|' + (record.bn ? ('B'+record.bn) : ((record.rbmo||0)+'-'+(record.rbyr||0)));
+          var ed = _manualEditOverrideMap[_rk];
+          if (!ed || !ed.newStatus) return;
+          // ถ้า raw status เป็น Billed/Backlog/Billing/Actual FAD → มีบิลหรือใกล้บิลแล้ว ไม่ override
+          var noOverride = ['SC Billing','SP Billing','Backlog','Billed','Actual FAD','Actual FAD (CN)','Actual FAD (Not Found)','Actual'];
+          if (noOverride.indexOf(record.st) >= 0) return;
+          // override status + month/year + ip
+          if(!record._orig_st){
+            record._orig_st = record.st;
+            record._orig_mo = record.mo;
+            record._orig_yr = record.yr;
+            record._orig_fmo = record.fmo;
+            record._orig_fyr = record.fyr;
+            record._orig_ip = record.ip;
+          }
+          record.st = ed.newStatus;
+          if (ed.newMonth) { record.fmo = Number(ed.newMonth); record.mo = Number(ed.newMonth); }
+          if (ed.newYear)  { record.fyr = Number(ed.newYear);  record.yr = Number(ed.newYear); }
+          if (ed.newIp)    { record.ip = ed.newIp; }
+          record._manual_edit = 1;
+          record._search = null;
+          // update flags ตาม status ใหม่
+          record.is_carry = (/SC Carry/.test(ed.newStatus)) ? 1 : 0;
+          record.co_ready = (ed.newStatus === 'SC Carry') ? 1 : 0;
+        });
+      } catch(e) {}
+      if (callback) callback();
+  };
+  // [v485] มีผลจาก bootBundle แล้ว -> apply เลย (ประหยัด 1 round-trip)
+  try{
+    if (window._bootBundle && window._bootBundle.edits){
+      var _pre = window._bootBundle.edits; window._bootBundle.edits = null;
+      _onRes(_pre);
+      return;
+    }
+  }catch(e){}
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    if (callback) callback();
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(_onRes)
+    .withFailureHandler(function() { if (callback) callback(); })
+    .getManualEdits();
+}
+
+// ── Phase 6: Low Prospect — เพิ่ม estimate records จาก sales_low_prospect ──
+function _applyLowProspectsOverride(callback) {
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    if (callback) callback();
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(res) {
+      try {
+        var r = typeof res === 'string' ? JSON.parse(res) : res;
+        if (!r.ok || !r.items || !r.items.length) { if (callback) callback(); return; }
+        // ลบ Low records เดิมทั้งหมดก่อน (กัน duplicate ระหว่าง re-load)
+        if (window.D) {
+          window.D = window.D.filter(function(rec){ return !rec._isLow; });
+        }
+        // เพิ่ม Low records ใหม่
+        var _SA_TEAM_MAP = window._SA_TEAM_MAP || {};
+        r.items.forEach(function(item) {
+          var _isSP = !!item.isSP;
+          // px (in-VAT): SC=amt/4, SP=amt
+          var _pxEst = _isSP ? parseFloat(item.amt||0) : (parseFloat(item.amt||0)/4);
+          var _mo = parseInt(item.mo)||12, _yr = parseInt(item.yr)||(window.CUR_YR||new Date().getFullYear());
+          var newR = {id:Date.now()+Math.random()+(item.qn||''),t:(_isSP?'SP':'SC'),st:'Offer',ip:'Waiting PM',
+            qn:item.qn||'',cu:item.cu||'',sa:item.sa||'',br:item.brand||'',ml:'',
+            tm:_SA_TEAM_MAP[item.sa]||'Service 1',
+            px:_pxEst,
+            mo:_mo,yr:_yr,fmo:_mo,fyr:_yr,rbmo:_mo,rbyr:_yr,om:_mo,oy:_yr,
+            bn:null,bd:null,sb:'',sc:'Low',sc_contract:'Low',sn:'',
+            nc:0,is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',qs:'',_isLow:true
+          };
+          if (window.D) window.D.push(newR);
+          // sync _FC_LOW_ITEMS
+          if (window._FC_LOW_ITEMS) {
+            window._FC_LOW_ITEMS[item.qn] = {qn:item.qn,cu:item.cu,brand:item.brand,sa:item.sa,amt:item.amt,yr:_yr,mo:_mo,isSP:_isSP?1:0};
+          }
+        });
+      } catch(e) {}
+      if (callback) callback();
+    })
+    .withFailureHandler(function() { if (callback) callback(); })
+    .getLowProspects();
+}
+
+// ── Admin tool: รัน migration ครั้งเดียว — แปลงข้อมูล Low Prospect เก่าให้ใช้สูตรใหม่ ──
+/* [v177] runMigrateLowProspect ลบ (ไม่มีปุ่มเรียก v166) */
+
+function cbCancelSelected() {
+  var keys = Object.keys(_cbSelected);
+  if (!keys.length) { document.getElementById('cb-err').textContent = 'กรุณาเลือกรายการที่ต้องการยกเลิก'; return; }
+  if (!confirm('ยกเลิก Confirm Billing '+keys.length+' รายการ?')) return;
+  var err = document.getElementById('cb-err');
+  var ok  = document.getElementById('cb-ok');
+  err.textContent = ''; ok.textContent = '';
+  var cancelRows = [];
+  keys.forEach(function(qn) {
+    var matches = (typeof D !== 'undefined' ? D : []).filter(function(x){ return String(x.id||x.qn||x.sr) === qn && x.st === 'Backlog (Confirmed)'; });
+    if (!matches.length) return;
+    matches.forEach(function(r) {
+      r.st = r._orig_st || 'SC Ordered';
+      r._confirmed_billing = 0;
+      r._search = null;
+    });
+    cancelRows.push({ qn: matches[0].qn||matches[0].sr||qn, month:(matches[0].rbmo!=null?matches[0].rbmo:''), year:(matches[0].rbyr!=null?matches[0].rbyr:''), cancelled:true,
+      salesId: _currentUser ? _currentUser.empId : '',
+      salesName: _currentUser ? _currentUser.name : '' });  // [v237] ยกเลิกรายงวด
+  });
+  if (!cancelRows.length) { err.textContent = 'ไม่มีรายการ Backlog (Confirmed) ที่เลือก'; return; }
+  pillSt = null; pillIp = null; _pillAll = true; activePill = 'all';
+  try {
+    var pallEl2 = document.getElementById('pill-all');
+    document.querySelectorAll('.ip-pill').forEach(function(b){ b.classList.remove('on'); });
+    if (pallEl2) pallEl2.classList.add('on');
+  } catch(e) {}
+  try { buildSummary(); af(); } catch(e) {}
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        try {
+          var r = typeof res === 'string' ? JSON.parse(res) : res;
+          ok.textContent = r.ok ? '✅ ยกเลิกสำเร็จ '+cancelRows.length+' รายการ' : '';
+          if (!r.ok) err.textContent = r.error||'เกิดข้อผิดพลาด';
+        } catch(e) { err.textContent = 'เกิดข้อผิดพลาด'; }
+      })
+      .withFailureHandler(function(e){ err.textContent = 'ไม่สามารถเชื่อมต่อได้'; })
+      .cancelNote(JSON.stringify(cancelRows));
+  } else {
+    ok.textContent = '✅ ยกเลิกสำเร็จ (local) '+cancelRows.length+' รายการ';
+  }
+  _cbSelected = {};
+  setTimeout(function(){ cbRenderList(); }, 300);
+}
+
+function cbCancelConfirm(qn) {
+  if (!confirm('ยกเลิก Confirm Billing สำหรับ '+qn+'?')) return;
+  var matches = (typeof D !== 'undefined' ? D : []).filter(function(x){ return String(x.id||x.qn||x.sr) === qn; });
+  if (!matches.length) return;
+  matches.forEach(function(r) {
+    r.st = r._orig_st || 'SC Ordered';
+    r._confirmed_billing = 0;
+    r._search = null;
+  });
+  var realQn = matches[0].qn || matches[0].sr || qn;
+  var _m0 = matches[0];
+  var payload = JSON.stringify([{ qn: realQn, month:(_m0.rbmo!=null?_m0.rbmo:''), year:(_m0.rbyr!=null?_m0.rbyr:''), cancelled:true,
+    salesId: _currentUser ? _currentUser.empId : '',
+    salesName: _currentUser ? _currentUser.name : '' }]);  // [v237] ยกเลิกรายงวด
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(){})
+      .withFailureHandler(function(){})
+      .cancelNote(payload);
+  }
+  try { buildSummary(); af(); } catch(e) {}
+  cbRenderList();
+}
+
+window.addEventListener('DOMContentLoaded', function() { _bootLogin(); });
+</script>
+<!-- NOTE POPUP -->
+<div id="cb-note-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center" onclick="if(event.target===this)cbCloseNote()">
+  <div style="background:var(--sur);border:1px solid var(--bd2);border-radius:10px;width:min(480px,92vw);max-height:70vh;overflow-y:auto;box-shadow:0 16px 48px #000c">
+    <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--sur2);border-radius:10px 10px 0 0">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);flex:1">📋 Note History — <span id="cb-np-qn" style="font-family:var(--mono);color:var(--mu2)"></span></div>
+      <button onclick="cbCloseNote()" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">×</button>
+    </div>
+    <div id="cb-note-body" style="padding:14px 16px">
+      <div style="color:var(--mu);font-size:12px">กำลังโหลด...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function cbShowNote(qkey) {
+  var r = (typeof D !== 'undefined' ? D : []).find(function(x){ return String(x.id||x.qn||x.sr) === String(qkey); });
+  var qn = r ? (r.qn||r.sr||qkey) : qkey;
+  document.getElementById('cb-np-qn').textContent = qn;
+  document.getElementById('cb-note-body').innerHTML = '<div style="color:var(--mu);font-size:12px">กำลังโหลด...</div>';
+  document.getElementById('cb-note-popup').style.display = 'flex';
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        try {
+          var data = typeof res === 'string' ? JSON.parse(res) : res;
+          var notes = (data.notes||[]).filter(function(n){ return n.qn === qn; });
+          _cbRenderNotePopup(notes, qn);
+        } catch(e) { document.getElementById('cb-note-body').innerHTML = '<div style="color:#e8344a;font-size:12px">เกิดข้อผิดพลาด</div>'; }
+      })
+      .withFailureHandler(function(){ document.getElementById('cb-note-body').innerHTML = '<div style="color:#e8344a;font-size:12px">ไม่สามารถเชื่อมต่อได้</div>'; })
+      .getNotes();
+  } else {
+    _cbRenderNotePopup([], qn);
+  }
+}
+
+function cbCloseNote() {
+  document.getElementById('cb-note-popup').style.display = 'none';
+}
+
+function _cbRenderNotePopup(notes, qn) {
+  var el = document.getElementById('cb-note-body');
+  var MO_TH = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  function _e(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  if (!notes.length) {
+    el.innerHTML = '<div style="color:var(--mu);font-size:12px;padding:8px 0">ยังไม่มี note สำหรับ QN นี้</div>';
+    return;
+  }
+  el.innerHTML = notes.map(function(n) {
+    var moLabel = (MO_TH[Number(n.month)]||'') + ' ' + (n.year||'');
+    var dt = n.confirmedAt ? n.confirmedAt.substring(0,16).replace('T',' ') : '';
+    var cancelled = n.overrideApplied === 'Cancelled';
+    return '<div style="border:0.5px solid var(--bd2);border-radius:7px;padding:10px 12px;margin-bottom:8px;'+(cancelled?'opacity:0.5;':'background:var(--sur2)')+'">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      + '<span style="font-size:11px;font-weight:600;color:var(--cyn)">'+_e(moLabel)+'</span>'
+      + '<span style="font-size:10px;color:var(--mu2)">'+_e(n.salesName||n.salesId||'')+'</span>'
+      + (cancelled ? '<span style="font-size:9px;background:#3a1010;color:#e8344a;border-radius:3px;padding:1px 5px;margin-left:auto">ยกเลิกแล้ว</span>' : '<span style="font-size:9px;background:#0f2a10;color:#22c55e;border-radius:3px;padding:1px 5px;margin-left:auto">✅ Confirmed</span>')
+      + '</div>'
+      + (n.note ? '<div style="font-size:12px;color:var(--tx);margin-bottom:4px">'+_e(n.note)+'</div>' : '<div style="font-size:11px;color:var(--mu);font-style:italic">ไม่มี note</div>')
+      + '<div style="font-size:10px;color:var(--mu3);margin-top:4px">'+_e(dt)+'</div>'
+      + '</div>';
+  }).join('');
+}
+</script>

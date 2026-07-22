@@ -1,0 +1,876 @@
+</div></div>
+  <!-- CONFIG MODAL -->
+  <div id="cfg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:12px;overflow:hidden">
+  <div style="background:var(--sur);border:1px solid var(--bd2);border-radius:12px;width:97vw;height:94vh;overflow:hidden;box-shadow:0 24px 80px #000b;margin:auto;display:flex;flex-direction:column">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--bd);background:var(--sur2)">
+      <div style="font-size:14px;font-weight:700;color:var(--tx)">⚙ Config</div>
+      <button onclick="closeConfig()" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:22px;line-height:1;padding:0 4px">×</button>
+    </div>
+
+    <!-- [C7] แถบหมวด — แยกตามเมนู (แถวล่างคือรายการในหมวดนั้น) -->
+    <style>
+      .cfg-grp-btn{font-size:12px;font-weight:700;padding:7px 13px;border-radius:8px;cursor:pointer;
+        border:1px solid var(--bd,#24334f);background:transparent;color:var(--mu,#8296b4);
+        font-family:inherit;white-space:nowrap;transition:.13s}
+      .cfg-grp-btn:hover{background:var(--sur2,#16223a);color:var(--tx,#e6edf7)}
+      .cfg-grp-btn.cfg-grp-on{background:var(--sur2,#16223a);color:#fff;border-color:var(--bd2,#31456b);
+        box-shadow:inset 0 -2px 0 #38bdf8}
+    </style>
+    <div id="cfg-grp-bar" style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--bd);
+         background:var(--bg,#0b1220)">
+      <button class="cfg-grp-btn cfg-grp-on" data-g="home"   onclick="cfgGrp('home')">🏁 Daily Board</button>
+      <button class="cfg-grp-btn"            data-g="sco"    onclick="cfgGrp('sco')">📦 Service Orders</button>
+      <button class="cfg-grp-btn"            data-g="sp"     onclick="cfgGrp('sp')">🎯 Sales Prospect</button>
+      <button class="cfg-grp-btn"            data-g="area"   onclick="cfgGrp('area')">🗺 Sales Areas</button>
+      <button class="cfg-grp-btn"            data-g="status" onclick="cfgGrp('status')">🏷️ ชื่อ &amp; สถานะ</button>
+      <button class="cfg-grp-btn"            data-g="sys"    onclick="cfgGrp('sys')">⚙️ ระบบ &amp; ข้อมูล</button>
+    </div>
+
+    <!-- Tabs บรรทัด 1: Manager + Admin -->
+    <div id="cfg-tabs-main" style="display:flex;flex-wrap:wrap;border-bottom:1px solid var(--bd);background:var(--sur2)">
+      <button id="cfg-tab-upload" onclick="cfgTab('upload')" class="cfg-tab-btn cfg-tab-on">⬆ อัพเดท Data</button>
+      <!-- Hidden tabs: ซ้ำซ้อนกับ Dashboard inline edit (เก็บโค้ดไว้กันต้องกู้คืน) -->
+      <button id="cfg-tab-fad" onclick="cfgTab('fad')" class="cfg-tab-btn" style="display:none">📊 Actual FAD</button>
+      <button id="cfg-tab-spfix" onclick="cfgTab('spfix')" class="cfg-tab-btn" style="display:none">🔧 Forecast SP</button>
+      <button id="cfg-tab-fcfad" onclick="cfgTab('fcfad')" class="cfg-tab-btn" style="display:none">📊 Forecast Challenge</button>
+      <button id="cfg-tab-budget" onclick="cfgTab('budget')" class="cfg-tab-btn" style="display:none">💰 Budget</button>
+      
+      <button id="cfg-tab-pending" onclick="cfgTab('pending')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">📋 Pending</button>
+    </div>
+    <!-- Tabs บรรทัด 2: Admin เท่านั้น -->
+    <div id="cfg-tabs-admin" style="display:none;flex-wrap:wrap;border-bottom:1px solid var(--bd);background:var(--sur2)">
+      <button id="cfg-tab-users" onclick="cfgTab('users')" class="cfg-tab-btn">👥 จัดการ Users</button>
+      <button id="cfg-tab-hmstage" onclick="cfgTab('hmstage')" class="cfg-tab-btn">🎯 HM Stage</button>
+      <button id="cfg-tab-sgroup" onclick="cfgTab('sgroup')" class="cfg-tab-btn">📊 Status Group</button>
+      <button id="cfg-tab-tabperm" onclick="cfgTab('tabperm')" class="cfg-tab-btn">🔐 Tab Permissions</button>
+      <button id="cfg-tab-email" onclick="cfgTab('email')" class="cfg-tab-btn">📧 Email เบิกอะไหล่</button>
+      <button id="cfg-tab-armon" onclick="cfgTab('armon')" class="cfg-tab-btn">💰 AR Monitor</button>
+      <button id="cfg-tab-mblinks" onclick="cfgTab('mblinks')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">☎️ ลิงก์มือถือ</button>
+      <button id="cfg-tab-mbusers" onclick="cfgTab('mbusers')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">📱 สิทธิ์ Mobile</button>
+      <button id="cfg-tab-stats" onclick="cfgTab('stats')" class="cfg-tab-btn">📊 สถิติใช้งาน</button>
+      <button id="cfg-tab-apicfg" onclick="cfgTab('apicfg')" class="cfg-tab-btn" style="border-color:#f59e0b;color:#fbbf24">🔌 API</button>
+        <button id="cfg-tab-qfchips" onclick="cfgTab('qfchips')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">🔖 Quick Filter</button>
+        <button id="cfg-tab-dataquery" onclick="cfgTab('dataquery')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">🔍 Data Query</button>
+        <button id="cfg-tab-provrep" onclick="cfgTab('provrep')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">🗾 เขตจังหวัด</button>
+        <button id="cfg-tab-bkksales" onclick="cfgTab('bkksales')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">🏙 Sales กทม.</button>
+      <!-- [C10] Sales Areas: 2 ตัวนี้เปิด overlay เดิม (z-index 99999) — cfgTab() hook เรียกให้ -->
+      <button id="cfg-tab-hospgrp" onclick="cfgTab('hospgrp')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">⚙ จัดกลุ่ม รพ.</button>
+      <button id="cfg-tab-areaovr" onclick="cfgTab('areaovr')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">🗺 แก้พื้นที่ รพ.</button>
+      <!-- [C17] กลุ่มประเภทสัญญา -->
+      <button id="cfg-tab-ctype" onclick="cfgTab('ctype')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">📑 กลุ่มประเภทสัญญา</button>
+      
+    </div>
+    <!-- Tab: Upload -->
+    <div id="cfg-pane-upload" style="padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px">รับไฟล์ SC_BILL และ PARTS — .mhtml / .json / .txt</div>
+      <div id="jsup-drop" onclick="document.getElementById('jsup-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--ac)'" ondragleave="this.style.borderColor='var(--bd2)'" ondrop="jsupDrop(event)" style="border:2px dashed var(--bd2);border-radius:8px;padding:28px 20px;text-align:center;cursor:pointer;margin-bottom:14px;transition:border-color .2s">
+        <div style="font-size:32px;margin-bottom:6px">📂</div>
+        <div style="font-size:13px;color:var(--mu);margin-bottom:4px">คลิกหรือลากไฟล์มาวาง</div>
+        <div style="font-size:10px;color:var(--mu2)">SC_BILL · PARTS — .mhtml / .json / .txt · Excel billing</div>
+      </div>
+      <input type="file" id="jsup-input" multiple="" accept=".mhtml,.json,.txt,.xlsb,.xlsx,.xls" style="display:none" onchange="jsupPick(this.files)">
+      <div id="jsup-filelist" style="margin-bottom:10px;font-size:11px;display:flex;flex-direction:column;gap:5px"></div>
+      <div id="jsup-status" style="display:none;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:14px;font-size:11px">
+        <div style="font-weight:700;color:var(--tx);margin-bottom:8px">ไฟล์ที่ตรวจพบ</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="padding:6px 10px;border-radius:6px;background:var(--sur3);border:1px solid var(--bd)">
+            <span style="font-size:10px;color:var(--mu)">SC_BILL</span><br>
+            <span id="jsup-sc-label" style="color:var(--mu2)">ยังไม่มีไฟล์</span>
+          </div>
+          <div style="padding:6px 10px;border-radius:6px;background:var(--sur3);border:1px solid var(--bd)">
+            <span style="font-size:10px;color:var(--mu)">PARTS</span><br>
+            <span id="jsup-parts-label" style="color:var(--mu2)">ยังไม่มีไฟล์</span>
+          </div>
+        </div>
+      </div>
+      <div id="jsup-log" style="font-size:11px;color:var(--mu2);min-height:18px;max-height:120px;overflow-y:auto;margin-bottom:14px;line-height:1.7;padding:6px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:6px"></div>
+      <!-- Upload progress bar -->
+      <div id="gas-upload-progress" style="display:none;margin-bottom:14px;padding:8px 10px;background:var(--sur2);border:1px solid var(--bd);border-radius:6px">
+        <div style="font-size:11px;color:var(--mu2);margin-bottom:6px" id="gas-upload-label">กำลัง Upload...</div>
+        <div style="background:var(--bg);border-radius:4px;height:8px;overflow:hidden">
+          <div id="gas-upload-bar" style="height:100%;background:var(--ac);width:0%;transition:width .3s;border-radius:4px"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:10px;color:var(--mu)" id="gas-upload-result"></div>
+        <div style="display:flex;gap:8px">
+          <button id="jsup-run-btn" onclick="jsupRun()" disabled="" style="padding:6px 20px;border-radius:6px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-size:12px;font-weight:700;opacity:.4">⚡ อัพเดท (Local)</button>
+          <button id="gas-upload-btn" onclick="gasUploadData()" disabled="" style="padding:6px 20px;border-radius:6px;border:1px solid #22c55e;background:#22c55e;color:#fff;cursor:pointer;font-size:12px;font-weight:700;opacity:.4">☁ Upload → Drive</button>
+        </div>
+      </div>
+
+      <!-- InstallBase + Customer Upload -->
+      <div style="margin-top:18px;border-top:1px solid var(--bd2);padding-top:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:10px">📦 Sales Prospect Data</div>
+
+        <!-- InstallBase -->
+        <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:4px">Install Base (.xlsx / .csv)</div>
+          <div style="font-size:11px;color:var(--mu2);margin-bottom:8px">คอลัมน์: วันที่ติดตั้ง, Customer, ประเภทลูกค้า, จังหวัด, แผนก, ยี่ห้อ</div>
+          <div id="ib-drop" style="border:2px dashed var(--bd2);border-radius:6px;padding:12px;text-align:center;font-size:12px;color:var(--mu);cursor:pointer;margin-bottom:8px"
+            onclick="document.getElementById('ib-file-input').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--ac)'"
+            ondragleave="this.style.borderColor='var(--bd2)'"
+            ondrop="spHandleFileDrop(event,'install')">
+            คลิกหรือลาก InstallBase ไฟล์มาวาง
+          </div>
+          <input type="file" id="ib-file-input" accept=".xlsx,.csv,.xls" style="display:none" onchange="spHandleFileSelect(event,'install')">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="ib-file-name" style="font-size:11px;color:var(--mu2);flex:1">ยังไม่ได้เลือกไฟล์</span>
+            <button id="ib-upload-btn" onclick="spUploadFile('install')" disabled style="padding:5px 14px;border-radius:6px;border:1px solid #22c55e;background:transparent;color:#4ade80;cursor:pointer;font-size:11px;font-weight:600;opacity:.4">☁ Upload</button>
+          </div>
+          <div id="ib-upload-result" style="font-size:11px;color:var(--mu2);margin-top:6px"></div>
+        </div>
+
+        <!-- Customer -->
+        <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--tx);margin-bottom:4px">Customer Data (.xlsx / .csv)</div>
+          <div style="font-size:11px;color:var(--mu2);margin-bottom:8px">คอลัมน์: ชื่อลูกค้า (Ship to), ผู้แทน Service, จังหวัด, ประเภทลูกค้า</div>
+          <div id="cu-drop" style="border:2px dashed var(--bd2);border-radius:6px;padding:12px;text-align:center;font-size:12px;color:var(--mu);cursor:pointer;margin-bottom:8px"
+            onclick="document.getElementById('cu-file-input').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--ac)'"
+            ondragleave="this.style.borderColor='var(--bd2)'"
+            ondrop="spHandleFileDrop(event,'customer')">
+            คลิกหรือลาก Customer ไฟล์มาวาง
+          </div>
+          <input type="file" id="cu-file-input" accept=".xlsx,.csv,.xls" style="display:none" onchange="spHandleFileSelect(event,'customer')">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="cu-file-name" style="font-size:11px;color:var(--mu2);flex:1">ยังไม่ได้เลือกไฟล์</span>
+            <button id="cu-upload-btn" onclick="spUploadFile('customer')" disabled style="padding:5px 14px;border-radius:6px;border:1px solid #22c55e;background:transparent;color:#4ade80;cursor:pointer;font-size:11px;font-weight:600;opacity:.4">☁ Upload</button>
+          </div>
+          <div id="cu-upload-result" style="font-size:11px;color:var(--mu2);margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Actual FAD -->
+        <div id="cfg-pane-fad" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:12px">ตัวเลข Ex.VAT จริงที่ปิดบัญชีแล้ว — ดึงจาก Google Sheet เมื่อกด 🔄 Update<br><span style="font-size:10px;color:var(--mu)">กด Apply เพื่อแสดงใน Dashboard | กด 💾 Save → Sheet เพื่อบันทึกลง Google Sheet</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+        <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">ม.ค. 2026</div><input id="fad-val-1" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">ก.พ. 2026</div><input id="fad-val-2" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">มี.ค. 2026</div><input id="fad-val-3" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">เม.ย. 2026</div><input id="fad-val-4" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">พ.ค. 2026</div><input id="fad-val-5" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">มิ.ย. 2026</div><input id="fad-val-6" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">ก.ค. 2026</div><input id="fad-val-7" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">ส.ค. 2026</div><input id="fad-val-8" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">ก.ย. 2026</div><input id="fad-val-9" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">ต.ค. 2026</div><input id="fad-val-10" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">พ.ย. 2026</div><input id="fad-val-11" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div><div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:10px"><div style="font-size:10px;color:var(--mu2);margin-bottom:4px;font-weight:600">ธ.ค. 2026</div><input id="fad-val-12" type="number" placeholder="Ex.VAT" style="width:100%;padding:5px 7px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'"></div>
+      </div>
+      <div id="fad-log" style="font-size:11px;color:var(--mu2);min-height:18px;margin-bottom:8px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="cfgSaveFadToSheet()" style="padding:6px 20px;border-radius:6px;border:1px solid #22c55e;background:transparent;color:#4ade80;cursor:pointer;font-size:12px;font-weight:700">💾 Save → Sheet</button>
+        <button onclick="closeConfig();gasUpdateConfig()" style="padding:6px 20px;border-radius:6px;border:1px solid #38bdf8;background:transparent;color:#67e8f9;cursor:pointer;font-size:12px;font-weight:700">🔄 Update</button>
+      </div>
+    </div>
+
+    <!-- Tab: Forecast SP -->
+    <div id="cfg-pane-spfix" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px">
+        กำหนด Forecast SP รายเดือน (Ex.VAT) — แสดงใน Dashboard → Pipeline → Forecast SP card<br>
+        <span style="color:var(--mu);font-size:10px">เดือนที่ผ่านมาแล้วไม่สามารถแก้ได้</span>
+      </div>
+      <!-- Apply All Month bar -->
+      <div style="background:var(--sur2);border:1px solid var(--bd2);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--mu2);font-weight:600;white-space:nowrap">📋 Fill ทุกเดือน:</span>
+        <input id="fcsp-apply-val" type="number" placeholder="Ex.VAT" style="width:140px;padding:4px 8px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none">
+        <button onclick="cfgFcspApplyAll()" style="padding:4px 14px;border-radius:5px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-size:11px;font-weight:700">↩ Apply All Month</button>
+      </div>
+      <div id="fcsp-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"></div>
+      <div id="spfix-log" style="font-size:11px;color:var(--mu2);min-height:18px;margin-bottom:12px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="cfgSaveFcspToSheet()" style="padding:6px 20px;border-radius:6px;border:1px solid #22c55e;background:transparent;color:#4ade80;cursor:pointer;font-size:12px;font-weight:700">💾 Save → Sheet</button>
+        <button onclick="closeConfig();gasUpdateConfig()" style="padding:6px 20px;border-radius:6px;border:1px solid #38bdf8;background:transparent;color:#67e8f9;cursor:pointer;font-size:12px;font-weight:700">🔄 Update</button>
+      </div>
+    </div>
+
+    <!-- Tab: Forecast Challenge -->
+    <div id="cfg-pane-fcfad" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px">
+        กำหนด Forecast Challenge รายเดือน (Ex.VAT) — แสดงใน Dashboard → Pipeline → Forecast Challenge card<br>
+        <span style="color:var(--mu);font-size:10px">เดือนที่ผ่านมาแล้วไม่สามารถแก้ได้</span>
+      </div>
+      <!-- Apply All Month bar -->
+      <div style="background:var(--sur2);border:1px solid var(--bd2);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--mu2);font-weight:600;white-space:nowrap">📋 Fill ทุกเดือน:</span>
+        <input id="fcfad-apply-val" type="number" placeholder="Ex.VAT" style="width:140px;padding:4px 8px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none">
+        <button onclick="cfgFcfadApplyAll()" style="padding:4px 14px;border-radius:5px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-size:11px;font-weight:700">↩ Apply All Month</button>
+      </div>
+      <div id="fcfad-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px"></div>
+      <div id="fcfad-log" style="font-size:11px;color:var(--mu2);min-height:18px;margin-bottom:12px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="cfgSaveFcfadToSheet()" style="padding:6px 20px;border-radius:6px;border:1px solid #22c55e;background:transparent;color:#4ade80;cursor:pointer;font-size:12px;font-weight:700">💾 Save → Sheet</button>
+        <button onclick="closeConfig();gasUpdateConfig()" style="padding:6px 20px;border-radius:6px;border:1px solid #38bdf8;background:transparent;color:#67e8f9;cursor:pointer;font-size:12px;font-weight:700">🔄 Update</button>
+      </div>
+    </div>
+
+    <!-- Tab: Budget -->
+    <div id="cfg-pane-budget" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px">
+        กำหนด Budget รายเดือน (K Ex.VAT) แต่ละ Team/Type — แสดงใน Quarterly Budget Dashboard<br>
+        <span style="color:var(--mu);font-size:10px">กด Apply เพื่ออัพเดทใน Dashboard ทันที</span>
+      </div>
+      <!-- Apply All Month row -->
+      <div style="background:var(--sur2);border:1px solid var(--bd2);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--mu2);font-weight:600;white-space:nowrap">📋 Fill ทุกเดือน:</span>
+        <select id="bud-apply-team" style="padding:4px 8px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur3);color:var(--tx);font-size:11px;font-family:var(--font)">
+          <option value="s1sp">Service 1 · SP</option>
+          <option value="s1sc">Service 1 · SC</option>
+          <option value="s2sp">Service 2 · SP</option>
+          <option value="s2sc">Service 2 · SC</option>
+          <option value="s3sp">Service 3 · SP</option>
+          <option value="s3sc">Service 3 · SC</option>
+        </select>
+        <input id="bud-apply-val" type="number" placeholder="ค่า K Ex.VAT" style="width:130px;padding:4px 8px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);font-size:11px;font-family:var(--mono);outline:none" onfocus="this.style.borderColor='var(--ac)'" onblur="this.style.borderColor='var(--bd2)'">
+        <button onclick="cfgBudApplyAll()" style="padding:4px 14px;border-radius:5px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-size:11px;font-weight:700">↩ Apply All Month</button>
+      </div>
+
+      <!-- Service 1 SP -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#8b5cf6;text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;background:var(--sur2);border-left:3px solid #8b5cf6;border-radius:4px;margin-bottom:8px">Service 1 · SP — Budget K Ex.VAT</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="bud-grid-s1sp"></div>
+      </div>
+      <!-- Service 1 SC -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;background:var(--sur2);border-left:3px solid #3b82f6;border-radius:4px;margin-bottom:8px">Service 1 · SC — Budget K Ex.VAT</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="bud-grid-s1sc"></div>
+      </div>
+      <!-- Service 2 SP -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#8b5cf6;text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;background:var(--sur2);border-left:3px solid #8b5cf6;border-radius:4px;margin-bottom:8px">Service 2 · SP — Budget K Ex.VAT</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="bud-grid-s2sp"></div>
+      </div>
+      <!-- Service 2 SC -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;background:var(--sur2);border-left:3px solid #3b82f6;border-radius:4px;margin-bottom:8px">Service 2 · SC — Budget K Ex.VAT</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="bud-grid-s2sc"></div>
+      </div>
+      <!-- Service 3 SP -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#8b5cf6;text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;background:var(--sur2);border-left:3px solid #8b5cf6;border-radius:4px;margin-bottom:8px">Service 3 · SP — Budget K Ex.VAT</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="bud-grid-s3sp"></div>
+      </div>
+      <!-- Service 3 SC -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;color:#3b82f6;text-transform:uppercase;letter-spacing:.7px;padding:5px 10px;background:var(--sur2);border-left:3px solid #3b82f6;border-radius:4px;margin-bottom:8px">Service 3 · SC — Budget K Ex.VAT</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="bud-grid-s3sc"></div>
+      </div>
+
+      <div id="bud-log" style="font-size:11px;color:var(--mu2);min-height:18px;margin-bottom:12px"></div>
+      <div style="display:flex;justify-content:flex-end">
+        <button onclick="cfgSaveBudgetToSheet()" style="padding:6px 20px;border-radius:6px;border:1px solid #22c55e;background:transparent;color:#4ade80;cursor:pointer;font-size:12px;font-weight:700">💾 Save → Sheet</button>
+        <button onclick="closeConfig();gasUpdateConfig()" style="padding:6px 20px;border-radius:6px;border:1px solid #38bdf8;background:transparent;color:#67e8f9;cursor:pointer;font-size:12px;font-weight:700">🔄 Update</button>
+      </div>
+    </div>
+
+    <!-- Tab: Pending -->
+    <div id="cfg-pane-pending" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px">ตั้งค่าการแสดงผลป๊อปอัพ Pending</div>
+      <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:8px">🔧 Pending SC — เลือก status ที่จะนับ</div>
+      <div style="border:1px solid var(--bd);border-radius:8px;padding:6px;margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer">
+          <input type="checkbox" id="cfg-pen-sc-SCOrdered" style="width:15px;height:15px;cursor:pointer">
+          <span style="font-size:12px;color:var(--tx)">SC Ordered</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer">
+          <input type="checkbox" id="cfg-pen-sc-SCCarryPending" style="width:15px;height:15px;cursor:pointer">
+          <span style="font-size:12px;color:var(--tx)">SC Carry (Pending)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer">
+          <input type="checkbox" id="cfg-pen-sc-SCOffer" style="width:15px;height:15px;cursor:pointer">
+          <span style="font-size:12px;color:var(--tx)">SC Offer</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer">
+          <input type="checkbox" id="cfg-pen-sc-Offer" style="width:15px;height:15px;cursor:pointer">
+          <span style="font-size:12px;color:var(--tx)">Offer</span>
+        </label>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--bd);border-radius:8px;margin-bottom:16px;cursor:pointer">
+        <input type="checkbox" id="cfg-pen-scnobill" style="width:16px;height:16px;cursor:pointer">
+        <span style="font-size:13px;color:var(--tx)">Pending SC: ตัดรายการ “ยังไม่มีกำหนดงวดบิล” ออก</span>
+      </label>
+      <!-- [C18] เอา checkbox "status chips" ออก — _hbBrk() มี return '' บรรทัดแรกตั้งแต่ v149 = dead code ไม่มีผลอะไรเลย -->
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onclick="cfgPendingSave()" style="background:var(--ac);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">💾 บันทึก</button>
+        <span id="cfg-pen-msg" style="font-size:12px;color:var(--ok,#22c55e)"></span>
+      </div>
+      <div style="font-size:11px;color:var(--mu2);margin-top:14px">* ติ๊ก status ออก = ลดยอด+จำนวนบนการ์ด และซ่อนในตาราง พร้อมกัน · ค่าตั้งต้น = เหมือนเดิมทุกข้อ</div>
+    </div>
+
+    <!-- Tab: Users -->
+    <div id="cfg-pane-users" style="display:none;flex:1;overflow-y:auto;flex-direction:column">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--tx);flex:1">👥 จัดการ Users</div>
+        <button onclick="cfgUserAdd()" style="padding:5px 14px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac2);cursor:pointer;font-size:12px;font-weight:600">+ เพิ่ม User</button>
+        <button onclick="cfgUsersInit()" style="padding:5px 14px;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:var(--mu2);cursor:pointer;font-size:12px">↻ โหลดใหม่</button>
+      </div>
+      <div id="cfg-users-list" style="padding:16px 20px;flex:1;overflow-y:auto">
+        <div style="color:var(--mu);font-size:12px">กำลังโหลด...</div>
+      </div>
+      <!-- Add/Edit Form -->
+      <div id="cfg-user-form" style="display:none;padding:16px 20px;border-top:1px solid var(--bd);background:var(--sur2)">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:12px" id="cfg-uform-title">เพิ่ม User ใหม่</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <div style="font-size:10px;color:var(--mu2);margin-bottom:4px">รหัสพนักงาน *</div>
+            <input id="uform-empid" class="login-inp" style="margin-bottom:0" placeholder="EMP001">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--mu2);margin-bottom:4px">ชื่อ-นามสกุล *</div>
+            <input id="uform-name" class="login-inp" style="margin-bottom:0" placeholder="ชื่อพนักงาน">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--mu2);margin-bottom:4px">Role *</div>
+            <select id="uform-role" class="login-inp" style="margin-bottom:0">
+              <option value="sales">Sales</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--mu2);margin-bottom:4px">Email (สำหรับ reset pwd)</div>
+            <input id="uform-email" class="login-inp" style="margin-bottom:0" placeholder="email@example.com" type="email">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="cfgUserSave()" style="padding:6px 18px;border-radius:6px;border:none;background:var(--ac);color:#fff;cursor:pointer;font-size:12px;font-weight:700">บันทึก</button>
+          <button onclick="document.getElementById('cfg-user-form').style.display='none'" style="padding:6px 14px;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:var(--mu2);cursor:pointer;font-size:12px">ยกเลิก</button>
+          <div id="uform-err" style="font-size:11px;color:#e8344a;flex:1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: HM Stage Config -->
+    <div id="cfg-pane-hmstage" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:var(--tx);flex:1">🎯 ตั้งค่า High / Medium / Low Prospect</div>
+        <button onclick="cfgHmReload()" style="padding:5px 14px;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:var(--mu2);cursor:pointer;font-size:12px">↻ โหลดสถานะใหม่</button>
+      </div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:12px;line-height:1.6">
+        เลือก <b style="color:var(--tx)">สถานะสัญญา</b> ที่จะนับเป็น H หรือ M.<br>
+        สถานะอื่น ๆ ที่ไม่ติ๊ก = <span style="color:#fbbf24">Low Prospect</span> อัตโนมัติ
+      </div>
+      <div id="cfg-hm-loading" style="font-size:12px;color:var(--mu);padding:12px 0">⏳ กด ↻ เพื่อโหลดสถานะที่มีในระบบ</div>
+      <div id="cfg-hm-list" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px;padding:6px 10px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);border-radius:6px">🔴 High Prospect</div>
+            <div id="cfg-hm-h-list" style="display:flex;flex-direction:column;gap:4px;max-height:380px;overflow-y:auto"></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fb923c;margin-bottom:8px;padding:6px 10px;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:6px">🟠 Medium Prospect</div>
+            <div id="cfg-hm-m-list" style="display:flex;flex-direction:column;gap:4px;max-height:380px;overflow-y:auto"></div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
+          <button onclick="cfgHmSave()" style="padding:7px 18px;border-radius:6px;border:none;background:var(--ac);color:#fff;cursor:pointer;font-size:12px;font-weight:700">💾 บันทึก</button>
+          <div id="cfg-hm-log" style="font-size:11px;color:var(--mu2);flex:1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Status Group Config (Dashboard) -->
+    <div id="cfg-pane-sgroup" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:var(--tx);flex:1">📊 Dashboard Status Grouping</div>
+        <button onclick="cfgSgReload()" style="padding:5px 14px;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:var(--mu2);cursor:pointer;font-size:12px">↻ โหลดสถานะใหม่</button>
+      </div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:12px;line-height:1.6">
+        เลือกว่า <b style="color:var(--tx)">สถานะใด</b> จะนับเป็น Group ใด ใน Dashboard.<br>
+        <span style="color:#4ade80">✅ Actual</span> = บิลแล้ว · <span style="color:#fcd34d">📦 Ordered</span> = มี Order ถึงสิ้นปี · <span style="color:#fb923c">🔧 Forecast SP</span> = SP คาดการณ์ · <span style="color:#f9a8d4">🎯 Prospect</span> = ใบเสนอราคา
+      </div>
+      <div id="cfg-sg-loading" style="font-size:12px;color:var(--mu);padding:12px 0">⏳ กด ↻ เพื่อโหลดสถานะที่มีในระบบ</div>
+      <div id="cfg-sg-list" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#4ade80;margin-bottom:8px;padding:6px 10px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:6px">✅ Actual</div>
+            <div id="cfg-sg-actual-list" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto"></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fcd34d;margin-bottom:8px;padding:6px 10px;background:rgba(252,211,77,.08);border:1px solid rgba(252,211,77,.3);border-radius:6px">📦 Ordered</div>
+            <div id="cfg-sg-ordered-list" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto"></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#fb923c;margin-bottom:8px;padding:6px 10px;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:6px">🔧 Forecast SP</div>
+            <div id="cfg-sg-fcsp-list" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto"></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#f9a8d4;margin-bottom:8px;padding:6px 10px;background:rgba(249,168,212,.08);border:1px solid rgba(249,168,212,.3);border-radius:6px">🎯 Prospect</div>
+            <div id="cfg-sg-prospect-list" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto"></div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
+          <button onclick="cfgSgSave()" style="padding:7px 18px;border-radius:6px;border:none;background:var(--ac);color:#fff;cursor:pointer;font-size:12px;font-weight:700">💾 บันทึก</button>
+          <div id="cfg-sg-log" style="font-size:11px;color:var(--mu2);flex:1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Tab Permissions -->
+    <div id="cfg-pane-tabperm" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">🔐 Tab Permissions</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:16px;line-height:1.6">
+        กำหนดว่า <b style="color:var(--tx)">role ใด</b> เห็น <b style="color:var(--tx)">เมนู/แท็บ ใด</b> ได้บ้าง — ติ๊กแล้ว <b style="color:var(--tx)">Save</b><br>
+        <span style="color:var(--mu)">ทุกอย่างตาม config (รวม Admin) — แถวพื้นฟ้า = เมนูหลัก, แถวเยื้อง = sub-tab</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--bd2)">
+            <th style="text-align:left;padding:8px 10px;color:var(--mu2)">Sub-tab</th>
+            <th style="text-align:center;padding:8px 10px;color:#a78bfa">👑 Admin</th>
+            <th style="text-align:center;padding:8px 10px;color:#60a5fa">👔 Manager</th>
+            <th style="text-align:center;padding:8px 10px;color:#4ade80">👤 Sales</th>
+          </tr>
+        </thead>
+        <tbody id="cfg-tabperm-body"></tbody>
+      </table>
+      <div id="cfg-tabperm-log" style="font-size:11px;color:var(--mu2);min-height:18px;margin-bottom:12px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="cfgSaveTabPerm()" style="padding:6px 20px;border-radius:6px;border:1px solid #22c55e;background:transparent;color:#4ade80;cursor:pointer;font-size:12px;font-weight:700">💾 Save → Sheet</button>
+      </div>
+    </div>
+
+    <!-- Tab: Access Stats -->
+    <div id="cfg-pane-stats" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">📊 สถิติการเข้าใช้งาน</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:16px;line-height:1.6">
+        ดูข้อมูลผู้ใช้งานล่าสุด — ใครเข้าใช้เมื่อไร และจำนวนครั้ง
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="font-size:11px;color:var(--mu)">ช่วงเวลา:</span>
+        <select id="cfg-stats-range" onchange="cfgLoadAccessStats()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:4px 10px;font-size:11px;font-family:var(--font);cursor:pointer">
+          <option value="today" selected>วันนี้</option>
+          <option value="7d">7 วันล่าสุด</option>
+          <option value="30d">30 วันล่าสุด</option>
+          <option value="all">ทั้งหมด</option>
+        </select>
+        <button onclick="cfgLoadAccessStats()" style="padding:4px 12px;border-radius:5px;border:1px solid var(--bd2);background:transparent;color:var(--tx);cursor:pointer;font-size:11px">🔄 Refresh</button>
+        <span id="cfg-stats-summary" style="font-size:11px;color:var(--mu);margin-left:auto"></span>
+      </div>
+      <div id="cfg-stats-body">
+        <div style="padding:30px;text-align:center;color:var(--mu);font-size:12px">— กด Refresh เพื่อโหลดข้อมูล —</div>
+      </div>
+    </div>
+
+    <!-- Tab: API (merged — credentials + client settings, Admin only) -->
+    <div id="cfg-pane-apicfg" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:6px">🔌 API Configuration</div>
+      <div style="margin-bottom:14px"><button onclick="apiSyncFromServer()" title="Sync SmartFlow -> Drive" style="padding:8px 20px;border-radius:6px;border:1px solid #f59e0b;background:transparent;color:#fbbf24;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)" id="api-load-btn">🔌 Load SF — Sync SmartFlow</button> <span id="gas-data-ts2" style="font-size:10px;color:var(--mu2);margin-left:8px"></span></div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:16px;line-height:1.6">
+        บันทึก credential สำหรับ <b style="color:#fbbf24">SmartFlow Realtime API</b><br>
+        ระบบจะ fetch ข้อมูลจาก SmartFlow ทุก 3 ชม. (06/09/12/15/18/21 น.) อัตโนมัติ<br>
+        <span style="color:#fbbf24">⚠ เฉพาะ Admin เท่านั้น</span>
+      </div>
+
+      <!-- Hidden checkboxes (kept for backward compat with cfgApiSave/cfgApiInit — never visible) -->
+      <input type="checkbox" id="cfg-api-show-load" checked style="display:none">
+      <input type="checkbox" id="cfg-api-show-api" style="display:none">
+
+      <!-- Current Status -->
+      <div id="cfg-apiload-info" style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:11px;color:var(--mu);font-family:var(--mono);line-height:1.8">
+        <div><b style="color:var(--tx)">Credential status:</b> <span id="cfg-apiload-cred-status">—</span></div>
+        <div><b style="color:var(--tx)">Saved at:</b> <span id="cfg-apiload-last-ts">—</span></div>
+        <div><b style="color:var(--tx)">Saved by:</b> <span id="cfg-apiload-last-by">—</span></div>
+      </div>
+
+      <!-- ★ v2300: Scheduled Refresh Status -->
+      <div style="background:var(--sur2);border:1px solid #60a5fa;border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:10px">🔄 Scheduled Refresh (Auto ทุก 3 ชม.)</div>
+        <div style="font-size:11px;color:var(--mu);font-family:var(--mono);line-height:1.9">
+          <div><b style="color:var(--tx)">Schedule:</b> 06 / 09 / 12 / 15 / 18 / 21 น.</div>
+          <div><b style="color:var(--tx)">Refresh ล่าสุด:</b> <span id="cfg-sched-last">—</span></div>
+          <div><b style="color:var(--tx)">Slot ถัดไป:</b> <span id="cfg-sched-next">—</span></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button onclick="cfgForceRefresh()" style="flex:1;padding:9px;border-radius:6px;border:1px solid #60a5fa;background:transparent;color:#60a5fa;cursor:pointer;font-size:12px;font-weight:700">🔄 Force Refresh Now</button>
+        </div>
+        <div id="cfg-sched-status" style="font-size:10px;color:var(--mu2);margin-top:8px;font-family:var(--mono);min-height:14px"></div>
+      </div>
+
+      <!-- ★ v2300: Clear Cache (Testing) -->
+      <div style="background:var(--sur2);border:1px solid #f87171;border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px">🗑 ลบ Cache (สำหรับทดสอบ)</div>
+        <div style="font-size:10px;color:var(--mu2);line-height:1.6;margin-bottom:10px">
+          ลบ IndexedDB + localStorage cache ทั้งหมด แล้ว reload หน้า<br>
+          ใช้ทดสอบ flow โหลดข้อมูลครั้งแรก / auto-recovery
+        </div>
+        <button onclick="cfgClearCache()" style="width:100%;padding:9px;border-radius:6px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer;font-size:12px;font-weight:700">🗑 ลบ Cache + Reload</button>
+        <div id="cfg-clearcache-status" style="font-size:10px;color:var(--mu2);margin-top:8px;font-family:var(--mono);min-height:14px"></div>
+      </div>
+
+      <!-- Credential form -->
+      <div style="background:var(--sur2);border:1px solid #f59e0b;border-radius:8px;padding:16px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:12px">🔐 SmartFlow Credentials</div>
+
+        <div style="margin-bottom:10px">
+          <label style="display:block;font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">Username</label>
+          <input type="text" id="cfg-apiload-user" placeholder="SmartFlow username" autocomplete="username" style="width:100%;padding:9px 12px;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;font-size:12px;font-family:var(--mono)">
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">Password</label>
+          <div style="position:relative">
+            <input type="password" id="cfg-apiload-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')cfgApiCredSave()" style="width:100%;padding:9px 38px 9px 12px;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;font-size:12px;font-family:var(--mono)">
+            <button onclick="cfgApiLoadTogglePw()" type="button" title="แสดง/ซ่อน" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:2px 6px">👁</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button id="cfg-apiload-btn" onclick="cfgApiCredSave()" style="flex:1;padding:11px;border-radius:6px;border:none;background:#22c55e;color:#000;cursor:pointer;font-size:13px;font-weight:700">💾 Save Credential</button>
+          <button id="cfg-apiload-test-btn" onclick="cfgApiCredTest()" style="flex:1;padding:11px;border-radius:6px;border:1px solid #60a5fa;background:transparent;color:#60a5fa;cursor:pointer;font-size:13px;font-weight:700">🧪 Test Connection</button>
+        </div>
+
+        <button id="cfg-apiload-clear-btn" onclick="cfgApiCredClear()" style="width:100%;margin-top:8px;padding:8px;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:#f87171;cursor:pointer;font-size:11px">🗑 Clear Credential</button>
+      </div>
+
+      <!-- Client Name -->
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:10px">🏷 Client Name</div>
+        <input type="text" id="cfg-api-client" placeholder="External" value="External" style="width:100%;padding:8px 10px;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;font-size:12px;font-family:var(--mono)">
+        <div style="font-size:10px;color:var(--mu2);margin-top:8px;line-height:1.6">
+          ส่งไปกับ SmartFlow API request — default "External"
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button onclick="cfgApiSave()" style="padding:6px 16px;border-radius:6px;border:1px solid #22c55e;background:transparent;color:#4ade80;cursor:pointer;font-size:11px;font-weight:700">💾 Save Client Name</button>
+        </div>
+      </div>
+
+      <!-- SmartFlow Endpoints (Fixed) -->
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:10px">🌐 SmartFlow Endpoints (Fixed)</div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--mu2);line-height:1.8">
+          <b style="color:var(--mu)">Token:</b><br>
+          smartflow.bjc.co.th/SMARTFLOW/GET-API-TOKEN/<br>
+          <b style="color:var(--mu)">Data:</b><br>
+          smartflow.bjc.co.th/SMARTFLOW/CREATE_JSON_FILE_RAW_API/
+        </div>
+      </div>
+
+      <!-- Status (shared) -->
+      <div id="cfg-api-status" style="font-size:11px;color:var(--mu);min-height:18px;padding:6px 10px;background:var(--sur2);border-radius:4px;font-family:var(--mono);margin-bottom:8px">— ยังไม่ได้บันทึก —</div>
+      <div id="cfg-apiload-status" style="font-size:11px;color:var(--mu);min-height:18px;padding:8px 12px;background:var(--sur2);border-radius:4px;font-family:var(--mono)">— ระบุ Username + Password แล้วกด Save —</div>
+    </div>
+
+    <!-- Tab: Quick Filter chips -->
+    <div id="cfg-pane-qfchips" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">🔖 Quick Filter — แสดง/ซ่อน + แก้ชื่อ</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px;line-height:1.6">ติ๊ก "แสดง" = โชว์ chip ในแถบ Quick Filter · ช่องชื่อ = แก้ป้ายที่แสดง (ว่าง = ใช้ชื่อเดิม)<br><span style="color:#fbbf24">⚠ chip "All" แสดงเสมอ แก้ไม่ได้ · เฉพาะ Admin</span></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-actual" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">Actual FAD</span>
+          <input type="text" id="qf-label-actual" placeholder="Actual FAD" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-billed" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">Billed</span>
+          <input type="text" id="qf-label-billed" placeholder="Billed" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-backlog" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">Backlog</span>
+          <input type="text" id="qf-label-backlog" placeholder="Backlog" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-backlog-conf" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">Backlog Confirmed</span>
+          <input type="text" id="qf-label-backlog-conf" placeholder="Backlog Confirmed" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-ordered" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">SC Ordered</span>
+          <input type="text" id="qf-label-ordered" placeholder="SC Ordered" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-co-ready" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">SC Carry (Bill Pending)</span>
+          <input type="text" id="qf-label-co-ready" placeholder="SC Carry (Bill Pending)" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-co-notready" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">SC Carry (PM Pending)</span>
+          <input type="text" id="qf-label-co-notready" placeholder="SC Carry (PM Pending)" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-spf-ord" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">SP Ordered</span>
+          <input type="text" id="qf-label-spf-ord" placeholder="SP Ordered" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-spf-proc" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">SP Ordered Processing</span>
+          <input type="text" id="qf-label-spf-proc" placeholder="SP Ordered Processing" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-pend" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">Prospect</span>
+          <input type="text" id="qf-label-pend" placeholder="Prospect" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-excluded" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">Excluded</span>
+          <input type="text" id="qf-label-excluded" placeholder="Excluded" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-data" checked> แสดง</label>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">Data Issue</span>
+          <input type="text" id="qf-label-data" placeholder="Data Issue" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+        <!-- [v390] Forecast SP: ปุ่มเดียวที่ไม่มี Quick Filter chip คู่ (ใช้แค่ใน Monthly Forecast popup) -->
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
+          <span style="min-width:90px;font-size:11px;color:var(--mu2)">(Monthly<br>Forecast)</span>
+          <span style="font-size:11px;color:var(--mu2);min-width:140px">🔧 Forecast SP</span>
+          <input type="text" id="qf-label-fcsp" placeholder="🔧 Forecast SP" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button onclick="cfgQfSave()" style="padding:8px 20px;border-radius:6px;border:1px solid var(--grn);background:transparent;color:var(--grn);cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">💾 Save → Sheet</button>
+        <span id="qfchips-log" style="font-size:11px;color:var(--mu2);align-self:center"></span>
+      </div>
+    </div>
+
+    <!-- Tab: Data Query (admin) -->
+    <div id="cfg-pane-dataquery" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">🔍 Data Query — ค้นข้อมูลใน bjh_data.json.gz</div>
+      <div style="font-size:11px;color:var(--mu);margin-bottom:10px">ดูว่า raw ไหนมี/ไม่มีข้อมูล — ค้นด้วย QN / SN / CON_ID / ชื่อลูกค้า / Brand</div>
+      <div id="dq-meta" style="background:var(--sur2);border:1px solid var(--bd2);border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input id="dq-input" placeholder="ค้นหา: QN / SN / CON_ID / ชื่อลูกค้า / Brand" onkeydown="if(event.key==='Enter')cfgDataQueryRun()" style="flex:1;min-width:200px;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font)">
+        <select id="dq-table" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 10px;font-size:12px;font-family:var(--font)">
+          <option value="all">ทุกตาราง</option>
+          <option value="RAW_SC_BILL">SC Bill</option>
+          <option value="RAW_SpareParts">SpareParts</option>
+          <option value="RAW_Quotation">Quotation</option>
+          <option value="RAW_CONTRACT">Contract</option>
+        </select>
+        <button onclick="cfgDataQueryRun()" style="padding:8px 20px;border-radius:6px;border:1px solid var(--blu);background:transparent;color:var(--blu);cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">🔍 ค้นหา</button>
+      </div>
+      <div id="dq-result"></div>
+    </div>
+
+    
+    <!-- [C10] Tab: จัดกลุ่ม รพ. — overlay เด้งเอง (cfgTab hook) · pane นี้แค่พื้นหลัง -->
+    <!-- [V545] แสดงในหน้าเลย (เดิมเป็นปุ่มเปิด popup) — id เดิมทั้งหมด ฟังก์ชัน render/save เดิมใช้ได้ -->
+    <div id="cfg-pane-hospgrp" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">⚙ จัดกลุ่มโรงพยาบาล (Sales Areas)</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px;line-height:1.6">รวม รพ. ที่เป็นเครือเดียวกันเป็นกลุ่มเดียว · ใช้กับ Sales Areas / Retention</div>
+
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:5px">1) เลือกกลุ่มที่จะจัด หรือสร้างใหม่</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <select id="sa-hg-groupsel" onchange="saHgSelectGroup(this.value)" style="min-width:170px;padding:6px 8px;background:var(--sur2);border:1px solid var(--bd2);border-radius:5px;color:var(--tx);font-size:12px;font-family:var(--font)"></select>
+        <input id="sa-hg-newname" placeholder="ชื่อกลุ่มใหม่..." style="width:160px;padding:6px 8px;background:var(--sur2);border:1px solid var(--bd2);border-radius:5px;color:var(--tx);font-size:12px;font-family:var(--font)">
+        <button onclick="saHgCreateGroup()" style="font-size:12px;padding:6px 12px;border:none;border-radius:5px;background:#16a34a;color:#fff;cursor:pointer;font-family:var(--font)">➕ สร้าง</button>
+        <button id="sa-hg-delbtn" onclick="saHgDeleteGroup()" style="font-size:12px;padding:6px 12px;border:1px solid #7f1d1d;border-radius:5px;background:transparent;color:#f87171;cursor:pointer;display:none;font-family:var(--font)">🗑 ลบ</button>
+        <button onclick="saHgSuggest()" style="font-size:12px;padding:6px 12px;border:none;border-radius:5px;background:#0891b2;color:#fff;cursor:pointer;font-family:var(--font)">🔍 แนะนำชื่อคล้าย</button>
+        <button onclick="saHgSave()" style="margin-left:auto;padding:6px 16px;border-radius:6px;border:1px solid #22c55e;background:rgba(34,197,94,0.12);color:#4ade80;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font)">☁ บันทึก</button>
+      </div>
+
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:5px">2) ค้นหา รพ. แล้วติ๊ก (ติ๊ก=ใส่กลุ่ม · เอาออก=ลบ)</div>
+      <input id="sa-hg-search" placeholder="ค้นหาโรงพยาบาล..." oninput="saHgRenderList()" style="width:100%;padding:6px 10px;background:var(--sur2);border:1px solid var(--bd2);border-radius:5px;color:var(--tx);font-size:12px;box-sizing:border-box;font-family:var(--font);margin-bottom:8px">
+      <div id="sa-hg-status" style="font-size:11px;color:var(--mu2);margin-bottom:8px;min-height:16px"></div>
+
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="flex:1.4;min-width:0;border:1px solid var(--bd);border-radius:8px;overflow:hidden">
+          <div style="padding:7px 12px;font-size:10px;color:var(--mu2);background:var(--sur2);border-bottom:1px solid var(--bd)">รพ. ทั้งหมด (ติ๊กเลือก)</div>
+          <div id="sa-hg-list" style="max-height:420px;overflow-y:auto;padding:4px 6px"></div>
+        </div>
+        <div style="flex:1;min-width:0;border:1px solid var(--bd);border-radius:8px;overflow:hidden">
+          <div id="sa-hg-memberhead" style="padding:7px 12px;font-size:10px;color:var(--mu2);background:var(--sur2);border-bottom:1px solid var(--bd)">สมาชิกในกลุ่ม</div>
+          <div id="sa-hg-memberlist" style="max-height:420px;overflow-y:auto;padding:4px 6px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- [C10] Tab: แก้พื้นที่ รพ. -->
+    <!-- [V545] แสดงในหน้าเลย (เดิมเป็นปุ่มเปิด popup) — id เดิมทั้งหมด -->
+    <div id="cfg-pane-areaovr" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">🗺 แก้พื้นที่โรงพยาบาล</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px;line-height:1.6">เลือกพื้นที่ให้ รพ. เอง (ทับผลจำแนกอัตโนมัติจากชื่อ/จังหวัด) · ค่าที่ตั้งแล้วจะขึ้นก่อนและเป็นสีเขียว</div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="sa-ov-search" type="text" placeholder="ค้นหาโรงพยาบาล..." oninput="saOvRenderList()" style="flex:1;min-width:180px;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:6px 10px;font-size:12px;font-family:var(--font)">
+        <button onclick="saOvSave()" style="padding:6px 16px;border-radius:6px;border:1px solid #22c55e;background:rgba(34,197,94,0.12);color:#4ade80;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font)">☁ บันทึก</button>
+      </div>
+      <div id="sa-ov-status" style="font-size:11px;color:var(--mu2);margin-bottom:8px;min-height:16px"></div>
+      <div id="sa-ov-list" style="max-height:460px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;padding:4px 8px"></div>
+    </div>
+
+    <!-- [C17] Tab: กลุ่มประเภทสัญญา -->
+    <div id="cfg-pane-ctype" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:4px">📑 กลุ่มประเภทสัญญา</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-bottom:16px;line-height:1.6">
+        กำหนดว่าประเภทสัญญาแต่ละแบบ (จาก <code style="color:#7dd3fc">CONTRACT_TYPE_NAME</code>) จะถูกนับรวมเป็นกลุ่มไหน ·
+        ใช้กับ <b style="color:var(--tx)">แถวย่อยในตาราง Summary by Team</b>
+      </div>
+      <div id="cfg-ctype-body"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
+        <button onclick="cfgCtypeSave()" style="padding:8px 18px;border-radius:7px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:700">💾 บันทึก</button>
+        <button onclick="cfgCtypeReset()" style="padding:8px 16px;border-radius:7px;border:1px solid var(--bd2);background:transparent;color:var(--mu);cursor:pointer;font-family:var(--font);font-size:12px">↺ ค่าเริ่มต้น</button>
+        <span id="cfg-ctype-msg" style="font-size:12px;color:var(--mu)"></span>
+      </div>
+    </div>
+
+    <!-- Tab: Province Rep (จังหวัด→ผู้แทน) -->
+    <div id="cfg-pane-provrep" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">🗺 เขตจังหวัด — จังหวัด → ผู้แทน Service</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px;line-height:1.6">แก้ผู้แทนที่ดูแลแต่ละจังหวัด (override ค่า default จาก Customer Master) · บันทึกแล้วแผนที่ Sales Areas อัปเดต · กรุงเทพฯ = ดูแลร่วมกัน (ขาว)</div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center">
+        <input id="pr-search" type="text" placeholder="ค้นหาจังหวัด..." oninput="prFilter()" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:6px 10px;font-size:12px;font-family:var(--font)">
+        <button onclick="prSave()" style="padding:6px 16px;border-radius:6px;border:1px solid #22c55e;background:rgba(34,197,94,0.12);color:#4ade80;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font)">☁ บันทึก</button>
+      </div>
+      <div id="pr-list" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+      <div id="pr-result" style="font-size:11px;color:var(--mu2);margin-top:10px"></div>
+    </div>
+<!-- Tab: 🏙 Sales กทม. (admin) — [V524] ย้ายจาก overlay ลอย มาเป็น pane เหมือน เขตจังหวัด -->
+    <div id="cfg-pane-bkksales" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">🏙 Sales กทม. — โรงพยาบาล → ผู้แทน</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px;line-height:1.6">กรุงเทพฯ กำหนดรายจังหวัดไม่ได้ (ดูแลร่วมกัน) จึงตั้งรายโรงพยาบาลที่นี่ · คอลัมน์กลาง = ที่ระบบจับได้ (RES_SALES_NAME) · ตั้งเองแล้วจะทับค่าระบบ</div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="bks-search" type="text" placeholder="ค้นหาโรงพยาบาล / sales..." oninput="bksFilter()" style="flex:1;min-width:180px;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:6px 10px;font-size:12px;font-family:var(--font)">
+        <select id="bks-rep" onchange="bksFilter()" title="กรองตามผู้แทนที่ตั้งไว้" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:6px 8px;font-size:12px;font-family:var(--font);min-width:150px"><option value="">ผู้แทน: ทั้งหมด</option></select>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;white-space:nowrap">
+          <input type="checkbox" id="bks-only-unmapped" onchange="bksFilter()" style="cursor:pointer;margin:0">ยังไม่ตั้ง</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mu);cursor:pointer;white-space:nowrap">
+          <input type="checkbox" id="bks-only-diff" onchange="bksFilter()" style="cursor:pointer;margin:0">ต่างจากระบบ</label>
+        <button onclick="bksSave()" style="padding:6px 16px;border-radius:6px;border:1px solid #22c55e;background:rgba(34,197,94,0.12);color:#4ade80;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font)">☁ บันทึก</button>
+      </div>
+      <div id="bks-stat" style="font-size:11px;color:var(--mu2);margin-bottom:8px"></div>
+      <div id="bks-list" style="display:flex;flex-direction:column;gap:4px"></div>
+      <div id="bks-result" style="font-size:11px;color:var(--mu2);margin-top:10px"></div>
+    </div>
+<!-- Tab: 📱 สิทธิ์ Mobile (admin) — [V535] -->
+    <div id="cfg-pane-mbusers" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">📱 ใครเห็นตัวเลือก Mobile</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px;line-height:1.6">
+        <b style="color:#7dd3fc">ติ๊ก</b> = ล็อกอินแล้วเจอหน้าเลือก 📱 มือถือ / 🖥️ เดสก์ท็อป ·
+        <b>ไม่ติ๊ก</b> = เข้าเดสก์ท็อปตรงเลย ไม่ต้องเลือก<br>
+        ค่าเริ่มต้น (ยังไม่เคยตั้ง) = sales เห็นทุกคน · manager/admin ไม่เห็น ·
+        <span style="color:#64748b">ต่อท้าย URL ด้วย <code>?view=mobile</code> ยังเข้าได้เสมอ</span>
+      </div>
+      <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="mbu-search" type="text" placeholder="ค้นหาชื่อ / รหัส..." oninput="mbuRender()" style="flex:1;min-width:160px;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:6px 10px;font-size:12px;font-family:var(--font)">
+        <button onclick="mbuAll(1)" style="padding:5px 10px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--mu);cursor:pointer;font-size:11px;font-family:var(--font)">เลือกทั้งหมด</button>
+        <button onclick="mbuAll(0)" style="padding:5px 10px;border-radius:5px;border:1px solid var(--bd2);background:var(--sur2);color:var(--mu);cursor:pointer;font-size:11px;font-family:var(--font)">ล้างทั้งหมด</button>
+        <button onclick="mbuSave()" style="padding:6px 16px;border-radius:6px;border:1px solid #22c55e;background:rgba(34,197,94,0.12);color:#4ade80;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font)">☁ บันทึก</button>
+      </div>
+      <div id="mbu-stat" style="font-size:11px;color:var(--mu2);margin-bottom:8px"></div>
+      <div id="mbu-list" style="display:flex;flex-direction:column;gap:4px"></div>
+      <div id="mbu-result" style="font-size:11px;color:var(--mu2);margin-top:10px"></div>
+    </div>
+<!-- Tab: ลิงก์มือถือ (admin) — [V506] -->
+    <div id="cfg-pane-mblinks" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">☎️ ลิงก์สำหรับหน้า Mobile</div>
+      <div style="font-size:11px;color:var(--mu);margin-bottom:14px">ใส่ URL ของโปรเจกต์ภายนอก — ปุ่มในหน้า Mobile จะเปิด URL นี้ในแท็บใหม่</div>
+
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:10px">☎️ BJH Contact (ค้นหาเบอร์โทร)</div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:8px">วาง URL ของ Apps Script โปรเจกต์ค้นหาเบอร์ — ขึ้นต้นด้วย https:// (ปกติลงท้ายด้วย /exec)</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="cfg-mbl-contact" type="text" placeholder="https://script.google.com/.../exec" style="flex:1;min-width:260px;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font)">
+          <button onclick="cfgMblSave()" style="padding:8px 16px;border-radius:6px;border:1px solid #a78bfa;background:rgba(167,139,250,.12);color:#a78bfa;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">💾 บันทึกลง Sheet</button>
+          <button onclick="cfgMblTest()" style="padding:8px 14px;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:var(--mu);cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">🔗 ทดสอบเปิด</button>
+        </div>
+        <div id="cfg-mbl-log" style="font-size:11px;color:var(--mu);margin-top:9px"></div>
+      </div>
+
+      <div style="font-size:11px;color:var(--mu2);line-height:1.7;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px">
+        <b style="color:var(--mu)">หมายเหตุ</b><br>
+        • บันทึกลง _config_kv ส่วนกลาง — ทุกคนเห็นตรงกัน<br>
+        • ตั้งค่าได้เฉพาะ admin<br>
+        • ถ้าเปิดไม่ได้ เช็คว่าโปรเจกต์ปลายทาง deploy เป็น Anyone หรืออยู่ domain เดียวกัน
+      </div>
+    </div>
+
+<!-- Tab: Email เบิกอะไหล่ (admin) -->
+    <div id="cfg-pane-armon" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">💰 AR Monitor — ตั้งค่า</div>
+      <div style="font-size:11px;color:var(--mu);margin-bottom:14px">กำหนดจำนวนวันครบกำหนดชำระ + จัดการรายการบิลที่จ่ายแล้ว (Import MD)</div>
+
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:10px">📅 ครบกำหนดชำระ (Credit Days)</div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:8px">นับจากวันพิมพ์บิล + จำนวนวันนี้ = วันครบกำหนด (0 = ครบทันทีวันพิมพ์)</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="cfg-armon-days" type="number" min="0" max="365" placeholder="0" style="width:90px;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:14px;font-family:var(--font)">
+          <span style="font-size:12px;color:var(--mu)">วัน</span>
+          <button onclick="cfgArmonSaveDays()" style="padding:8px 16px;border-radius:6px;border:1px solid #a78bfa;background:rgba(167,139,250,.12);color:#a78bfa;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">💾 บันทึกลง Sheet</button>
+          <span id="cfg-armon-days-log" style="font-size:11px;color:var(--mu)"></span>
+        </div>
+      </div>
+
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:#4ade80;margin-bottom:10px">📥 Import MD Collection (ตัดบิลจ่ายแล้ว)</div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:10px">อัปโหลดไฟล์ MD Collection → บิลที่จ่ายแล้วจะถูกตัดออกจากรายการค้าง (บันทึกลง Sheet)</div>
+        <input type="file" id="cfg-armon-mdfile" accept=".xlsx,.xlsb,.csv" multiple style="display:none" onchange="spArImportMD(this)">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button onclick="document.getElementById('cfg-armon-mdfile').click()" style="padding:8px 16px;border-radius:6px;border:1px solid #4ade80;background:rgba(74,222,128,.12);color:#4ade80;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">📥 เลือกไฟล์ Import</button>
+          <button onclick="spArClearPaid()" style="padding:8px 14px;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:var(--mu);cursor:pointer;font-size:12px;font-family:var(--font)">🗑 ล้างรายการบิลจ่ายแล้ว</button>
+          <span id="sp-ar-mdlog" style="font-size:11px;color:var(--mu)"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="cfg-pane-email" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">📧 Email เบิกอะไหล่ (DO / เปิดบิล)</div>
+      <div style="font-size:11px;color:var(--mu);margin-bottom:10px">ตั้งค่าผู้รับ + ข้อความ 2 ปุ่มคนละแบบ + เบอร์โทรลายเซ็นรายคน</div>
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;margin-bottom:14px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:7px">👆 คลิกในช่อง Subject/ข้อความก่อน แล้วกดแทรกข้อมูล (ไม่ต้องพิมพ์เอง):</div>
+        <button type="button" onclick="emInsert('[ชื่อลูกค้า]')" style="display:inline-block;margin:0 6px 5px 0;padding:5px 13px;border-radius:20px;border:1px solid var(--blu);background:rgba(56,189,248,.12);color:var(--blu);cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">🏥 ชื่อลูกค้า</button>
+        <button type="button" onclick="emInsert('[เลขใบเสนอราคา]')" style="display:inline-block;margin:0 6px 5px 0;padding:5px 13px;border-radius:20px;border:1px solid var(--blu);background:rgba(56,189,248,.12);color:var(--blu);cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">📄 เลขใบเสนอราคา</button>
+        <button type="button" onclick="emInsert('[Brand]')" style="display:inline-block;margin:0 6px 5px 0;padding:5px 13px;border-radius:20px;border:1px solid var(--blu);background:rgba(56,189,248,.12);color:var(--blu);cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">🏷️ Brand</button>
+      </div>
+
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--blu);margin-bottom:10px">📬 ผู้รับ (ใช้ร่วม 2 ปุ่ม)</div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">TO</div>
+        <input id="cfg-email-to" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);margin-bottom:10px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">CC (คั่นหลายอีเมลด้วย ; )</div>
+        <input id="cfg-email-cc" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font)">
+      </div>
+
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#4ade80;margin-bottom:10px">📦 ปุ่ม DO เบิกสินค้า</div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">หัวข้ออีเมล (Subject)</div>
+        <input id="cfg-email-do_subject" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);margin-bottom:10px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">ข้อความเปิด</div>
+        <textarea id="cfg-email-do_intro" rows="2" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);margin-bottom:10px;resize:vertical"></textarea>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">หมายเหตุท้ายเมล (เว้นว่าง = ไม่แสดง)</div>
+        <textarea id="cfg-email-do_note" rows="2" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);resize:vertical"></textarea>
+      </div>
+
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:10px">🧾 ปุ่ม เปิดบิล</div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">หัวข้ออีเมล (Subject)</div>
+        <input id="cfg-email-bill_subject" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);margin-bottom:10px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">ข้อความเปิด</div>
+        <textarea id="cfg-email-bill_intro" rows="2" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);margin-bottom:10px;resize:vertical"></textarea>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">หมายเหตุท้ายเมล</div>
+        <textarea id="cfg-email-bill_note" rows="2" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);resize:vertical"></textarea>
+      </div>
+
+      <div style="border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:10px">📄 ปุ่ม เปิดบิล (อย่างเดียว)</div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">หัวข้ออีเมล (Subject)</div>
+        <input id="cfg-email-billonly_subject" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);margin-bottom:10px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">ข้อความเปิด</div>
+        <textarea id="cfg-email-billonly_intro" rows="2" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);margin-bottom:10px;resize:vertical"></textarea>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:3px">หมายเหตุท้ายเมล</div>
+        <textarea id="cfg-email-billonly_note" rows="2" style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font);resize:vertical"></textarea>
+      </div>
+
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px"> <!-- [v430] -->
+        <div style="font-size:12px;font-weight:700;color:#facc15;margin-bottom:4px">✍️ คำลงท้ายลายเซ็น</div>
+        <div style="font-size:10px;color:var(--mu);margin-bottom:8px">ใช้ทั้งอีเมลเบิกอะไหล่ และปุ่ม Copy ในประมาณการยอดขาย</div>
+        <input id="cfg-email-email_signature" placeholder="Best regards," style="width:100%;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:8px 12px;font-size:13px;font-family:var(--font)">
+      </div>
+
+      <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:4px">📱 เบอร์โทรลายเซ็น (ตามชื่อผู้ login)</div>
+        <div style="font-size:10px;color:var(--mu);margin-bottom:10px">เว้นว่าง = ไม่แสดงบรรทัดโทรในลายเซ็น</div>
+        <div id="cfg-email-phones"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onclick="cfgEmailSave()" style="padding:9px 22px;border-radius:6px;border:1px solid #4ade80;background:transparent;color:#4ade80;cursor:pointer;font-size:13px;font-weight:700;font-family:var(--font)">💾 บันทึก</button>
+        <span id="cfg-email-log" style="font-size:12px"></span>
+      </div>
+      <div style="font-size:10px;color:var(--mu);margin-top:14px;line-height:1.6;border-top:1px solid var(--bd);padding-top:10px">
+        ลายเซ็นท้ายเมล (คำลงท้ายแก้ได้ด้านบน):<br><b style="color:#facc15">{คำลงท้าย}</b><br><b style="color:var(--mu2)">{ชื่อผู้ login}</b><br>Service Commercial<br>โทร. <b style="color:var(--mu2)">{เบอร์ตามชื่อ}</b>
+      </div>
+    </div>
+
+
+  </div>
+  </div>
+
+<!-- CONFIRM BILLING MODAL -->

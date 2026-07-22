@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BJH Revenue Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Noto+Sans+Thai:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<?!= include('style'); ?>
+<?!= include('libs'); ?>
+</head>
+<body>
+<script>window._EXEC_URL='<?= execUrl ?>';window._API_URL='<?= apiUrl ?>';</script>
+<?!= include('body_app_top'); ?>
+<?!= include('Home'); ?>
+<?!= include('Dashboard'); ?>
+<?!= include('SalesProspect'); ?>
+<?!= include('LOA'); ?>
+<?!= include('MA'); ?>
+<?!= include('body_app_bottom'); ?>
+<!-- [V520] Mobile ต้องอยู่ 'นอก' #app — เดิมอยู่ข้างใน ทำให้ _enterMobile() ซ่อน #app แล้ว Mobile หายตาม (ขนาด 0x0 = จอดำ) -->
+<?!= include('Mobile'); ?>
+<?!= include('script_main'); ?>
+<?!= include('overrides'); ?>
+<?!= include('config_modal'); ?>
+<?!= include('confirm_billing'); ?>
+</body>
+</html>

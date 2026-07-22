@@ -1,0 +1,651 @@
+<!-- ===== MA After Sales — view fragment (scoped #v-ma) ===== -->
+<div class="view" id="v-ma" style="display:none;flex-direction:column;flex:1;overflow:auto">
+<style>
+#v-ma{--bg:#0f1115;--panel:#171a21;--panel-2:#1d212b;--line:#2a2f3a;--ink:#e8ebf0;--muted:#9099a8;--accent:#2f6df6;--accent-soft:#1b2740;--green:#1f9d6b;--green-soft:#13241d;--amber:#d9952a;--amber-soft:#2a2113;--red:#d9534f}#v-ma *{box-sizing:border-box;margin:0;padding:0}#v-ma body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}#v-ma .brandmark{font-family:'Sora';font-size:15px;font-weight:600}#v-ma h3, #v-ma .stage-title{font-family:'Sora','IBM Plex Sans Thai'}#v-ma .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:13px 22px;background:rgba(15,17,21,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);flex-wrap:wrap;gap:12px}#v-ma .brand{display:flex;align-items:center;gap:11px}#v-ma .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#2f6df6,#23d3a3);display:grid;place-items:center;font-weight:700;color:#fff;font-family:'Sora'}#v-ma .brandsub{font-size:11px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}#v-ma .nav{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);padding:5px;border-radius:12px;flex-wrap:wrap}#v-ma .nav button{border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer}#v-ma .nav button.on{background:var(--accent-soft);color:#cfe0ff}#v-ma .nav button:hover:not(.on){color:var(--ink)}#v-ma .wrap{max-width:1040px;margin:0 auto;padding:26px 22px 90px}#v-ma .stage-title{font-size:22px;font-weight:600;margin-bottom:3px}#v-ma .stage-desc{color:var(--muted);font-size:13.5px;margin-bottom:22px}#v-ma .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:18px}#v-ma .card h3{font-size:15px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:9px}#v-ma .card .hint{font-size:12px;color:var(--muted);margin-bottom:16px}#v-ma .sec-num{width:23px;height:23px;border-radius:7px;background:var(--accent-soft);color:#9cc0ff;display:grid;place-items:center;font-size:12px;font-weight:600}#v-ma .grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px}#v-ma .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}#v-ma .field label{font-size:12.5px;color:var(--muted);font-weight:500}#v-ma .field label .req{color:var(--red)}#v-ma .field .sub{font-size:11.5px;color:#6b7280;font-weight:400}#v-ma input, #v-ma select, #v-ma textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;width:100%;line-height:1.6}#v-ma input:focus, #v-ma select:focus, #v-ma textarea:focus{outline:none;border-color:var(--accent)}#v-ma textarea{resize:vertical;min-height:64px}#v-ma .chips{display:flex;gap:9px;flex-wrap:wrap}#v-ma .chip{padding:9px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);font-size:13px;cursor:pointer;color:var(--muted);user-select:none}#v-ma .chip.sel{border-color:var(--accent);background:var(--accent-soft);color:#cfe0ff}#v-ma .mcard{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;position:relative}#v-ma .mcard .mtop{display:grid;grid-template-columns:1.3fr 1.3fr .7fr auto;gap:12px;align-items:end}#v-ma .mcard .mno{position:absolute;top:-9px;left:14px;background:var(--accent);color:#fff;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}#v-ma .iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:9px;width:42px;height:42px;cursor:pointer;font-size:15px}#v-ma .iconbtn:hover{color:var(--red);border-color:var(--red)}#v-ma .addbtn{background:transparent;border:1px dashed var(--line);color:#9cc0ff;border-radius:10px;padding:12px;width:100%;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;margin-top:6px}#v-ma .addbtn:hover{border-color:var(--accent);background:var(--accent-soft)}#v-ma .actions{display:flex;gap:11px;justify-content:flex-end;margin-top:8px}#v-ma .btn{font-family:inherit;font-size:13.5px;font-weight:600;padding:11px 20px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);cursor:pointer}#v-ma .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}#v-ma .btn.green{background:var(--green);border-color:var(--green);color:#fff}#v-ma .btn:disabled{opacity:.5}#v-ma .msg{padding:11px 15px;border-radius:9px;font-size:13px;margin-bottom:16px;display:none}#v-ma .msg.ok{background:var(--green-soft);border:1px solid #1c3a2c;color:#9fe0c1;display:block}#v-ma .msg.err{background:#2a1416;border:1px solid #4a1c1c;color:#e69aa0;display:block}#v-ma .queue{display:flex;flex-direction:column;gap:11px}#v-ma .qcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 18px;display:flex;align-items:center;gap:16px}#v-ma .qcard.click{cursor:pointer}#v-ma .qcard.click:hover{border-color:var(--accent)}#v-ma .qid{font-family:'Sora';font-size:12.5px;color:var(--muted)}#v-ma .qhosp{font-weight:600;font-size:14.5px}#v-ma .qmeta{font-size:12px;color:var(--muted);margin-top:2px}#v-ma .qright{margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:7px;align-items:flex-end}#v-ma .badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}#v-ma .badge.pending{background:var(--amber-soft);color:#e6b35e}#v-ma .badge.verifying{background:var(--accent-soft);color:#9cc0ff}#v-ma .badge.approved{background:var(--green-soft);color:#7fd6b0}#v-ma .editable{background:#fffae6!important;color:#5a4a1a!important;border-color:#d9952a!important}#v-ma .ptbl-wrap{overflow-x:auto}#v-ma table.ptbl{border-collapse:collapse;width:100%;min-width:520px;font-size:13.5px}#v-ma table.ptbl th, #v-ma table.ptbl td{border:1px solid var(--line);padding:7px 9px;text-align:center}#v-ma table.ptbl th{background:var(--panel-2);font-size:12.5px;color:#9cc0ff}#v-ma table.ptbl td.yr{font-weight:600;background:var(--panel-2);white-space:nowrap}#v-ma table.ptbl tr.inw td{color:#7f879a;font-style:italic;background:#14171e}#v-ma table.ptbl input{width:100%;text-align:right;border:1px solid transparent;background:transparent;padding:5px}#v-ma table.ptbl input:focus{border-color:var(--accent);background:#1a1f2b}#v-ma .tpl-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}#v-ma .exclude-box{margin-top:12px;background:var(--amber-soft);border:1px solid #4a3a1a;border-radius:10px;padding:12px 14px}#v-ma .exclude-box label{color:#e6b35e}#v-ma .tabs{display:flex;gap:8px;margin-bottom:20px}#v-ma .tab{padding:9px 18px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer}#v-ma .tab.on{border-color:var(--accent);background:var(--accent-soft);color:#cfe0ff}#v-ma .lvpick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}#v-ma .lvbtn{padding:8px 15px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font-size:13px;cursor:pointer}#v-ma .lvbtn.on{border-color:var(--accent);background:var(--accent-soft);color:#cfe0ff}#v-ma table.mtbl{border-collapse:collapse;width:100%;font-size:13px}#v-ma table.mtbl th, #v-ma table.mtbl td{border:1px solid var(--line);padding:7px 9px;text-align:left}#v-ma table.mtbl th{background:var(--panel-2);font-size:12px;color:#9cc0ff}#v-ma table.mtbl input{border:1px solid transparent;background:transparent;padding:5px}#v-ma table.mtbl input:focus{border-color:var(--accent);background:#1a1f2b}#v-ma .dropzone{border:1px dashed var(--line);border-radius:11px;padding:16px;text-align:center;color:var(--muted);font-size:13px}#v-ma .reqfiles{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}#v-ma .reqslot{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:13px 15px}#v-ma .reqslot .rl{font-size:12.5px;font-weight:500;margin-bottom:8px}#v-ma .reqslot .rl .req{color:var(--red)}#v-ma .hidden{display:none}@media(max-width:760px){#v-ma .grid2, #v-ma .reqfiles{grid-template-columns:1fr}#v-ma .mcard .mtop{grid-template-columns:1fr 1fr}}
+
+</style>
+
+<div class="topbar">
+  <div class="brand"><div class="logo">MA</div><div><div class="brandmark">MA After Sales System</div><div class="brandsub">ระบบขอราคาบริการหลังการขาย</div></div></div>
+  <div class="nav">
+    <button id="nav-request" class="on" onclick="MA.go('request')">สร้างคำขอ</button>
+    <button id="nav-verify" onclick="MA.go('verify')">ตรวจสอบ/อนุมัติ</button>
+    <button id="nav-result" onclick="MA.go('result')">สถานะ &amp; PDF</button>
+    <button id="nav-config" onclick="MA.go('config')">⚙ Config</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="msg" class="msg"></div>
+
+  <!-- ============ PAGE: REQUEST ============ -->
+  <section id="page-request">
+    <div class="stage-title" style="margin-bottom:14px">สร้างคำขอเสนอราคา Service <span style="font-weight:400;color:var(--muted);font-size:13px">— กรอกแล้วส่งให้ Product</span></div>
+    <div class="card" style="padding:18px">
+      <div class="grid2">
+        <div class="field" style="margin-bottom:11px"><label>ชื่อโรงพยาบาล <span class="req">*</span></label><input id="r_hospital"></div>
+        <div class="field" style="margin-bottom:11px"><label>ราคาขาย (บาท) <span class="req">*</span></label><input id="r_saleprice" oninput="MA.commaInput(this)"></div>
+      </div>
+      <div class="field" style="margin-bottom:11px"><label>ชื่อโครงการ / รายละเอียดเครื่อง <span class="req">*</span> <span class="sub">— กด Enter ขึ้นบรรทัด (สเปค/ยี่ห้อ/รุ่น/จำนวน)</span></label>
+        <textarea id="r_project" rows="3" placeholder="บรรทัด 1: ชื่อ/สเปคเครื่อง&#10;บรรทัด 2: ยี่ห้อ รุ่น จำนวน"></textarea></div>
+      <div class="field" style="margin-bottom:11px"><label>รูปแบบการนำเสนอ <span class="sub">(เลือกได้หลายแบบ · Product ปรับได้)</span></label>
+        <div class="chips" id="r_ptypes"></div></div>
+      <div class="grid2">
+        <div class="field" style="margin-bottom:11px"><label>ปีรับประกัน <span class="req">*</span></label>
+          <select id="r_warranty"></select></div>
+        <div class="field" style="margin-bottom:11px"><label>จำนวนปีบริการทั้งหมด (รวมประกัน) <span class="req">*</span></label>
+          <select id="r_mayears"></select></div>
+      </div>
+      <div class="field" style="margin-bottom:11px"><label>หมายเหตุ (ไม่บังคับ)</label>
+        <textarea id="r_note" rows="2" placeholder="ระบุเงื่อนไขเพิ่มเติม..."></textarea></div>
+      <div class="field" style="margin:0"><label>ไฟล์แนบ <span class="sub">(ตัวอย่าง UI)</span></label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="dropzone" style="flex:1;min-width:160px">⬆ ใบเสนอราคา</div>
+          <div class="dropzone" style="flex:1;min-width:160px">⬆ สเปคเครื่อง</div>
+          <div class="dropzone" style="flex:1;min-width:160px">📎 อื่นๆ</div>
+        </div></div>
+    </div>
+    <div class="actions" style="margin-top:14px"><button class="btn primary" id="r_submit" onclick="MA.submitRequest()">ส่งให้ Product ตรวจสอบ →</button></div>
+  </section>
+
+  <!-- ============ PAGE: VERIFY ============ -->
+  <section id="page-verify" class="hidden">
+    <!-- list -->
+    <div id="v_list">
+      <div class="stage-title">รายการคำขอ</div>
+      <div class="stage-desc">กดเข้าดูเพื่อตรวจสอบ / อนุมัติ</div>
+      <div class="queue" id="v_queue"></div>
+    </div>
+    <!-- detail -->
+    <div id="v_detail" class="hidden">
+      <div class="stage-title" id="v_title">คำขอ</div>
+      <div class="stage-desc"><a href="#" onclick="MA.vBack();return false" style="color:#9cc0ff">← กลับรายการ</a></div>
+      <div class="card">
+        <h3><span class="sec-num">1</span> ข้อมูลคำขอ <span style="font-weight:400;color:var(--muted);font-size:12px">(แก้ไขได้ทุกช่อง)</span></h3>
+        <div class="field"><label>ชื่อโครงการ</label><textarea id="v_project" class="editable" rows="3"></textarea></div>
+        <div class="grid2">
+          <div class="field"><label>โรงพยาบาล</label><input id="v_hosp" class="editable"></div>
+          <div class="field"><label>ราคาขาย (บาท)</label><input id="v_saleprice" class="editable" oninput="MA.commaInput(this)"></div>
+        </div>
+        <div class="field"><label>หมายเหตุ / เงื่อนไข (รวมทั้งใบ)</label><textarea id="v_note" class="editable" rows="2"></textarea></div>
+      </div>
+      <div class="card">
+        <h3><span class="sec-num">2</span> ระยะเวลา &amp; ราคา MA</h3>
+        <div class="grid2">
+          <div class="field"><label>จำนวนครั้งเข้าบริการต่อปี *</label>
+            <select id="v_pm" onchange="MA.renderPriceTable()"><option value="1">1 ครั้ง/ปี</option><option value="2">2 ครั้ง/ปี</option><option value="3" selected>3 ครั้ง/ปี</option><option value="4">4 ครั้ง/ปี</option></select></div>
+          <div class="field"><label>ปีรับประกัน <span class="sub">— แก้ได้ เผื่อ Sales ใส่ผิด</span></label>
+            <select id="v_warranty" onchange="MA.onWarrantyChange()"><option value="1">1 ปี</option><option value="2">2 ปี</option><option value="3">3 ปี</option><option value="4">4 ปี</option><option value="5">5 ปี</option></select></div>
+        </div>
+        <div class="field"><label>จำนวนปีบริการทั้งหมด (รวมประกัน) <span class="sub">— ปรับลดได้</span></label>
+          <select id="v_years" onchange="MA.onYearsChange()" style="max-width:280px"></select></div>
+        <div class="field"><label>แบบที่จะเสนอในใบนี้ <span class="sub">(ติ๊กออกเพื่อไม่เสนอแบบนั้น)</span></label>
+          <div class="chips" id="v_offer">
+            <span class="chip sel" data-t="none">ไม่รวมอะไหล่</span>
+            <span class="chip sel" data-t="partial">รวมอะไหล่ยกเว้น</span>
+            <span class="chip sel" data-t="full">รวมอะไหล่ทุกชิ้น</span>
+          </div></div>
+        <div class="tpl-row">
+          <div class="field" style="margin:0"><label>Template Level</label>
+            <select id="v_level" style="min-width:200px"><option value="1">Level 1</option><option value="2" selected>Level 2</option><option value="3">Level 3</option><option value="4">Level 4</option><option value="5">Level 5</option></select></div>
+          <button class="btn" onclick="MA.pullTemplate()">↓ ดึงราคาจาก Template</button>
+        </div>
+        <div class="ptbl-wrap"><table class="ptbl" id="v_priceTable"></table></div>
+        <div class="exclude-box">
+          <label style="font-size:12.5px;color:#e6b35e;font-weight:500;display:block;margin-bottom:8px">รายการยกเว้น <span class="sub">(สำหรับแบบ "รวมอะไหล่ยกเว้น" — กดเลือก หรือพิมพ์เพิ่มในช่องด้านล่าง)</span></label>
+          <div class="chips" id="v_excludeChips" style="margin-bottom:10px"></div>
+          <input id="v_excludeMore" class="editable" oninput="MA.syncExcludeChips()" placeholder="รายการที่จะแสดงในเอกสาร (คั่นด้วยจุลภาค ,)">
+        </div>
+      </div>
+      <div class="card">
+        <h3><span class="sec-num">3</span> ข้อความเอกสาร (ข้อ 1–6) <span style="font-weight:400;color:var(--muted);font-size:12px">(เว้นว่าง = ใช้ค่า Default จาก Config)</span></h3>
+        <div class="hint">แก้เฉพาะใบนี้ได้ · เว้นว่างไว้จะใช้ข้อความมาตรฐานจาก Config · ตัวแปร: {PROJECT} {YEARS} {PM} {ROUNDS} {PM_STEP}</div>
+        <div class="field"><label>ข้อ 1 — รายละเอียดเครื่อง <span class="sub">(หัวข้อ||เนื้อหา)</span></label><textarea id="v_clause1" class="editable" rows="2" style="resize:none" placeholder="(เว้นว่าง = ใช้ Default)"></textarea></div>
+        <div class="field"><label>ข้อ 2 — ระยะเวลา/รอบบริการ</label><textarea id="v_clause2" class="editable" rows="4" style="resize:none" placeholder="(เว้นว่าง = ใช้ Default)"></textarea></div>
+        <div class="field"><label>ข้อ 3 — การบริการบำรุงรักษา</label><textarea id="v_clause3" class="editable" rows="5" style="resize:none" placeholder="(เว้นว่าง = ใช้ Default)"></textarea></div>
+        <div class="field"><label>ข้อ 4 — การจัดส่งรายงาน</label><textarea id="v_clause4" class="editable" rows="6" style="resize:none" placeholder="(เว้นว่าง = ใช้ Default)"></textarea></div>
+        <div class="field"><label>ข้อ 5 — เงื่อนไขที่ไม่ครอบคลุม</label><textarea id="v_clause5" class="editable" rows="13" style="resize:none" placeholder="(เว้นว่าง = ใช้ Default)"></textarea></div>
+        <div class="field"><label>ข้อ 6 — การติดต่อประสานงาน</label><textarea id="v_clause6" class="editable" rows="4" style="resize:none" placeholder="(เว้นว่าง = ใช้ Default)"></textarea></div>
+        <div class="field" style="margin:0"><label>หมายเหตุท้ายราคา</label><textarea id="v_notes" class="editable" rows="4" style="resize:none" placeholder="(เว้นว่าง = ใช้ Default)"></textarea></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="MA.previewPdf()">👁 ดูตัวอย่าง PDF</button>
+        <button class="btn" id="v_save" onclick="MA.saveVerify()">บันทึก (Verify)</button>
+        <button class="btn green" id="v_approve" onclick="MA.approve()">✓ อนุมัติ &amp; สร้าง PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE: RESULT ============ -->
+  <section id="page-result" class="hidden">
+    <div class="stage-title">คำขอ &amp; ดาวน์โหลด PDF</div>
+    <div class="stage-desc">ติดตามสถานะ และดาวน์โหลด PDF เมื่ออนุมัติแล้ว</div>
+    <div class="queue" id="res_queue"></div>
+  </section>
+
+  <!-- ============ PAGE: CONFIG ============ -->
+  <section id="page-config" class="hidden">
+    <div class="stage-title">⚙ Config — จัดการข้อมูลตั้งต้น</div>
+    <div class="stage-desc">ตั้งราคา Template และฐานข้อมูลรุ่นเครื่อง</div>
+    <div class="tabs">
+      <div class="tab on" id="ctabT" onclick="MA.cSwitch('T')">ราคา Template (5 Level)</div>
+      <div class="tab" id="ctabM" onclick="MA.cSwitch('M')">ฐานข้อมูลรุ่นเครื่อง</div>
+      <div class="tab" id="ctabS" onclick="MA.cSwitch('S')">ข้อความเอกสาร (Default)</div>
+    </div>
+    <div id="cpaneT">
+      <div class="card">
+        <h3>ราคา Template</h3>
+        <div class="hint">เลือก Level แล้วกรอกราคา MA รายปี (ปี 1–10 หลังหมดประกัน) ของแต่ละประเภท · ระบบ map เข้าปีจริงตาม warranty ตอนใช้งาน</div>
+        <div class="lvpick" id="c_lvpick"></div>
+        <div class="field" style="max-width:340px"><label>ชื่อ Level</label><input id="c_lvName"></div>
+        <div class="ptbl-wrap"><table class="ptbl" id="c_tplTable"></table></div>
+        <div class="exclude-box" style="margin-top:16px">
+          <label style="font-size:12.5px;color:#e6b35e;font-weight:500;display:block;margin-bottom:8px">รายการยกเว้นของ Level นี้ <span class="sub">(กดเลือกจากรายการมาตรฐาน หรือพิมพ์เพิ่มในช่อง · ใช้ตอน Product เลือก Level นี้ + แบบรวมอะไหล่ยกเว้น)</span></label>
+          <div class="chips" id="c_lvExcludeChips" style="margin-bottom:10px"></div>
+          <input id="c_lvExclude" oninput="MA.syncLvExcludeChips()" placeholder="รายการยกเว้น (คั่นด้วยจุลภาค ,)">
+        </div>
+      </div>
+      <div class="actions"><button class="btn primary" id="c_saveTpl" onclick="MA.saveTemplates()">บันทึก Template + รายการยกเว้นทั้งหมด</button></div>
+    </div>
+    <div id="cpaneM" class="hidden">
+      <div class="card">
+        <h3>ฐานข้อมูลรุ่นเครื่อง</h3>
+        <div class="hint">ยี่ห้อ + รุ่น + สเปค — ใช้ดึงสเปคอัตโนมัติตอน Product ตรวจสอบ</div>
+        <table class="mtbl"><thead><tr><th style="width:22%">ยี่ห้อ</th><th style="width:22%">รุ่น</th><th>สเปค</th><th style="width:44px"></th></tr></thead><tbody id="c_modelBody"></tbody></table>
+        <button class="addbtn" onclick="MA.addModelRow()">+ เพิ่มรุ่นเครื่อง</button>
+      </div>
+      <div class="actions"><button class="btn primary" id="c_saveModel" onclick="MA.saveModels()">บันทึกรุ่นเครื่องทั้งหมด</button></div>
+    </div>
+    <div id="cpaneS" class="hidden">
+      <div class="card">
+        <h3>ข้อความเอกสาร (Default)</h3>
+        <div class="hint">ข้อความมาตรฐานที่ใช้กับทุกใบ · Product แก้เฉพาะใบได้ในหน้าตรวจสอบ · ในข้อ 4 ใช้ {PM_STEP} แทนเลขเดือนรอบบริการ (ระบบเติมอัตโนมัติ)</div>
+        <div class="field"><label>หัวข้อเอกสาร (บรรทัดแรก)</label><textarea id="s_titleMain" rows="2"></textarea></div>
+        <div class="grid2">
+          <div class="field"><label>ชื่อบริษัท (หัวกระดาษ)</label><input id="s_companyName" placeholder="เช่น BJH"></div>
+          <div class="field"><label>URL โลโก้ <span class="sub">(เว้นว่าง = ใช้สัญลักษณ์ + ชื่อ)</span></label><input id="s_logoUrl" placeholder="https://..."></div>
+        </div>
+        <div class="field"><label>ข้อ 1 — รายละเอียดเครื่อง <span class="sub">รูปแบบ: หัวข้อ||เนื้อหา · ใช้ {PROJECT} แทนชื่อโครงการ</span></label><textarea id="s_clause1" rows="2"></textarea></div>
+        <div class="field"><label>ข้อ 2 — ระยะเวลา/รอบบริการ <span class="sub">ใช้ {YEARS}=ปีประกัน, {PM}=จำนวนครั้ง, {ROUNDS}=ตารางรอบ</span></label><textarea id="s_clause2" rows="4"></textarea></div>
+        <div class="field"><label>ข้อ 3 — การบริการบำรุงรักษา</label><textarea id="s_clause3" rows="4"></textarea></div>
+        <div class="field"><label>ข้อ 4 — การจัดส่งรายงาน <span class="sub">(เว้นวรรค 2 ช่องหน้าบรรทัด = ข้อย่อย)</span></label><textarea id="s_clause4" rows="6"></textarea></div>
+        <div class="field"><label>ข้อ 5 — เงื่อนไขที่ไม่ครอบคลุม</label><textarea id="s_clause5" rows="8"></textarea></div>
+        <div class="field"><label>ข้อ 6 — การติดต่อประสานงาน</label><textarea id="s_clause6" rows="3"></textarea></div>
+        <div class="field"><label>หมายเหตุท้ายราคา</label><textarea id="s_notes" rows="4"></textarea></div>
+        <div class="field"><label>ข้อความติดต่อท้ายเอกสาร</label><textarea id="s_contact" rows="2"></textarea></div>
+        <div class="field" style="margin:0"><label>รายการยกเว้นมาตรฐาน <span class="sub">(1 บรรทัด = 1 รายการ · Product เลือกได้หลายอันในหน้าตรวจสอบ)</span></label><textarea id="s_excludeOptions" rows="5"></textarea></div>
+      </div>
+      <div class="card">
+        <h3>ตัวเลือกหน้าสร้างคำขอ (Sales)</h3>
+        <div class="hint">กำหนดตัวเลือกที่ Sales เลือกได้ในหน้าสร้างคำขอ</div>
+        <div class="field"><label>รูปแบบการนำเสนอ <span class="sub">(1 บรรทัด = 1 แบบ)</span></label><textarea id="s_optPresentTypes" rows="3"></textarea></div>
+        <div class="grid2">
+          <div class="field"><label>ปีรับประกันที่เลือกได้ <span class="sub">(คั่นด้วย , เช่น 1,2,3)</span></label><input id="s_optWarrantyYears"></div>
+          <div class="field"><label>เพดานจำนวนปีบริการรวม <span class="sub">(ปีประกัน + MA รวมไม่เกินค่านี้ เช่น 10)</span></label><input id="s_maxTotalYears"></div>
+        </div>
+      <div class="actions"><button class="btn primary" id="c_saveSettings" onclick="MA.saveSettings()">บันทึกข้อความ Default</button></div>
+    </div>
+  </section>
+</div>
+
+<!-- Modal Preview -->
+<div id="previewModal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);padding:24px;overflow:auto">
+  <div style="max-width:820px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#171a21;border-bottom:1px solid #2a2f3a">
+      <span style="color:#e8ebf0;font-weight:600;font-size:14px">ตัวอย่างเอกสาร (Preview — ยังไม่อนุมัติ)</span>
+      <button onclick="MA.closePreview()" style="background:#2a2f3a;border:none;color:#e8ebf0;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div id="previewBody" style="background:#fff;max-height:80vh;overflow:auto"></div>
+  </div>
+</div>
+
+
+
+<script>
+window.MA = window.MA || {};
+(function(){
+var MA = window.MA;
+
+  // ===== Navigation =====
+  var PAGES=['request','verify','result','config'];
+  function go(p){
+    PAGES.forEach(function(x){
+      document.getElementById('page-'+x).classList.toggle('hidden',x!==p);
+      document.getElementById('nav-'+x).classList.toggle('on',x===p);
+    });
+    clearMsg();window.scrollTo({top:0});
+    if(p==='request')loadRequestOptions();
+    if(p==='verify'){loadDefaults();loadVerifyList();}
+    if(p==='result')loadResultList();
+    if(p==='config')loadConfig();
+  }
+  function showMsg(t,ok){var m=document.getElementById('msg');m.textContent=t;m.className='msg '+(ok?'ok':'err');window.scrollTo({top:0});}
+  function clearMsg(){var m=document.getElementById('msg');m.className='msg';m.textContent='';}
+  function statusTh(s){return {pending:'รอตรวจสอบ',verifying:'รออนุมัติ',approved:'อนุมัติแล้ว'}[s]||s;}
+  // ===== helper: ใส่ comma ตัวเลข =====
+  function fmtComma(v){v=String(v==null?'':v).replace(/,/g,'');if(v===''||isNaN(Number(v)))return v;return Number(v).toLocaleString('en-US');}
+  function commaInput(el){var p=el.selectionStart,raw=el.value.replace(/[^\d]/g,'');el.value=raw?Number(raw).toLocaleString('en-US'):'';}
+  // ===== default clauses + exclude options (โหลดจาก settings ครั้งเดียว) =====
+  var DEF={}; var defLoaded=false;
+  function loadDefaults(){
+    if(defLoaded)return;defLoaded=true;
+    google.script.run.withSuccessHandler(function(s){
+      DEF=s||{};
+      EXCLUDE_OPTIONS=String(DEF.excludeOptions||'').split(/\r?\n/).map(function(x){return x.trim()}).filter(Boolean);
+    }).maApiGetSettings();
+  }
+
+  // ===== REQUEST =====
+  var reqOptLoaded=false;
+  function loadRequestOptions(){
+    if(reqOptLoaded)return;reqOptLoaded=true;
+    google.script.run.withSuccessHandler(function(s){
+      s=s||{};
+      // รูปแบบนำเสนอ (chips)
+      var pt=String(s.optPresentTypes||'ไม่รวมอะไหล่\nรวมอะไหล่ยกเว้น\nรวมอะไหล่ทุกชิ้น').split(/\r?\n/).map(function(x){return x.trim()}).filter(Boolean);
+      var box=document.getElementById('r_ptypes');box.innerHTML='';
+      pt.forEach(function(v){var sp=document.createElement('span');sp.className='chip';sp.dataset.v=v;sp.textContent=v;sp.onclick=function(){sp.classList.toggle('sel')};box.appendChild(sp);});
+      // ปีรับประกัน
+      var wy=String(s.optWarrantyYears||'1,2,3').split(',').map(function(x){return Number(x.trim())}).filter(Boolean);
+      var ws=document.getElementById('r_warranty');ws.innerHTML='';
+      wy.forEach(function(y,i){var o=document.createElement('option');o.value=y;o.textContent=y+' ปี';if(i===0)o.selected=true;ws.appendChild(o);});
+      // เพดานปีรวม
+      reqMaxTotal=Number(s.maxTotalYears)||10;
+      ws.onchange=buildTotalYears; // เปลี่ยนปีประกัน -> อัปเดตปีบริการ
+      buildTotalYears();           // สร้างปีบริการครั้งแรก
+    }).maApiGetSettings();
+  }
+  var reqMaxTotal=10;
+  // จำนวนปีบริการ = (ปีประกัน+1) ถึง เพดาน
+  function buildTotalYears(){
+    var w=Number(document.getElementById('r_warranty').value)||0;
+    var ts=document.getElementById('r_mayears');var prev=Number(ts.value)||0;ts.innerHTML='';
+    for(var y=w+1;y<=reqMaxTotal;y++){var o=document.createElement('option');o.value=y;o.textContent=y+' ปี (MA '+(y-w)+' ปี)';ts.appendChild(o);}
+    // คงค่าเดิมถ้ายังเลือกได้ ไม่งั้นเลือกค่าสูงสุด
+    if(prev>=w+1&&prev<=reqMaxTotal)ts.value=prev; else ts.value=reqMaxTotal;
+  }
+  function submitRequest(){
+    var types=[];document.querySelectorAll('#r_ptypes .chip.sel').forEach(function(c){types.push(c.dataset.v)});
+    var payload={hospital_name:document.getElementById('r_hospital').value.trim(),sale_price:document.getElementById('r_saleprice').value.trim(),
+      project_title:document.getElementById('r_project').value,present_types:types,
+      warranty_years:document.getElementById('r_warranty').value,ma_years:document.getElementById('r_mayears').value,
+      note_overall:document.getElementById('r_note').value.trim(),machines:[],attach_urls:[]};
+    if(!payload.hospital_name||!payload.sale_price||!payload.project_title.trim()){showMsg('กรุณากรอกข้อมูลที่จำเป็น (*)',false);return;}
+    var btn=document.getElementById('r_submit');btn.disabled=true;btn.textContent='กำลังส่ง...';
+    google.script.run.withSuccessHandler(function(reqId){showMsg('✓ ส่งคำขอสำเร็จ เลขที่ '+reqId,true);btn.disabled=false;btn.textContent='ส่งให้ Product ตรวจสอบ →';})
+      .withFailureHandler(function(e){showMsg('ผิดพลาด: '+e.message,false);btn.disabled=false;btn.textContent='ส่งให้ Product ตรวจสอบ →';})
+      .maApiCreateRequest(payload);
+  }
+
+  // ===== VERIFY =====
+  var vCur=null;
+  function loadVerifyList(){
+    document.getElementById('v_list').classList.remove('hidden');
+    document.getElementById('v_detail').classList.add('hidden');
+    var q=document.getElementById('v_queue');
+    q.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center">กำลังโหลด...</div>';
+    google.script.run.withSuccessHandler(function(rows){
+      q.innerHTML='';
+      if(!rows||!rows.length){q.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center">ยังไม่มีคำขอ</div>';return;}
+      rows.forEach(function(r){
+        var div=document.createElement('div');div.className='qcard click';
+        div.onclick=function(){vOpen(r.request_id)};
+        div.innerHTML='<div><div class="qid">#'+r.request_id+'</div><div class="qhosp">'+r.hospital_name+'</div>'+
+          '<div class="qmeta">รับประกัน '+r.warranty_years+' ปี · ขอ MA '+r.ma_years+' ปี</div></div>'+
+          '<div class="qright"><div style="font-weight:600">'+(r.sale_price||'')+' ฿</div><span class="badge '+r.status+'">'+statusTh(r.status)+'</span></div>';
+        q.appendChild(div);
+      });
+    }).withFailureHandler(function(e){
+      q.innerHTML='<div style="color:#e69aa0;padding:20px;text-align:center">โหลดไม่สำเร็จ: '+e.message+'<br><span style="font-size:12px;color:var(--muted)">ตรวจว่ารัน setupSheets() แล้วและมี tab ครบ</span></div>';
+    }).maApiListRequests('');
+  }
+  function vBack(){loadVerifyList();}
+  var TYPES=[['none','ไม่รวมอะไหล่'],['partial','รวมอะไหล่ยกเว้น'],['full','รวมทุกชิ้น']];
+  // offer chips toggle
+  document.querySelectorAll('#v_offer .chip').forEach(function(c){c.onclick=function(){c.classList.toggle('sel')};});
+  function getOfferTypes(){var out=[];document.querySelectorAll('#v_offer .chip.sel').forEach(function(c){out.push(c.dataset.t)});return out;}
+  function setOfferTypes(arr){document.querySelectorAll('#v_offer .chip').forEach(function(c){c.classList.toggle('sel',arr.indexOf(c.dataset.t)>=0)});}
+  // map present_types(ไทย) <-> type code
+  var TYPE2TH={none:'ไม่รวมอะไหล่',partial:'รวมอะไหล่ยกเว้น',full:'รวมอะไหล่ทุกชิ้น'};
+  var TH2TYPE={'ไม่รวมอะไหล่':'none','รวมอะไหล่ยกเว้น':'partial','รวมอะไหล่':'partial','รวมอะไหล่ทุกชิ้น':'full'};
+
+  var EXCLUDE_OPTIONS=[]; // โหลดจาก settings
+  function vOpen(id){
+    google.script.run.withSuccessHandler(function(req){
+      vCur=req;
+      document.getElementById('v_list').classList.add('hidden');
+      document.getElementById('v_detail').classList.remove('hidden');
+      document.getElementById('v_title').textContent='คำขอ #'+req.request_id;
+      document.getElementById('v_project').value=req.project_title||'';
+      document.getElementById('v_hosp').value=req.hospital_name||'';
+      document.getElementById('v_saleprice').value=fmtComma(req.sale_price||'');
+      document.getElementById('v_note').value=req.note_overall||'';
+      var w=Number(req.warranty_years)||3;
+      // ปีรับประกัน dropdown
+      document.getElementById('v_warranty').value=w;
+      // จำนวนครั้ง (จำกัด 1-4)
+      var pmv=Number(req.pm_times_per_year)||3; if(pmv<1)pmv=3; if(pmv>4)pmv=4;
+      document.getElementById('v_pm').value=pmv;
+      // override clauses: ถ้าใบนี้มี override ใช้เลย, ถ้าไม่มี เติม default มาให้ Product แก้ (จุด 2)
+      document.getElementById('v_clause1').value=req.ov_clause1||DEF.clause1||'';
+      document.getElementById('v_clause2').value=req.ov_clause2||DEF.clause2||'';
+      document.getElementById('v_clause3').value=req.ov_clause3||DEF.clause3||'';
+      document.getElementById('v_clause4').value=req.ov_clause4||DEF.clause4||'';
+      document.getElementById('v_clause5').value=req.ov_clause5||DEF.clause5||'';
+      document.getElementById('v_clause6').value=req.ov_clause6||DEF.clause6||'';
+      document.getElementById('v_notes').value=req.ov_notes||DEF.notes||'';
+      // dropdown ปีรวม
+      buildYearsDropdown(w, Number(req.ma_years)||0);
+      // offer chips
+      var pt=String(req.present_types||'').split(',').map(function(s){return s.trim()}).filter(Boolean);
+      var codes=pt.map(function(x){return TH2TYPE[x]}).filter(Boolean);
+      setOfferTypes(codes.length?codes:['none','partial','full']);
+      // exclude chips + ส่วนที่พิมพ์เอง
+      buildExcludeChips(req.exclude_items||'');
+      renderPriceTable();
+      if(req.prices&&req.prices.length)fillPrices(req.prices);
+    }).withFailureHandler(function(e){showMsg('โหลดคำขอไม่สำเร็จ: '+e.message,false);}).maApiGetRequest(id);
+  }
+  function buildYearsDropdown(w,savedTotal){
+    var maxT=Number(DEF.maxTotalYears)||10;
+    var defTotal = savedTotal>w ? savedTotal : (w + (savedTotal>0?savedTotal:maxT-w));
+    if(defTotal>maxT) defTotal=maxT; if(defTotal<w+1) defTotal=w+1;
+    var sel=document.getElementById('v_years');sel.innerHTML='';
+    for(var y=w+1;y<=maxT;y++){var o=document.createElement('option');o.value=y;o.textContent=y+' ปี (MA '+(y-w)+' ปี)';sel.appendChild(o);}
+    sel.value=defTotal; vYears=Number(sel.value)||defTotal;
+  }
+  function onWarrantyChange(){
+    var w=Number(document.getElementById('v_warranty').value)||0;
+    vCur.warranty_years=w;             // อัปเดตค่าใน object
+    buildYearsDropdown(w, vYears||0);  // สร้างปีใหม่ตาม warranty
+    renderPriceTable();
+  }
+  // ===== exclude multi-select (แบบ A: ติ๊กแล้วเด้งเข้าช่องเลย) =====
+  function getExcludeField(){
+    return document.getElementById('v_excludeMore').value.split(',').map(function(s){return s.trim()}).filter(Boolean);
+  }
+  function setExcludeField(arr){
+    // ไม่ซ้ำ + คงลำดับ
+    var seen={},out=[];arr.forEach(function(x){if(x&&!seen[x]){seen[x]=1;out.push(x);}});
+    document.getElementById('v_excludeMore').value=out.join(', ');
+    syncExcludeChips();
+  }
+  function buildExcludeChips(savedCsv){
+    document.getElementById('v_excludeMore').value=String(savedCsv||'').split(',').map(function(s){return s.trim()}).filter(Boolean).join(', ');
+    var box=document.getElementById('v_excludeChips');box.innerHTML='';
+    EXCLUDE_OPTIONS.forEach(function(opt){
+      var sp=document.createElement('span');sp.className='chip';sp.textContent=opt;
+      sp.onclick=function(){
+        var cur=getExcludeField();var i=cur.indexOf(opt);
+        if(i>=0)cur.splice(i,1); else cur.push(opt);  // toggle เข้า/ออกช่อง
+        setExcludeField(cur);
+      };
+      box.appendChild(sp);
+    });
+    syncExcludeChips();
+  }
+  // ทำให้ chip ติ๊ก/ไม่ติ๊กตามค่าในช่อง
+  function syncExcludeChips(){
+    var cur=getExcludeField();
+    document.querySelectorAll('#v_excludeChips .chip').forEach(function(c){c.classList.toggle('sel',cur.indexOf(c.textContent)>=0);});
+  }
+  function collectExclude(){
+    return getExcludeField().join(', ');
+  }
+  var vYears=0;
+  function onYearsChange(){vYears=Number(document.getElementById('v_years').value);renderPriceTable();}
+  function renderPriceTable(){
+    if(!vCur)return;
+    var w=Number(document.getElementById('v_warranty').value)||Number(vCur.warranty_years)||0;
+    var total=Number(document.getElementById('v_years').value)||vYears||w;
+    var maY=Math.max(0,total-w);
+    var head='<tr><th>ปีที่</th>'+TYPES.map(function(x){return '<th>'+x[1]+'</th>'}).join('')+'</tr>';
+    var body='<tr class="inw"><td class="yr">'+(w===1?'ปี 1':'ปี 1–'+w)+'</td>'+TYPES.map(function(){return '<td>ในประกัน</td>'}).join('')+'</tr>';
+    for(var k=1;k<=maY;k++){var cy=w+k;body+='<tr><td class="yr">ปี '+cy+'</td>'+TYPES.map(function(x){return '<td><input data-type="'+x[0]+'" data-year="'+cy+'" oninput="commaInput(this)"></td>'}).join('')+'</tr>';}
+    document.getElementById('v_priceTable').innerHTML=head+body;
+  }
+  function fillPrices(prices){prices.forEach(function(p){var i=document.querySelector('#v_priceTable input[data-type="'+p.type+'"][data-year="'+p.contract_year+'"]');if(i&&p.amount&&Number(String(p.amount).replace(/,/g,''))>0)i.value=Number(String(p.amount).replace(/,/g,'')).toLocaleString('en-US');});}
+  function pullTemplate(){
+    var lv=document.getElementById('v_level').value,w=Number(document.getElementById('v_warranty').value)||Number(vCur.warranty_years)||0;
+    google.script.run.withSuccessHandler(function(tpl){
+      ['none','partial','full'].forEach(function(tp){(tpl[tp]||[]).forEach(function(amt,i){
+        var cy=w+(i+1),inp=document.querySelector('#v_priceTable input[data-type="'+tp+'"][data-year="'+cy+'"]');
+        if(inp&&amt)inp.value=Number(amt).toLocaleString('en-US');});});
+      // ดึงรายการยกเว้นของ Level นี้มาเติม (ถ้ามีตั้งไว้ใน Config)
+      var lvEx=String((DEF['excludeLevel'+lv])||'').split(/[\n,]/).map(function(x){return x.trim()}).filter(Boolean);
+      if(lvEx.length){
+        var cur=collectExclude().split(',').map(function(x){return x.trim()}).filter(Boolean);
+        lvEx.forEach(function(e){if(cur.indexOf(e)<0)cur.push(e);});
+        buildExcludeChips(cur.join(', '));
+        showMsg('✓ ดึงราคา + รายการยกเว้นจาก Level '+lv+' แล้ว',true);
+      } else {
+        showMsg('✓ ดึงราคาจาก Level '+lv+' แล้ว',true);
+      }
+    }).withFailureHandler(function(e){showMsg('ดึง Template ไม่สำเร็จ: '+e.message,false);}).maApiGetTemplate(lv);
+  }
+  function collectPrices(){var out=[];document.querySelectorAll('#v_priceTable input').forEach(function(inp){out.push({type:inp.dataset.type,contract_year:Number(inp.dataset.year),amount:inp.value.replace(/,/g,''),in_warranty:false});});return out;}
+
+  // ----- validation รวม -----
+  function validateVerify(){
+    var pm=Number(document.getElementById('v_pm').value);
+    if(!(pm>=1&&pm<=4)){showMsg('จำนวนครั้งต่อปีต้องเป็น 1–4',false);return null;}
+    var offer=getOfferTypes();
+    if(!offer.length){showMsg('ต้องเลือกอย่างน้อย 1 แบบที่จะเสนอ',false);return null;}
+    var exclude=collectExclude();
+    if(offer.indexOf('partial')>=0 && !exclude){showMsg('แบบ "รวมอะไหล่ยกเว้น" ต้องเลือก/ระบุรายการยกเว้น',false);return null;}
+    var prices=collectPrices();
+    var missing=false;
+    offer.forEach(function(tp){
+      var has=prices.some(function(p){return p.type===tp && Number(p.amount)>0;});
+      if(!has)missing=true;
+    });
+    if(missing){showMsg('กรุณากรอกราคาให้ครบสำหรับแบบที่เลือกเสนอ',false);return null;}
+    return {pm:pm,offer:offer,exclude:exclude,prices:prices};
+  }
+
+  function doSave(cb){
+    var v=validateVerify(); if(!v)return;
+    var present_types=v.offer.map(function(t){return TYPE2TH[t]}).join(',');
+    var years=Number(document.getElementById('v_years').value)||vCur.ma_years;
+    var ware=Number(document.getElementById('v_warranty').value)||vCur.warranty_years;
+    google.script.run.withSuccessHandler(function(){if(cb)cb();})
+      .withFailureHandler(function(e){showMsg('บันทึกไม่สำเร็จ: '+e.message,false);})
+      .maApiSaveVerify({request_id:vCur.request_id,pm_times_per_year:String(v.pm),ma_years:String(years),warranty_years:String(ware),
+        exclude_items:v.exclude,present_types:present_types,project_title:document.getElementById('v_project').value,
+        hospital_name:document.getElementById('v_hosp').value,sale_price:document.getElementById('v_saleprice').value.replace(/,/g,''),
+        note_overall:document.getElementById('v_note').value,
+        ov_clause1:document.getElementById('v_clause1').value,ov_clause2:document.getElementById('v_clause2').value,
+        ov_clause3:document.getElementById('v_clause3').value,ov_clause4:document.getElementById('v_clause4').value,
+        ov_clause5:document.getElementById('v_clause5').value,ov_clause6:document.getElementById('v_clause6').value,
+        ov_notes:document.getElementById('v_notes').value,
+        prices:v.prices});
+  }
+  function saveVerify(){
+    var btn=document.getElementById('v_save');btn.disabled=true;btn.textContent='กำลังบันทึก...';
+    doSave(function(){showMsg('✓ บันทึกเรียบร้อย',true);btn.disabled=false;btn.textContent='บันทึก (Verify)';});
+    setTimeout(function(){btn.disabled=false;btn.textContent='บันทึก (Verify)';},4000);
+  }
+  function approve(){
+    // อนุมัติ = บันทึกก่อนเสมอ แล้วค่อย gen PDF (กันลืมกดบันทึก)
+    var v=validateVerify(); if(!v)return;
+    var btn=document.getElementById('v_approve');btn.disabled=true;btn.textContent='กำลังบันทึก...';
+    doSave(function(){
+      btn.textContent='กำลังสร้าง PDF...';
+      google.script.run.withSuccessHandler(function(url){showMsg('✓ อนุมัติแล้ว · PDF: '+url,true);btn.disabled=false;btn.textContent='✓ อนุมัติ & สร้าง PDF';})
+        .withFailureHandler(function(e){showMsg('สร้าง PDF ไม่สำเร็จ: '+e.message,false);btn.disabled=false;btn.textContent='✓ อนุมัติ & สร้าง PDF';})
+        .maApiApprove(vCur.request_id);
+    });
+  }
+  function previewPdf(){
+    // บันทึกก่อน แล้วแสดง HTML ใน modal (ไม่สร้าง PDF — เร็ว)
+    var v=validateVerify(); if(!v)return;
+    showMsg('กำลังโหลดตัวอย่าง...',true);
+    doSave(function(){
+      google.script.run.withSuccessHandler(function(html){
+        clearMsg();
+        var body=document.getElementById('previewBody');
+        body.innerHTML='';
+        var ifr=document.createElement('iframe');
+        ifr.style.cssText='width:100%;height:80vh;border:none;background:#fff';
+        body.appendChild(ifr);
+        ifr.contentWindow.document.open();
+        ifr.contentWindow.document.write(html);
+        ifr.contentWindow.document.close();
+        document.getElementById('previewModal').style.display='block';
+      }).withFailureHandler(function(e){showMsg('โหลดตัวอย่างไม่สำเร็จ: '+e.message,false);})
+        .maApiPreviewHtml(vCur.request_id);
+    });
+  }
+  function closePreview(){document.getElementById('previewModal').style.display='none';}
+
+  // ===== RESULT =====
+  function loadResultList(){
+    var q=document.getElementById('res_queue');
+    q.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center">กำลังโหลด...</div>';
+    google.script.run.withSuccessHandler(function(rows){
+      q.innerHTML='';
+      if(!rows||!rows.length){q.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center">ยังไม่มีคำขอ</div>';return;}
+      rows.forEach(function(r){
+        var div=document.createElement('div');div.className='qcard';
+        var pdf=(r.status==='approved'&&r.pdf_url)?'<a class="btn primary" style="padding:8px 15px;font-size:12.5px;text-decoration:none" href="'+r.pdf_url+'" target="_blank">⬇ ดาวน์โหลด PDF</a>':'<span style="font-size:12px;color:var(--muted)">PDF ยังไม่พร้อม</span>';
+        div.innerHTML='<div><div class="qid">#'+r.request_id+'</div><div class="qhosp">'+r.hospital_name+'</div>'+
+          '<div class="qmeta">รับประกัน '+r.warranty_years+' ปี · ขอ MA '+r.ma_years+' ปี</div></div>'+
+          '<div class="qright"><span class="badge '+r.status+'">'+statusTh(r.status)+'</span>'+pdf+'</div>';
+        q.appendChild(div);
+      });
+    }).withFailureHandler(function(e){
+      q.innerHTML='<div style="color:#e69aa0;padding:20px;text-align:center">โหลดไม่สำเร็จ: '+e.message+'</div>';
+    }).maApiListRequests('');
+  }
+
+  // ===== CONFIG =====
+  var templates={},curLevel='1',cfgLoaded=false;
+  function cSwitch(t){['T','M','S'].forEach(function(x){document.getElementById('ctab'+x).classList.toggle('on',x===t);document.getElementById('cpane'+x).classList.toggle('hidden',x!==t);});}
+  var SETTING_KEYS=['titleMain','companyName','logoUrl','clause1','clause2','clause3','clause4','clause5','clause6','notes','contact','excludeOptions','optPresentTypes','optWarrantyYears','maxTotalYears','excludeLevel1','excludeLevel2','excludeLevel3','excludeLevel4','excludeLevel5'];
+  function loadConfig(){
+    if(cfgLoaded)return;cfgLoaded=true;
+    google.script.run.withSuccessHandler(function(t){templates=t||{};buildLvBtns();renderTpl();}).maApiGetAllTemplates();
+    google.script.run.withSuccessHandler(function(list){if(list&&list.length)list.forEach(function(m){addModelRow(m.brand,m.model,m.spec_description);});else addModelRow();}).maApiGetModels();
+    google.script.run.withSuccessHandler(function(s){s=s||{};cfgSettings=s;SETTING_KEYS.forEach(function(k){var el=document.getElementById('s_'+k);if(el)el.value=s[k]||'';});
+      // โหลด exclude ต่อ level
+      for(var lv=1;lv<=5;lv++) lvExclude[String(lv)]=s['excludeLevel'+lv]||'';
+      renderTpl(); // refresh เพื่อแสดง exclude ของ level ปัจจุบัน
+    }).maApiGetSettings();
+  }
+  var cfgSettings={}; var lvExclude={};
+  function saveSettings(){
+    var obj={};SETTING_KEYS.forEach(function(k){var el=document.getElementById('s_'+k);if(el)obj[k]=el.value;});
+    // คง exclude level ที่โหลดมา (แก้ในแท็บ Template)
+    for(var lv=1;lv<=5;lv++) obj['excludeLevel'+lv]=lvExclude[String(lv)]||cfgSettings['excludeLevel'+lv]||'';
+    var btn=document.getElementById('c_saveSettings');btn.disabled=true;btn.textContent='กำลังบันทึก...';
+    google.script.run.withSuccessHandler(function(){showMsg('✓ บันทึกข้อความ Default เรียบร้อย',true);btn.disabled=false;btn.textContent='บันทึกข้อความ Default';})
+      .withFailureHandler(function(e){showMsg('ผิดพลาด: '+e.message,false);btn.disabled=false;btn.textContent='บันทึกข้อความ Default';}).maApiSaveSettings(obj);
+  }
+  function buildLvBtns(){var c=document.getElementById('c_lvpick');c.innerHTML='';for(var lv=1;lv<=5;lv++){(function(lv){var b=document.createElement('div');b.className='lvbtn'+(String(lv)===curLevel?' on':'');b.textContent='Level '+lv;b.onclick=function(){saveLvEdits();curLevel=String(lv);buildLvBtns();renderTpl();};c.appendChild(b);})(lv);}}
+  function renderTpl(){
+    var d=templates[curLevel]||{level_name:'Level '+curLevel,none:[],partial:[],full:[]};
+    document.getElementById('c_lvName').value=d.level_name||('Level '+curLevel);
+    var head='<tr><th>ประเภท \\ ปี MA</th>';for(var y=1;y<=10;y++)head+='<th>ปี '+y+'</th>';head+='</tr>';
+    var body=TYPES.map(function(tp){var arr=d[tp[0]]||[],cells='';for(var y=0;y<10;y++)cells+='<td><input data-type="'+tp[0]+'" data-i="'+y+'" value="'+(arr[y]?Number(arr[y]).toLocaleString('en-US'):'')+'"></td>';return '<tr><td class="yr">'+tp[1]+'</td>'+cells+'</tr>';}).join('');
+    document.getElementById('c_tplTable').innerHTML=head+body;
+    // exclude ของ level นี้ (รองรับทั้ง CSV และ newline เดิม) -> แปลงเป็น CSV
+    var raw=lvExclude[curLevel]||'';
+    var arr=String(raw).split(/[\n,]/).map(function(s){return s.trim()}).filter(Boolean);
+    document.getElementById('c_lvExclude').value=arr.join(', ');
+    buildLvExcludeChips();
+  }
+  // chips รายการยกเว้นใน Template (ดึงจาก excludeOptions ใน Config เดียวกับ verify)
+  function getCfgExcludeOptions(){
+    return String(document.getElementById('s_excludeOptions').value||cfgSettings.excludeOptions||'').split(/\r?\n/).map(function(x){return x.trim()}).filter(Boolean);
+  }
+  function lvExGet(){return document.getElementById('c_lvExclude').value.split(',').map(function(s){return s.trim()}).filter(Boolean);}
+  function lvExSet(a){var seen={},o=[];a.forEach(function(x){if(x&&!seen[x]){seen[x]=1;o.push(x);}});document.getElementById('c_lvExclude').value=o.join(', ');syncLvExcludeChips();}
+  function buildLvExcludeChips(){
+    var box=document.getElementById('c_lvExcludeChips');box.innerHTML='';
+    getCfgExcludeOptions().forEach(function(opt){
+      var sp=document.createElement('span');sp.className='chip';sp.textContent=opt;
+      sp.onclick=function(){var cur=lvExGet();var i=cur.indexOf(opt);if(i>=0)cur.splice(i,1);else cur.push(opt);lvExSet(cur);};
+      box.appendChild(sp);
+    });
+    syncLvExcludeChips();
+  }
+  function syncLvExcludeChips(){var cur=lvExGet();document.querySelectorAll('#c_lvExcludeChips .chip').forEach(function(c){c.classList.toggle('sel',cur.indexOf(c.textContent)>=0);});}
+  function saveLvEdits(){
+    var d=templates[curLevel]||{none:[],partial:[],full:[]};d.level_name=document.getElementById('c_lvName').value;TYPES.forEach(function(tp){d[tp[0]]=[];});document.querySelectorAll('#c_tplTable input').forEach(function(inp){d[inp.dataset.type][Number(inp.dataset.i)]=inp.value.replace(/,/g,'')||0;});templates[curLevel]=d;
+    lvExclude[curLevel]=document.getElementById('c_lvExclude').value; // เก็บ exclude ของ level นี้
+  }
+  function saveTemplates(){saveLvEdits();var btn=document.getElementById('c_saveTpl');btn.disabled=true;btn.textContent='กำลังบันทึก...';
+    // บันทึก template แล้วบันทึก exclude levels (settings) ต่อ
+    google.script.run.withSuccessHandler(function(){
+      var obj={};for(var k in cfgSettings)obj[k]=cfgSettings[k];
+      for(var lv=1;lv<=5;lv++)obj['excludeLevel'+lv]=lvExclude[String(lv)]||'';
+      google.script.run.withSuccessHandler(function(){showMsg('✓ บันทึก Template + รายการยกเว้นเรียบร้อย',true);btn.disabled=false;btn.textContent='บันทึก Template + รายการยกเว้นทั้งหมด';})
+        .withFailureHandler(function(e){showMsg('บันทึก exclude ไม่สำเร็จ: '+e.message,false);btn.disabled=false;btn.textContent='บันทึก Template + รายการยกเว้นทั้งหมด';}).maApiSaveSettings(obj);
+    }).withFailureHandler(function(e){showMsg('ผิดพลาด: '+e.message,false);btn.disabled=false;btn.textContent='บันทึก Template + รายการยกเว้นทั้งหมด';}).maApiSaveTemplates(templates);}
+  function addModelRow(b,m,s){var tr=document.createElement('tr');tr.innerHTML='<td><input class="md-b" value="'+(b||'')+'"></td><td><input class="md-m" value="'+(m||'')+'"></td><td><input class="md-s" value="'+(s||'').replace(/"/g,'&quot;')+'"></td><td><button class="iconbtn" onclick="this.closest(\'tr\').remove()">✕</button></td>';document.getElementById('c_modelBody').appendChild(tr);}
+  function saveModels(){var list=[];document.querySelectorAll('#c_modelBody tr').forEach(function(tr){list.push({brand:tr.querySelector('.md-b').value.trim(),model:tr.querySelector('.md-m').value.trim(),spec_description:tr.querySelector('.md-s').value.trim()});});var btn=document.getElementById('c_saveModel');btn.disabled=true;btn.textContent='กำลังบันทึก...';
+    google.script.run.withSuccessHandler(function(){showMsg('✓ บันทึกรุ่นเครื่องเรียบร้อย',true);btn.disabled=false;btn.textContent='บันทึกรุ่นเครื่องทั้งหมด';})
+      .withFailureHandler(function(e){showMsg('ผิดพลาด: '+e.message,false);btn.disabled=false;btn.textContent='บันทึกรุ่นเครื่องทั้งหมด';}).maApiSaveModels(list);}
+
+  // โหลดตัวเลือกหน้า request ตอนเปิดครั้งแรก (request เป็นหน้า default)
+  loadRequestOptions();
+
+// ---- expose สำหรับ inline handler ----
+  MA.go = (typeof go==="function")?go:MA.go;
+  MA.showMsg = (typeof showMsg==="function")?showMsg:MA.showMsg;
+  MA.clearMsg = (typeof clearMsg==="function")?clearMsg:MA.clearMsg;
+  MA.statusTh = (typeof statusTh==="function")?statusTh:MA.statusTh;
+  MA.fmtComma = (typeof fmtComma==="function")?fmtComma:MA.fmtComma;
+  MA.commaInput = (typeof commaInput==="function")?commaInput:MA.commaInput;
+  MA.loadDefaults = (typeof loadDefaults==="function")?loadDefaults:MA.loadDefaults;
+  MA.loadRequestOptions = (typeof loadRequestOptions==="function")?loadRequestOptions:MA.loadRequestOptions;
+  MA.submitRequest = (typeof submitRequest==="function")?submitRequest:MA.submitRequest;
+  MA.loadVerifyList = (typeof loadVerifyList==="function")?loadVerifyList:MA.loadVerifyList;
+  MA.loadResultList = (typeof loadResultList==="function")?loadResultList:MA.loadResultList;
+  MA.loadConfig = (typeof loadConfig==="function")?loadConfig:MA.loadConfig;
+  MA.validateVerify = (typeof validateVerify==="function")?validateVerify:MA.validateVerify;
+  MA.saveVerify = (typeof saveVerify==="function")?saveVerify:MA.saveVerify;
+  MA.approve = (typeof approve==="function")?approve:MA.approve;
+  MA.previewPdf = (typeof previewPdf==="function")?previewPdf:MA.previewPdf;
+  MA.closePreview = (typeof closePreview==="function")?closePreview:MA.closePreview;
+  MA.saveModels = (typeof saveModels==="function")?saveModels:MA.saveModels;
+  MA.saveSettings = (typeof saveSettings==="function")?saveSettings:MA.saveSettings;
+  MA.saveTemplates = (typeof saveTemplates==="function")?saveTemplates:MA.saveTemplates;
+  MA.pullTemplate = (typeof pullTemplate==="function")?pullTemplate:MA.pullTemplate;
+  MA.renderTpl = (typeof renderTpl==="function")?renderTpl:MA.renderTpl;
+  MA.addModelRow = (typeof addModelRow==="function")?addModelRow:MA.addModelRow;
+  MA.onWarrantyChange = (typeof onWarrantyChange==="function")?onWarrantyChange:MA.onWarrantyChange;
+  MA.onYearsChange = (typeof onYearsChange==="function")?onYearsChange:MA.onYearsChange;
+  MA.buildYearsDropdown = (typeof buildYearsDropdown==="function")?buildYearsDropdown:MA.buildYearsDropdown;
+  MA.buildTotalYears = (typeof buildTotalYears==="function")?buildTotalYears:MA.buildTotalYears;
+  MA.buildLvBtns = (typeof buildLvBtns==="function")?buildLvBtns:MA.buildLvBtns;
+  MA.buildExcludeChips = (typeof buildExcludeChips==="function")?buildExcludeChips:MA.buildExcludeChips;
+  MA.buildLvExcludeChips = (typeof buildLvExcludeChips==="function")?buildLvExcludeChips:MA.buildLvExcludeChips;
+  MA.collectExclude = (typeof collectExclude==="function")?collectExclude:MA.collectExclude;
+  MA.collectPrices = (typeof collectPrices==="function")?collectPrices:MA.collectPrices;
+  MA.fillPrices = (typeof fillPrices==="function")?fillPrices:MA.fillPrices;
+  MA.renderPriceTable = (typeof renderPriceTable==="function")?renderPriceTable:MA.renderPriceTable;
+  MA.getCfgExcludeOptions = (typeof getCfgExcludeOptions==="function")?getCfgExcludeOptions:MA.getCfgExcludeOptions;
+  MA.getExcludeField = (typeof getExcludeField==="function")?getExcludeField:MA.getExcludeField;
+  MA.setExcludeField = (typeof setExcludeField==="function")?setExcludeField:MA.setExcludeField;
+  MA.getOfferTypes = (typeof getOfferTypes==="function")?getOfferTypes:MA.getOfferTypes;
+  MA.setOfferTypes = (typeof setOfferTypes==="function")?setOfferTypes:MA.setOfferTypes;
+  MA.syncExcludeChips = (typeof syncExcludeChips==="function")?syncExcludeChips:MA.syncExcludeChips;
+  MA.syncLvExcludeChips = (typeof syncLvExcludeChips==="function")?syncLvExcludeChips:MA.syncLvExcludeChips;
+  MA.lvExGet = (typeof lvExGet==="function")?lvExGet:MA.lvExGet;
+  MA.lvExSet = (typeof lvExSet==="function")?lvExSet:MA.lvExSet;
+  MA.saveLvEdits = (typeof saveLvEdits==="function")?saveLvEdits:MA.saveLvEdits;
+  MA.cSwitch = (typeof cSwitch==="function")?cSwitch:MA.cSwitch;
+  MA.vOpen = (typeof vOpen==="function")?vOpen:MA.vOpen;
+  MA.vBack = (typeof vBack==="function")?vBack:MA.vBack;
+  MA.doSave = (typeof doSave==="function")?doSave:MA.doSave;
+  MA.loadModels = (typeof loadModels==="function")?loadModels:MA.loadModels;
+  MA.buildLvBtns = (typeof buildLvBtns==="function")?buildLvBtns:MA.buildLvBtns;
+  MA.renderRequests = (typeof renderRequests==="function")?renderRequests:MA.renderRequests;
+  MA.preview = (typeof preview==="function")?preview:MA.preview;
+  MA.diag = (typeof diag==="function")?diag:MA.diag;
+})();
+// ---- init เรียกจาก sv('ma') ----
+window.maInit = function(){ try{ if(window.MA && window.MA.go) window.MA.go("request"); }catch(e){ console.error("maInit",e);} };
+</script>
+</div>

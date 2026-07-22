@@ -1,0 +1,700 @@
+<!-- [v232] BOOT OVERLAY — แสดงทันทีตอน parse/init (กันหน้าขาว + กดอะไรไม่ได้ระหว่างโหลด) -->
+<div id="boot-loading" style="position:fixed;inset:0;z-index:2147483647;background:#0b0d13;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;transition:opacity .25s ease;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;pointer-events:auto;user-select:none">
+  <!-- [V479.44] Loading Gate — progress bar + step list (รอข้อมูลครบก่อนโชว์ตัวเลข → ตัวเลขตรงกันทุกเครื่อง) -->
+  <div style="width:min(420px,88vw)">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+      <div style="width:40px;height:40px;border:3px solid rgba(120,140,180,.16);border-top-color:#3b82f6;border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0"></div>
+      <div>
+        <div style="color:#e2e8f0;font-size:16px;font-weight:800;letter-spacing:.2px">BJH Revenue Dashboard</div>
+        <div id="boot-msg" style="color:#8494b2;font-size:12px;font-weight:600;margin-top:2px">กำลังเตรียมข้อมูล…</div>
+      </div>
+    </div>
+    <!-- progress bar -->
+    <div style="height:6px;background:rgba(120,140,180,.14);border-radius:99px;overflow:hidden;margin-bottom:6px">
+      <div id="boot-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#22c55e);border-radius:99px;transition:width .35s ease"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+      <span id="boot-pct" style="color:#64748b;font-size:11px;font-weight:700">0%</span>
+      <span id="boot-cnt" style="color:#64748b;font-size:11px;font-weight:600">0 / 6</span>
+    </div>
+    <!-- step list -->
+    <div id="boot-steps" style="display:flex;flex-direction:column;gap:9px"></div>
+  </div>
+</div>
+<script>
+window._hideBootLoading=function(){var b=document.getElementById('boot-loading');if(b&&b.style.display!=='none'){b.style.opacity='0';b.style.pointerEvents='none';setTimeout(function(){if(b)b.style.display='none';},260);}};
+// [V479.50] แสดง overlay กลับมา (ใช้ตอนกด Update — โหลดใหม่ทั้งหมด)
+window._showBootLoading=function(){
+  var b=document.getElementById('boot-loading');
+  if(!b) return;
+  b.style.display='flex';
+  b.style.pointerEvents='auto';
+  // force reflow ก่อน set opacity (ให้ transition ทำงาน)
+  void b.offsetWidth;
+  b.style.opacity='1';
+};
+
+// ═══════════════════════════════════════════════════════════
+// [V479.44] LOADING GATE — รอข้อมูลครบทุกชั้นก่อนปิด overlay
+//   แก้ปัญหา: lazy-load หลายชั้น (config / _saActData / quotations / Low prospect)
+//   → render ก่อนข้อมูลครบ → ตัวเลขไม่ตรงกันระหว่างเครื่อง (race condition)
+// ═══════════════════════════════════════════════════════════
+(function(){
+  var STEPS = [
+    { key:'core',   label:'ระบบหลัก (Dashboard)' },
+    { key:'master', label:'ข้อมูลหลัก (Install Base · Contracts)' },
+    { key:'tx',     label:'ข้อมูลรายการ (Bills · Quotations)' },
+    { key:'config', label:'ตั้งค่า (Sales Areas · กลุ่ม รพ. · โน้ต)' },  // [V479.47]
+    { key:'actual', label:'Actual FAD รายเซลล์' },
+    { key:'lowfc',  label:'Forecast (Send to FC)' }
+  ];
+  var done = {};
+  window._bootSteps = STEPS;
+  window._bootDone  = done;
+  window._bootT0 = Date.now();   // [V479.51] เวลาเริ่มโหลด (สำหรับ min display time)
+
+  function render(){
+    try{
+      var box = document.getElementById('boot-steps');
+      if(box){
+        box.innerHTML = STEPS.map(function(s){
+          var ok = !!done[s.key];
+          return '<div style="display:flex;align-items:center;gap:9px;font-size:12px;'
+            + (ok ? 'color:#7ee2b8' : 'color:#5a6478') + ';font-weight:'+(ok?'700':'500')+';transition:color .2s">'
+            + '<span style="width:15px;flex-shrink:0;text-align:center">' + (ok ? '✓' : '○') + '</span>'
+            + '<span>' + s.label + '</span></div>';
+        }).join('');
+      }
+      var n = STEPS.filter(function(s){ return done[s.key]; }).length;
+      var pct = Math.round(n / STEPS.length * 100);
+      var bar = document.getElementById('boot-bar');   if(bar) bar.style.width = pct + '%';
+      var pe  = document.getElementById('boot-pct');   if(pe)  pe.textContent  = pct + '%';
+      var ce  = document.getElementById('boot-cnt');   if(ce)  ce.textContent  = n + ' / ' + STEPS.length;
+      var me  = document.getElementById('boot-msg');
+      if(me){
+        var next = STEPS.filter(function(s){ return !done[s.key]; })[0];
+        me.textContent = next ? ('กำลังโหลด: ' + next.label + '…') : 'พร้อมแล้ว ✓';
+      }
+    }catch(e){}
+  }
+
+  // mark step เสร็จ → ถ้าครบทุก step → ปิด overlay
+  window._bootMark = function(key){
+    if(done[key]) return;
+    done[key] = true;
+    render();
+    var all = STEPS.every(function(s){ return done[s.key]; });
+    if(all){
+      try{ console.log('[BOOT] ข้อมูลครบทุกชั้น → เปิดหน้าระบบ'); }catch(e){}
+      // heal + re-render ครั้งสุดท้าย (ให้ตัวเลขถูก 100% ก่อนผู้ใช้เห็น)
+      try{ if(window._fcHealLowPx) window._fcHealLowPx(); }catch(e){}
+      try{ if(typeof window.dbRender==='function') window.dbRender(); }catch(e){}
+      try{ if(typeof window.buildSummary==='function') window.buildSummary(); }catch(e){}
+      // [V479.51] minimum display time — โหลดจาก cache เร็วมาก (<1 วิ) จนไม่ทันเห็น progress
+      //   → แสดง overlay อย่างน้อย 1.2 วิ (ให้เห็นว่าโหลดถึงไหน + ดูมืออาชีพตอน present)
+      var _elapsed = Date.now() - (window._bootT0 || Date.now());
+      var _wait = Math.max(220, 1200 - _elapsed);
+      setTimeout(function(){ try{ window._hideBootLoading(); }catch(e){} }, _wait);
+    }
+  };
+
+  // [V479.45] POLLING — เช็คสถานะข้อมูลเอง ทุก 300ms (ครอบทุก path รวม cache restore)
+  //   แก้ปัญหา: callback ไม่ถูกเรียกเมื่อโหลดจาก cache → step ค้าง → timeout
+  var _poll = null;
+  // [V479.50] แยกเป็นฟังก์ชัน → restart ได้ตอนกด Update
+  window._bootStartPoll = function(){
+    if(window._bootGateDisabled) return;   // [V479.63] ปิดแล้ว (ใช้ Full Reload)
+    if(_poll) return;
+    _poll = setInterval(_pollTick, 300);
+  };
+  function _pollTick(){
+    try{
+      // core: Dashboard UI พร้อม (มี element หลัก + render function)
+      if(!done.core){
+        var _uiReady = !!document.getElementById('db-exec-graph') || !!document.getElementById('v-db');
+        var _fnReady = (typeof window.dbRender==='function') || (typeof window.buildSummary==='function');
+        if(_uiReady && _fnReady) window._bootMark('core');
+      }
+      // master: มี install rows หรือ customer rows แล้ว
+      if(!done.master){
+        var _inst = (window._spInstallRows && window._spInstallRows.length) || (window._spInstallAll && window._spInstallAll.length) || 0;
+        var _cust = (window._spCustomerRows && window._spCustomerRows.length) || 0;
+        if(_inst > 0 || _cust > 0) window._bootMark('master');
+      }
+      // [V479.53] tx: flag _etlDoneOK (ETL เสร็จจริง) — เดิมเช็คแค่ D/quotations มี record (จาก cache) -> ผ่านก่อน ETL จบ
+      if(!done.tx){
+        var _dLen = (window.D && window.D.length) || 0;
+        var _qLen = ((window._spData && window._spData.quotations) || []).length;
+        if(window._etlDoneOK && _dLen > 0 && _qLen > 0) window._bootMark('tx');
+      }
+      // [V479.53] config: flag _configLoadedOK (applyConfig ถูกเรียกจริง) — เดิมเช็ค Object.keys>0 -> ผ่านจาก cache ก่อนของจริงมา
+      if(!done.config){
+        if(window._configLoadedOK) window._bootMark('config');
+      }
+      // [V479.53] actual: flag _saActLoadedOK (callback กลับแล้ว) — เดิมเช็ค _saActData !== undefined -> ผ่านตั้งแต่ preload set {} ว่าง
+      if(!done.actual){
+        if(window._saActLoadedOK) window._bootMark('actual');
+      }
+      // [V479.54] lowfc: _FC_LOW_ITEMS พร้อม + quotations โหลด (คำนวณปีได้)
+      //   fallback: ถ้า _FC_LOW_ITEMS ยัง undefined แต่ tx เสร็จแล้ว (ETL/cache) → ถือว่าไม่มี Low (ผ่าน)
+      //   Console: [BOOT] timeout — step: lowfc (restore callback ไม่ถูกเรียกตอนโหลดจาก cache)
+      if(!done.lowfc){
+        var _quo = ((window._spData && window._spData.quotations) || []).length;
+        var _lowReady = (window._FC_LOW_ITEMS !== undefined && window._FC_LOW_ITEMS !== null);
+        if(_lowReady && _quo > 0){
+          window._bootMark('lowfc');
+        } else if(done.tx && _quo > 0){
+          // tx เสร็จแล้ว + มี quotations แต่ยังไม่มี _FC_LOW_ITEMS → ไม่มี Low prospect (ผ่าน)
+          window._FC_LOW_ITEMS = window._FC_LOW_ITEMS || {};
+          window._bootMark('lowfc');
+        }
+      }
+      // ครบแล้ว → หยุด poll
+      if(STEPS.every(function(s){ return done[s.key]; })){ if(_poll){ clearInterval(_poll); _poll=null; } }
+    }catch(e){}
+  }
+  window._bootStartPoll();   // start ครั้งแรก
+
+  // safety: ถ้า step ไหนไม่มา ภายใน 20 วิ → ปล่อยเข้าระบบ (กันค้าง)
+  setTimeout(function(){
+    if(window._bootGateDisabled) return;   // [V479.63] ปิดแล้ว
+    if(_poll){ clearInterval(_poll); _poll=null; }
+    var miss = STEPS.filter(function(s){ return !done[s.key]; }).map(function(s){ return s.key; });
+    if(miss.length){
+      try{ console.warn('[BOOT] timeout — step ที่ยังไม่เสร็จ:', miss.join(', ')); }catch(e){}
+      var me = document.getElementById('boot-msg');
+      if(me){ me.textContent = 'บางส่วนโหลดช้า — เข้าระบบก่อน'; me.style.color = '#e6b35e'; }
+      setTimeout(function(){ try{ window._hideBootLoading(); }catch(e){} }, 700);
+    }
+  }, 60000);   // [V479.54] 20 วิ → 60 วิ (โหลด master 28MB + ETL ใช้เวลานาน — Console: timeout ก่อน Install Base loaded)
+
+  render();
+
+  // ═══════════════════════════════════════════════════════════
+  // [V479.46] LOCK UI + DATA READY BADGE
+  //   ล็อกปุ่มเปลี่ยนหน้า/filter ระหว่างโหลด → user กดไม่ได้ → ไม่เห็นตัวเลขที่ยังไม่นิ่ง
+  //   badge ที่ header บอกสถานะตลอดเวลา (⏳ กำลังโหลด → ✓ ข้อมูลพร้อม)
+  // ═══════════════════════════════════════════════════════════
+  var LOCK_SEL = '.nav-btn, .hdr-btn, #f-sales, #f-yr, #f-mo, #f-type, #f-team, #db-sales-sel, #db-half-sel, #db-yr-sel, .fsel, .ip-pill, .cd-tab';
+
+  window._setUILock = function(locked){
+    try{
+      document.querySelectorAll(LOCK_SEL).forEach(function(el){
+        // [V479.46] ยกเว้น: ปุ่ม Update + toggle theme + logout (ต้องกดได้เสมอ)
+        var _oc = String(el.getAttribute && el.getAttribute('onclick') || '');
+        if(/bjhUnifiedRefresh|toggleTheme|logout|_showLogin/i.test(_oc)) return;
+        if(locked){
+          if(!el.dataset._wasDisabled){ el.dataset._wasDisabled = el.disabled ? '1' : '0'; }
+          el.disabled = true;
+          el.style.pointerEvents = 'none';
+          el.style.opacity = '0.45';
+          el.style.cursor = 'not-allowed';
+        } else {
+          if(el.dataset._wasDisabled === '0'){ el.disabled = false; }
+          el.dataset._wasDisabled = '';
+          el.style.pointerEvents = '';
+          el.style.opacity = '';
+          el.style.cursor = '';
+        }
+      });
+    }catch(e){}
+  };
+
+  window._setDataReady = function(ready, note){
+    try{
+      var b = document.getElementById('data-ready');
+      if(!b) return;
+      if(ready){
+        b.textContent = '✓ ข้อมูลพร้อม';
+        b.style.background = 'rgba(34,197,94,.14)';
+        b.style.borderColor = '#22c55e';
+        b.style.color = '#4ade80';
+        b.title = 'ข้อมูลครบทุกชั้น · ตัวเลขนิ่งแล้ว';
+      } else {
+        b.textContent = note || '⏳ กำลังโหลด';
+        b.style.background = 'rgba(230,179,94,.16)';
+        b.style.borderColor = '#e6b35e';
+        b.style.color = '#e6b35e';
+        b.title = 'กำลังโหลดข้อมูล · ตัวเลขอาจยังไม่นิ่ง';
+      }
+    }catch(e){}
+  };
+
+  // [V479.52] ล็อกต่อเนื่อง — เดิมเรียกครั้งเดียวที่ 400ms → element ที่ render ทีหลังไม่โดนล็อก (คลิกทะลุ)
+  //   ตอนนี้: ล็อกทันที + ซ้ำทุก 250ms จนกว่า _dataReady → ครอบ element ใหม่ทั้งหมด
+  window._dataReady = false;
+  var _lockTimer = null;
+  function _startLockLoop(){
+    if(_lockTimer) return;
+    try{ window._setUILock(true); }catch(e){}
+    _lockTimer = setInterval(function(){
+      if(window._dataReady){ clearInterval(_lockTimer); _lockTimer=null; return; }
+      try{ window._setUILock(true); }catch(e){}   // re-lock element ใหม่
+    }, 250);
+  }
+  function _stopLockLoop(){
+    if(_lockTimer){ clearInterval(_lockTimer); _lockTimer=null; }
+  }
+  window._startLockLoop = _startLockLoop;
+  window._stopLockLoop  = _stopLockLoop;
+  // [V479.63] ปิด boot gate เดิม — ใช้ bjhFullReload() (sequential + overlay ของตัวเอง) แทนแล้ว
+  //   เดิม gate รัน parallel กับ Full Reload -> badge ค้าง 4/6 (2 steps ไม่มา)
+  window._bootGateDisabled = true;
+  try{ if(_poll){ clearInterval(_poll); _poll = null; } }catch(e){}
+  try{
+    window._dataReady = true;
+    window._setDataReady(true);
+    window._setUILock(false);
+  }catch(e){}
+  try{ window._hideBootLoading(); }catch(e){}
+
+  // เมื่อครบทุก step → ปลดล็อก + badge เขียว
+  var _origMark = window._bootMark;
+  window._bootMark = function(key){
+    _origMark(key);
+    try{
+      var all = STEPS.every(function(s){ return done[s.key]; });
+      if(all && !window._dataReady){
+        window._dataReady = true;
+        try{ _stopLockLoop(); }catch(e){}   // [V479.52] หยุด re-lock loop
+        window._setUILock(false);
+        window._setDataReady(true);
+      } else if(!all){
+        var next = STEPS.filter(function(s){ return !done[s.key]; })[0];
+        var n = STEPS.filter(function(s){ return done[s.key]; }).length;
+        window._setDataReady(false, '⏳ ' + n + '/' + STEPS.length);
+      }
+    }catch(e){}
+  };
+
+  // safety: timeout → ปลดล็อก (กันค้าง) แต่ badge เตือนว่าข้อมูลอาจไม่ครบ
+  setTimeout(function(){
+    if(!window._dataReady){
+      try{
+        _stopLockLoop();   // [V479.52]
+        window._setUILock(false);
+        var b = document.getElementById('data-ready');
+        if(b){
+          b.textContent = '⚠ ข้อมูลบางส่วน';
+          b.style.background = 'rgba(239,68,68,.14)';
+          b.style.borderColor = '#ef4444';
+          b.style.color = '#f87171';
+          b.title = 'บางส่วนโหลดไม่สำเร็จ — กด ↻ Update เพื่อโหลดใหม่';
+        }
+      }catch(e){}
+    }
+  }, 61000);   // [V479.54] ตามหลัง gate timeout
+
+  // [V479.46] ปุ่ม Update → กลับไปสถานะกำลังโหลด (ล็อก + badge เหลือง)
+  // [V479.55] ไม่ใช้แล้ว — ปุ่ม Update ใช้ bjhFullReload() (sequential loader) แทน
+  window._onUpdateStart = function(){
+    return;   // no-op (กัน gate เดิมชนกับ full reload)
+    try{
+      window._dataReady = false;
+      window._bootT0 = Date.now();   // [V479.51] reset เวลาเริ่ม (min display time)
+      Object.keys(done).forEach(function(k){ delete done[k]; }); // reset steps
+      // [V479.53] เคลียร์ flags -> บังคับ gate รอโหลดใหม่จริง (ไม่ใช่แค่เช็คว่ามี object)
+      try{ window._configLoadedOK  = false; }catch(e){}
+      try{ window._saActLoadedOK   = false; }catch(e){}
+      try{ window._etlDoneOK       = false; }catch(e){}
+      try{ window._saActPreloading = false; }catch(e){}
+      try{ _startLockLoop(); }catch(e){ try{ window._setUILock(true); }catch(_e){} }  // [V479.52] re-lock ต่อเนื่อง
+      window._setDataReady(false, '⏳ กำลังอัปเดต');
+      // [V479.50] แสดงหน้าโหลด (overlay) — รอจนครบทุกชั้นค่อยปิด
+      try{ window._showBootLoading(); }catch(e){}
+      render();
+      // restart polling (ถ้าหยุดไปแล้ว)
+      try{ if(window._bootStartPoll) window._bootStartPoll(); }catch(e){}
+    }catch(e){}
+  };
+})();
+</script>
+<div id="ld" style="display: none;"><div class="spin"></div><div style="color:var(--mu);font-size:11px">กำลังโหลด BJH Dashboard…</div></div>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">BJH <em>Revenue</em> Dashboard</div>
+    <div class="login-sub">2026 · Service Commercial</div>
+    <div class="login-lbl">รหัสพนักงาน</div>
+    <input class="login-inp" id="li-empid" type="text" placeholder="EMP001" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="bjh_empid_no_autofill" onkeydown="if(event.key==='Enter')document.getElementById('li-pwd').focus()">
+    <div class="login-lbl">รหัสผ่าน</div>
+    <input class="login-inp" id="li-pwd" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-err" id="li-err"></div>
+    <div class="login-role" id="li-reset-link" style="cursor:pointer;color:var(--ac2)" onclick="doResetRequest()">ลืมรหัสผ่าน? แจ้ง Admin</div>
+  </div>
+</div>
+<script>
+(function(){
+  function _bjhMobLogin(){
+    try{
+      var ov=document.getElementById('login-overlay');
+      if(!ov) return;
+      var isMob = (window.innerWidth||document.documentElement.clientWidth||999) <= 820;
+      if(isMob) ov.classList.add('mob-login'); else ov.classList.remove('mob-login');
+    }catch(e){}
+  }
+  _bjhMobLogin();
+  window.addEventListener('resize', _bjhMobLogin);
+  window.addEventListener('orientationchange', _bjhMobLogin);
+  document.addEventListener('DOMContentLoaded', _bjhMobLogin);
+})();
+</script>
+
+<!-- MUST CHANGE PASSWORD OVERLAY -->
+<div id="chgpwd-overlay">
+  <div class="chgpwd-box">
+    <div style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px">🔒 ตั้งรหัสผ่านใหม่</div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:20px">กรุณาตั้งรหัสผ่านใหม่ก่อนใช้งาน</div>
+    <div class="login-lbl">รหัสผ่านใหม่</div>
+    <input class="login-inp" id="cp-pwd1" type="password" placeholder="อย่างน้อย 6 ตัวอักษร">
+    <div class="login-lbl">ยืนยันรหัสผ่านใหม่</div>
+    <input class="login-inp" id="cp-pwd2" type="password" onkeydown="if(event.key==='Enter')doChangePwd()">
+    <button class="login-btn" onclick="doChangePwd()">บันทึกรหัสผ่านใหม่</button>
+    <div class="login-err" id="cp-err"></div>
+  </div>
+</div>
+
+<div id="app" style="display: none;">
+  <div class="topbar">
+    <div class="logo" style="display:flex;flex-direction:column;justify-content:center;line-height:1.2;flex-shrink:0"><div style="white-space:nowrap">BJH <em>Revenue</em> <span style="font-size:11px;font-weight:400;color:var(--mu)">2026 · Service Commercial</span></div><div style="display:flex;align-items:center;gap:5px">
+        <!-- [V479.46] Data Ready badge — บอกสถานะข้อมูลนิ่งหรือยัง -->
+        <span id="ver-stamp" style="font-size:8px;background:var(--sur2);border:1px solid var(--bd2);border-radius:3px;padding:0px 4px;color:var(--mu2);font-family:var(--mono)">Master Admin v246 — ไม่มีข้อมูล</span> <span id="dbg-toggle" onclick="window._DBG_ON=!window._DBG_ON;document.getElementById('dbg-wrap').style.display=window._DBG_ON?'block':'none';if(window._DBG_ON&&typeof window._bjhDumpDebug==='function')try{window._bjhDumpDebug()}catch(e){}" title="Debug" style="cursor:pointer;font-size:9px;opacity:0.4;margin-left:4px;user-select:none">🐛</span><div id="dbg-wrap" style="display:none;position:fixed;bottom:8px;right:8px;z-index:99999"><button onclick="var t=document.getElementById('dbg-box').textContent;navigator.clipboard.writeText(t).then(function(){this.textContent='✓ คัดลอกแล้ว';}.bind(this)).catch(function(){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();});this.textContent='✓ คัดลอก';" style="font-size:10px;background:var(--ac);color:#fff;border:none;border-radius:4px;padding:3px 10px;cursor:pointer;margin-bottom:4px;font-family:var(--font)">📋 Copy Debug</button><div id="dbg-box" style="max-width:420px;max-height:40vh;overflow:auto;background:#0d1526;border:1px solid var(--bd2);border-radius:6px;padding:8px 10px;font-size:10px;font-family:var(--mono);color:var(--mu);white-space:pre-wrap"></div></div></div></div>
+    
+    <div class="sep"></div>
+    <button class="nav-btn" id="nb-home" onclick="sv('home')">🏁 Daily Board</button>
+    <button class="nav-btn on" id="nb-db" onclick="sv('db')">📊 Summary</button>
+    <button class="nav-btn" id="nb-se" onclick="sv('se')">Service Commercial Orders</button>
+    <button class="nav-btn" id="nb-sp" onclick="sv('sp');try{frames[0].spTab(frames[0]._spCurrentTab||'alert');}catch(e){}">🎯 Sales Prospect</button>
+
+    <div style="flex:1"></div>
+    <!-- Tools dropdown menu -->
+    <div id="hdr-tools-menu" style="position:relative;display:inline-block">
+      <button class="hdr-btn" onclick="hdrToggleToolsMenu(event)" style="border-color:#a78bfa;color:#c4b5fd" id="hdr-tools-btn" title="เครื่องมือเสริม">🛠 Tools ▾</button>
+      <div id="hdr-tools-list" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:var(--sur);border:1px solid var(--bd2);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4);min-width:200px;z-index:1000"><!-- [v437] เมนู Load Data ใน Tools ถูกลบออก — ปุ่ม "↻ Update" บน header ทำหน้าที่แทนหมดแล้ว (โหลด Master+TX สด + hard refresh อัตโนมัติ) -->
+        <div class="hdr-tool-item" onclick="hdrOpenLOA()" style="padding:10px 14px;cursor:pointer;font-size:12px;color:var(--tx);border-bottom:1px solid var(--bd);transition:background .15s" onmouseover="this.style.background='var(--sur2)'" onmouseout="this.style.background='transparent'">📄 เอกสาร LOA<div style="font-size:10px;color:var(--mu);margin-top:2px">นำเข้า/ค้นหา/ดาวน์โหลด LOA</div></div>
+        
+        <div class="hdr-tool-item" id="tool-retention" onclick="hdrOpenRetention()" style="padding:10px 14px;cursor:pointer;font-size:12px;color:var(--tx);border-top:1px solid var(--bd);transition:background .15s" onmouseover="this.style.background='var(--sur2)'" onmouseout="this.style.background='transparent'">🔄 Sales Retention Report<div style="font-size:10px;color:var(--mu);margin-top:2px">ลูกค้าเก่ากลับมาซื้อซ้ำ (สัญญาซื้อขาย)</div></div>
+        <div class="hdr-tool-item" id="tool-pricetbl" onclick="hdrOpenPriceGroups()" style="display:none;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--tx);border-top:1px solid var(--bd);transition:background .15s" onmouseover="this.style.background='var(--sur2)'" onmouseout="this.style.background='transparent'">💵 ตั้งราคาสัญญาบริการ<div style="font-size:10px;color:var(--mu);margin-top:2px">ตารางราคาแบบกลุ่ม (v433)</div></div>
+        <div class="hdr-tool-item" id="tool-saleforecast" onclick="hdrOpenSaleForecast()" style="display:none;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--tx);border-top:1px solid var(--bd);transition:background .15s" onmouseover="this.style.background='var(--sur2)'" onmouseout="this.style.background='transparent'">💰 ประมาณการยอดขาย<div style="font-size:10px;color:var(--mu);margin-top:2px">ค้นหา Customer Code — SC 3 เดือนข้างหน้า</div></div>
+        <div class="hdr-tool-item" id="tool-ma" onclick="hdrOpenMA()" style="display:none;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--tx);border-top:1px solid var(--bd);transition:background .15s" onmouseover="this.style.background='var(--sur2)'" onmouseout="this.style.background='transparent'"> <!-- [v445] display:none default -->🔧 MA After Sales<div style="font-size:10px;color:var(--mu);margin-top:2px">ขอราคาบริการหลังการขาย (Service MA)</div></div>
+      </div>
+    </div>
+    <!-- [V471] เปิดใช้ปุ่ม theme toggle (Dark/Light) สำหรับตอน present -->
+<button class="hdr-btn" onclick="toggleTheme()" title="สลับ Theme (Dark/Light)" id="theme-toggle-btn" aria-label="Toggle theme"><svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg><svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
+
+    <span id="light-lvl-wrap" title="ปรับความเข้มพื้นหลัง (Light mode): ซ้าย=เทานวล ขวา=ขาวจัด" style="display:none;align-items:center;gap:5px;border:1px solid var(--bd);border-radius:6px;padding:3px 8px"><span style="font-size:11px;color:var(--mu);user-select:none">◐</span><input type="range" id="light-lvl" min="0" max="100" step="1" value="50" oninput="setLightLvl(this.value)" style="width:80px;cursor:pointer;accent-color:var(--ac)"></span> <!-- [V472] slider ความเข้มพื้น Light mode -->
+    <button class="hdr-btn" onclick="bjhUnifiedRefresh()" title="โหลดข้อมูลล่าสุด (Master+TX) แล้ว refresh หน้าอัตโนมัติ" style="border-color:#38bdf8;color:#7dd3fc" id="gas-refresh-btn">↻ Update</button> <!-- [v429] ปุ่มรวม -->
+    
+    <!-- [v414] gas-data-ts ลบออก — ข้อมูลย้ายไปมุมซ้ายบน #ver-stamp แล้ว (Master/TX + สี) -->
+    <div id="user-badge" onclick="doLogout()">
+      <span>👤</span>
+      <span class="ubname" id="ub-name"></span>
+      <span class="ubrole" id="ub-role"></span>
+      <span style="font-size:10px;color:var(--mu)">ออกจากระบบ</span>
+    </div>
+    <button class="hdr-btn hdr-btn-upload" onclick="openConfig()" title="Config">⚙ Config</button>
+  </div>
+
+  <!-- Load API Modal (Status only) -->
+  <div id="api-load-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)apiLoadDataClose()">
+    <div style="background:var(--sur);border:1px solid var(--bd2);border-radius:10px;max-width:600px;width:92%;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,0.5)">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px">
+        <div style="font-size:14px;font-weight:700;color:#fbbf24;flex:1">🔌 Load Data จาก SmartFlow API</div>
+        <button onclick="apiLoadDataClose()" style="background:none;border:none;color:var(--mu);font-size:20px;cursor:pointer;line-height:1">×</button>
+      </div>
+      <div style="padding:18px;overflow-y:auto;flex:1">
+        <div style="background:var(--sur2);border:1px solid var(--bd);border-radius:6px;padding:12px;margin-bottom:14px">
+          <div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">Endpoint:</div>
+          <div style="font-size:11px;font-family:var(--mono);color:var(--tx);word-break:break-all">smartflow.bjc.co.th/SMARTFLOW/CREATE_JSON_FILE_RAW_API/</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:10px;margin-bottom:4px;font-weight:600">Authentication:</div>
+          <div id="api-load-auth-status" style="font-size:11px;font-family:var(--mono);color:var(--mu2)">—</div>
+        </div>
+
+        <div id="api-load-status" style="font-size:11px;color:var(--mu);min-height:20px;margin-bottom:10px;padding:8px;background:var(--sur2);border-radius:5px;font-family:var(--mono);max-height:200px;overflow-y:auto"></div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button onclick="apiLoadDataClose()" style="padding:7px 16px;border-radius:5px;border:1px solid var(--bd2);background:transparent;color:var(--tx);cursor:pointer;font-size:12px">ยกเลิก</button>
+          <button onclick="apiLogout()" id="api-logout-btn" style="padding:7px 16px;border-radius:5px;border:1px solid #ef4444;background:transparent;color:#ef4444;cursor:pointer;font-size:12px;display:none">🔓 Logout</button>
+          <button onclick="apiLoadDataExecute()" id="api-load-exec-btn" style="padding:7px 16px;border-radius:5px;border:1px solid #f59e0b;background:#f59e0b;color:#000;cursor:pointer;font-size:12px;font-weight:700">📥 Load Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SmartFlow Login Modal -->
+  <div id="api-login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000;align-items:center;justify-content:center">
+    <div style="background:var(--sur);border:1px solid #f59e0b;border-radius:10px;max-width:480px;width:92%;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,0.6)">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px">
+        <div style="font-size:14px;font-weight:700;color:#fbbf24;flex:1">🔐 SmartFlow Login</div>
+        <button onclick="apiLoginClose()" style="background:none;border:none;color:var(--mu);font-size:20px;cursor:pointer;line-height:1">×</button>
+      </div>
+      <div style="padding:18px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:14px;line-height:1.6">
+          กรอก Username + Password ของตัวเอง (ไม่ใช่ shared account)<br>
+          <span style="color:#fbbf24">⚠ ระบบจะ log username ไว้ตรวจสอบ — Token หายเมื่อปิด tab</span>
+        </div>
+
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">Username:</label>
+          <input type="text" id="api-login-username" placeholder="myuser@bjc.co.th" autocomplete="username" style="width:100%;padding:8px 10px;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;font-size:12px;font-family:var(--mono)" onkeydown="if(event.key==='Enter')document.getElementById('api-login-password').focus()">
+        </div>
+
+        <div style="margin-bottom:6px">
+          <label style="display:block;font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">Password:</label>
+          <div style="position:relative">
+            <input type="password" id="api-login-password" placeholder="••••••••" autocomplete="current-password" style="width:100%;padding:8px 36px 8px 10px;background:var(--sur);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;font-size:12px;font-family:var(--mono)" onkeydown="if(event.key==='Enter')apiLoginSubmit()">
+            <button onclick="apiLoginTogglePw()" type="button" id="api-login-pw-toggle" title="แสดง/ซ่อน" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:2px 6px">👁</button>
+          </div>
+        </div>
+
+        <div id="api-login-status" style="font-size:11px;color:var(--mu);min-height:18px;padding:6px 10px;background:var(--sur2);border-radius:4px;font-family:var(--mono);margin-top:12px;margin-bottom:12px">— กรอก Username + Password แล้วกด Login —</div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button onclick="apiLoginClose()" style="padding:7px 16px;border-radius:5px;border:1px solid var(--bd2);background:transparent;color:var(--tx);cursor:pointer;font-size:12px">ยกเลิก</button>
+          <button onclick="apiLoginSubmit()" id="api-login-submit-btn" style="padding:7px 20px;border-radius:5px;border:1px solid #f59e0b;background:#f59e0b;color:#000;cursor:pointer;font-size:12px;font-weight:700">🔐 Login & Load</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE KPI BAR -->
+  <div id="mob-kpi" style="display:none;padding:0;overflow-y:auto;flex-direction:column;border-bottom:1px solid var(--bd)"></div>
+
+  <!-- MOBILE FORECAST BAR -->
+  <div id="mob-fc" style="display:none;padding:8px 10px 4px;border-bottom:1px solid var(--bd)">
+    <div style="font-size:9px;color:var(--mu2);margin-bottom:5px;letter-spacing:.4px;text-transform:uppercase">Forecast 2026 (Ex.VAT)</div>
+    <div id="mob-fc-bars" style="display:flex;gap:2px;align-items:flex-end;height:32px"></div>
+    <div id="mob-fc-labels" style="display:flex;gap:2px;margin-top:2px"></div>
+  </div>
+
+  <!-- MOBILE FILTER BAR -->
+  <div id="mob-filter" style="display:none;padding:0;border-bottom:none;background:var(--sur);flex-wrap:wrap;align-items:center">
+    <div style="display:flex;gap:4px;flex:1;min-width:0">
+      <select id="mf-period" onchange="mobFilterChange()" style="display:none">
+        <option value="mo-3">มี.ค. 2026</option>
+        <option value="mo-1">ม.ค. 2026</option>
+        <option value="mo-2">ก.พ. 2026</option>
+        <option value="mo-4">เม.ย. 2026</option>
+        <option value="mo-5">พ.ค. 2026</option>
+        <option value="mo-6">มิ.ย. 2026</option>
+        <option value="mo-7">ก.ค. 2026</option>
+        <option value="mo-8">ส.ค. 2026</option>
+        <option value="mo-9">ก.ย. 2026</option>
+        <option value="mo-10">ต.ค. 2026</option>
+        <option value="mo-11">พ.ย. 2026</option>
+        <option value="mo-12">ธ.ค. 2026</option>
+        <option value="q-1">Q1 (ม.ค.–มี.ค.)</option>
+        <option value="q-2">Q2 (เม.ย.–มิ.ย.)</option>
+        <option value="q-3">Q3 (ก.ค.–ก.ย.)</option>
+        <option value="q-4">Q4 (ต.ค.–ธ.ค.)</option>
+        <option value="yr-2026">ทั้งปี 2026</option>
+        <option value="yr-2025">ทั้งปี 2025</option>
+      </select>
+      <select id="mf-type" onchange="mobFilterChange()" style="width:70px;padding:5px 6px;background:var(--sur2);border:1px solid var(--bd2);border-radius:6px;color:var(--tx);font-size:11px;font-family:var(--font)">
+        <option value="">SC+SP</option>
+        <option value="SC">SC</option>
+        <option value="SP">SP</option>
+      </select>
+      <select id="mf-st" onchange="mobFilterChange()" style="flex:1;padding:5px 6px;background:var(--sur2);border:1px solid var(--bd2);border-radius:6px;color:var(--tx);font-size:11px;font-family:var(--font)">
+        <option value="">ทุกสถานะ</option>
+        <option value="Backlog">Backlog</option>
+        <option value="Backlog (Confirmed)">Backlog (Confirmed)</option>
+        <option value="SC Ordered">SC Ordered</option>
+        <option value="SC Carry">SC Carry (Bill Pending)</option>
+        <option value="SP Ordered (Ordering)">SP Ordered</option>
+        <option value="Offer">Prospect</option>
+      </select>
+    </div>
+    <div id="mob-filter-count" style="font-size:10px;color:var(--mu2);white-space:nowrap"></div>
+  </div>
+
+  <!-- MOBILE CONTENT AREA (compact rows / sales cards) -->
+  <div id="mob-tbl" style="display:none;overflow-y:auto;flex:1"></div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <div id="mob-nav" style="display:none;position:fixed;bottom:0;left:0;right:0;height:52px;background:var(--sur);border-top:1px solid var(--bd);z-index:200;align-items:center">
+    <button id="mbn-se" onclick="mobNav('se')" style="flex:1;height:52px;background:none;border:none;color:var(--ac);font-size:9px;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:18px">📊</span>Summary</button>
+    <button id="mbn-so" onclick="mobNav('so')" style="flex:1;height:52px;background:none;border:none;color:var(--mu2);font-size:9px;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:18px">👥</span>Sales</button>
+    <button id="mbn-bvf" onclick="mobNav('bvf')" style="flex:1;height:52px;background:none;border:none;color:var(--mu2);font-size:9px;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:18px">📊</span>BvF</button>
+    <button id="mbn-full" onclick="toggleFullMode()" style="flex:1;height:52px;background:none;border:none;color:var(--mu2);font-size:9px;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:18px">⛶</span>Full</button>
+  </div>
+
+  <!-- SE ORDER -->
+  <div class="view" id="v-se">
+    <div class="se-body">
+
+      <!-- SUMMARY HEADER -->
+      <div class="summary-wrap">
+        <table class="sum-tbl" id="sum-tbl">
+          <colgroup>
+            <col style="min-width:155px;max-width:155px">
+            <col><col><col><col><col><col>
+            <col><col><col><col><col><col>
+            <col style="min-width:90px">
+          </colgroup>
+          <tbody>
+            <tr><td colspan="15" style="padding:4px 10px 3px;font-size:10px;font-weight:700;color:var(--mu2);letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--bd)">📊 Revenue Summary</td></tr>
+            <tr id="bud-row"><td style="font-size:11px;font-weight:600;color:var(--cyn);text-align:right;padding-right:10px;white-space:nowrap">Quarterly Budget</td><td colspan="3" style="text-align:center;padding:5px 8px;border-right:2px solid var(--bd2);font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ylw2)">54,250,000</td><td colspan="3" style="text-align:center;padding:5px 8px;border-right:2px solid var(--bd2);font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ylw2)">58,250,000</td><td colspan="3" style="text-align:center;padding:5px 8px;border-right:2px solid var(--bd2);font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ylw2)">71,250,000</td><td colspan="3" style="text-align:center;padding:5px 8px;border-right:2px solid var(--bd2);font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ylw2)">66,250,000</td><td style="text-align:right;padding:5px 10px;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ylw2)">250,000,000</td></tr>
+            <tr id="fc-row"><td style="font-size:11px;font-weight:600;color:var(--ylw2);text-align:right;padding-right:10px;white-space:nowrap">Quarterly Forecast</td><td colspan="2" style="text-align:right;padding:5px 6px;font-family:var(--mono);font-size:12px;color:var(--ylw2)">28.81M</td><td style="text-align:center;padding:5px 4px;font-size:10px;color:var(--mu);border-right:2px solid var(--bd2)">53%</td><td colspan="2" style="text-align:right;padding:5px 6px;font-family:var(--mono);font-size:12px;color:var(--ylw2)">0.00M</td><td style="text-align:center;padding:5px 4px;font-size:10px;color:var(--mu);border-right:2px solid var(--bd2)">0%</td><td colspan="2" style="text-align:right;padding:5px 6px;font-family:var(--mono);font-size:12px;color:var(--ylw2)">0.00M</td><td style="text-align:center;padding:5px 4px;font-size:10px;color:var(--mu);border-right:2px solid var(--bd2)">0%</td><td colspan="2" style="text-align:right;padding:5px 6px;font-family:var(--mono);font-size:12px;color:var(--ylw2)">0.00M</td><td style="text-align:center;padding:5px 4px;font-size:10px;color:var(--mu);border-right:2px solid var(--bd2)">0%</td><td style="text-align:right;padding:5px 10px;font-family:var(--mono);font-size:12px;color:var(--ylw2);font-weight:700">28.81M</td></tr>
+            <tr id="mo-bud-row"></tr>
+            <tr id="mfc-row"><td colspan="14"><!-- จะถูก render โดย buildSummary() --></td></tr>
+            <tr id="mo-pct-row"></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- FILTER BAR -->
+      <div class="filterbar">
+        <span class="flbl">Summary:</span>
+        <select class="fsel" id="f-sum-mode" onchange="window._sumBySales=this.value==='bysales';try{buildSummary();}catch(e){}" style="min-width:90px">
+          <option value="byteam" selected>By Team</option>
+          <option value="bysales">By Sales</option>
+        </select>
+        <span class="flbl">Sales:</span>
+        <select class="fsel" id="f-sales" onchange="af();try{buildSummary();}catch(e){}"><option value="">All Sales</option></select>
+        <span class="flbl">เดือน:</span>
+        <div style="position:relative;display:inline-block">
+          <button id="f-mo-btn" onclick="toggleMoDropdown()" class="fsel" style="cursor:pointer;min-width:90px;text-align:left;padding:3px 8px">ทั้งหมด ▾</button>
+          <div id="f-mo-drop" style="display:none;position:absolute;top:100%;left:0;z-index:200;background:var(--sur2);border:1px solid var(--bd2);border-radius:6px;padding:6px 0;min-width:130px;box-shadow:0 4px 12px #0006">
+            <div style="padding:3px 10px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+              <label style="font-size:10px;color:var(--mu);cursor:pointer"><input type="checkbox" id="f-mo-all" onchange="moSelectAll()" style="margin-right:4px">ทั้งหมด</label>
+            </div>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="1" onchange="moChkChange()"> ม.ค.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="2" onchange="moChkChange()"> ก.พ.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="3" onchange="moChkChange()"> มี.ค.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="4" onchange="moChkChange()"> เม.ย.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="5" onchange="moChkChange()"> พ.ค.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="6" onchange="moChkChange()"> มิ.ย.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="7" onchange="moChkChange()"> ก.ค.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="8" onchange="moChkChange()"> ส.ค.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="9" onchange="moChkChange()"> ก.ย.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="10" onchange="moChkChange()"> ต.ค.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="11" onchange="moChkChange()"> พ.ย.</label>
+            <label style="display:block;padding:2px 10px;font-size:11px;cursor:pointer"><input type="checkbox" class="f-mo-chk" value="12" onchange="moChkChange()"> ธ.ค.</label>
+          </div>
+        </div>
+        <select class="fsel" id="f-yr" onchange="af()">
+          <option value="">ทุกปี</option>
+          <option value="2025">2025</option>
+          <option value="2026" selected="">2026</option>
+          <option value="2027">2027</option>
+          <option value="2028">2028</option>
+          <option value="2029">2029</option>
+        </select>
+        <span class="flbl">ทีม:</span>
+        <select class="fsel" id="f-team" onchange="af()">
+          <option value="">ทั้งหมด</option>
+          <option value="Service-1">Service-1</option>
+          <option value="Service-2">Service-2</option>
+          <option value="Service-3">Service-3</option>
+        </select>
+        <span class="flbl">Type:</span>
+        <select class="fsel" id="f-type" onchange="af()">
+          <option value="">SC+SP</option>
+          <option value="SC">SC เท่านั้น</option>
+          <option value="SP">SP เท่านั้น</option>
+        </select>
+        <span class="flbl">Status:</span>
+        <div style="position:relative;display:inline-block">
+          <button id="f-st-btn" onclick="toggleStDropdown()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font);cursor:pointer;min-width:90px;text-align:left" id="f-st">ทั้งหมด ▾</button>
+          <div id="f-st-drop" style="display:none;position:absolute;top:100%;left:0;z-index:800;background:var(--sur);border:1px solid var(--bd2);border-radius:6px;padding:6px 0;min-width:180px;box-shadow:0 4px 16px rgba(0,0,0,.4)">
+            <div onclick="stSelectAll()" style="padding:5px 12px;font-size:11px;cursor:pointer;color:var(--ac2);border-bottom:1px solid var(--bd)">✓ เลือกทั้งหมด / ล้าง</div>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="Actual FAD" onchange="stChkChange()"> Actual FAD</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="Billed" onchange="stChkChange()"> Billed</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="Backlog" onchange="stChkChange()"> Backlog</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="Backlog (Confirmed)" onchange="stChkChange()"> Backlog (Confirmed)</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="SC Ordered" onchange="stChkChange()"> SC Ordered</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="SC Carry" onchange="stChkChange()"> SC Carry (Bill Pending)</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="SC Carry (Pending)" onchange="stChkChange()"> SC Carry (PM Pending)</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="SP Ordered (Ordering)" onchange="stChkChange()"> SP Ordered</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="SP Ordered (Pending)" onchange="stChkChange()"> SP Ordered Processing</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="Offer" onchange="stChkChange()"> Prospect</label>
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:11px;cursor:pointer"><input type="checkbox" value="Excluded" onchange="stChkChange()"> Excluded</label>
+          </div>
+        </div>
+        <span class="flbl">IP:</span>
+        <div style="position:relative;display:inline-block">
+          <button id="f-ip-btn" onclick="toggleIpDropdown()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font);cursor:pointer;min-width:90px;text-align:left">ทั้งหมด ▾</button>
+          <div id="f-ip-drop" style="display:none;position:absolute;top:100%;left:0;z-index:800;background:var(--sur);border:1px solid var(--bd2);border-radius:6px;padding:6px 0;min-width:180px;max-height:320px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.4)">
+            <div onclick="ipSelectAll()" style="padding:5px 12px;font-size:11px;cursor:pointer;color:var(--ac2);border-bottom:1px solid var(--bd)">✓ เลือกทั้งหมด / ล้าง</div>
+          </div>
+        </div>
+        <span class="flbl">Search:</span>
+        <input id="f-search" oninput="af()" placeholder="Quotation / Customer / Brand / Sales / Bill No." style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--font);outline:none;width:170px;">
+        <button onclick="exportExcel()" style="font-size:11px;padding:3px 12px;border:1px solid #22c55e;border-radius:5px;background:transparent;color:#4ade80;cursor:pointer;font-family:inherit;white-space:nowrap;margin-left:4px">⬇ Export</button>
+
+        <div class="fb-break"></div>
+        <span class="flbl-qf">Quick filter:</span>
+        
+        <button class="ip-pill ip-all" id="pill-all" onclick="tpill('all',null,null)">All</button>
+        <button class="ip-pill ip-actual" id="pill-actual" onclick="tpill('actual','ACTUAL_FAD_ALL',null)">Actual FAD</button>
+        <button class="ip-pill ip-billed" id="pill-billed" onclick="tpill('billed',null,'Billed')">Billed</button>
+        <button class="ip-pill ip-backlog" id="pill-backlog" onclick="tpill('backlog','SC Billing|SP Billing|Bill Merge','Backlog')">Backlog</button>
+        <button class="ip-pill ip-backlog" id="pill-backlog-conf" onclick="tpill('backlog-conf',null,'Backlog (Confirmed)')">Backlog Confirmed</button>
+        <button class="ip-pill ip-ordered" id="pill-ordered" onclick="tpill('ordered',null,'Ordered')">SC Ordered</button>
+        <button class="ip-pill ip-ordered" id="pill-co-ready" onclick="tpill('co-ready','CO:READY','Ordered')">SC Carry (Bill Pending)</button>
+        <button class="ip-pill ip-ordered" id="pill-co-notready" onclick="tpill('co-notready','CO:NOT_READY','Ordered')">SC Carry (PM Pending)</button>
+        <button class="ip-pill ip-spf-ord" id="pill-spf-ord" onclick="tpill('spf-ord','RP:Stock In|RP:Wait Stock-In','SP Forward')">SP Ordered</button>
+        <button class="ip-pill ip-spf-proc" id="pill-spf-proc" onclick="tpill('spf-proc','RP:Processing','SP Forward')">SP Ordered Processing</button>
+        <button class="ip-pill ip-pend" id="pill-pend" onclick="tpill('pend',null,'Offer')">Prospect</button>
+        <button class="ip-pill ip-pend" id="pill-excluded" onclick="tpill('excluded',null,'Excluded')">Excluded</button>
+        <button class="ip-pill ip-pend" id="pill-data" onclick="tpill('data',null,'Data Issue')" style="display:none">Data Issue</button>
+        <div style="flex:1"></div>
+        <button onclick="openConfirmBilling()" id="btn-confirm-billing" style="display:none;font-size:11px;padding:3px 10px;border:1px solid #f59e0b;border-radius:5px;background:transparent;color:#fbbf24;cursor:pointer;font-family:inherit;white-space:nowrap">✅ Confirm Billing</button>
+      </div>
+
+      <!-- TABLE -->
+      <div class="tbl-area" id="tbl-area">
+        <table class="dtbl">
+          <thead>
+            <tr>
+              <th style="width:20px;padding:5px 3px;text-align:center">#</th>
+              <th style="width:30px;padding:5px 3px;text-align:center" onclick="srt('t')">Type</th>
+              <th style="width:52px;padding:5px 4px;text-align:center" onclick="srt('sa')">Sales</th>
+              <th style="width:70px;padding:5px 4px;text-align:center" onclick="srt('st')">Status</th>
+              <th style="width:70px;padding:5px 4px;text-align:center" onclick="srt('ip')">Internal Process</th>
+              <th style="width:76px;padding:5px 4px;text-align:center" onclick="srt('jobst')">สถานะงาน</th>
+              <th style="width:126px;padding:5px 4px" onclick="srt('cu')">ลูกค้า</th>
+              <th style="width:70px;padding:5px 4px;text-align:center" onclick="srt('br')">Brand</th>
+              <th style="width:106px;padding:5px 4px;text-align:left" onclick="srt('ml')">Model</th>
+              <th style="width:36px;padding:5px 3px;text-align:center" onclick="srt('tm')">ทีม</th>
+              <th style="width:88px;padding:5px 4px;text-align:left" onclick="srt('qn')">Quotation No.</th>
+              <th style="width:141px;padding:5px 4px;text-align:center;cursor:pointer" onclick="srt('delivery')">รอบบิล / ส่งมอบ</th>
+              <th style="width:74px;padding:5px 4px;text-align:right" onclick="srt('px')">In.VAT</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="empty" id="empty-msg" style="display: block;">ไม่พบข้อมูล</div>
+      </div>
+
+      <!-- STATUS BAR -->
+      <div class="statusbar" id="statusbar"><span style="font-weight:600">0 รายการ</span> <span style="color:var(--mu)">·</span> <span>In.VAT <b style="color:var(--ylw2);font-family:var(--mono)">฿0.00</b> <span style="color:var(--mu);padding:0 3px">|</span> Ex.VAT <b style="color:var(--ac2);font-family:var(--mono)">฿0.00</b></span><span style="flex:1"></span></div>
+    </div>
+
+    <!-- DETAIL MODAL -->
+    <div class="dp-overlay" id="dp-overlay" onclick="overlayClick(event)">
+      <div class="dp" id="dp">
+        <div class="dp-hd">
+          <span id="dp-type-badge" style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:4px;flex-shrink:0"></span>
+          <h3 id="dp-ttl">รายละเอียด</h3>
+          <button class="dp-x" onclick="closeDp()">✕</button>
+        </div>
+        <div class="dp-body" id="dp-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROSPECT DETAIL OVERLAY -->
+  <div id="pro-overlay" onclick="if(event.target===this)closeProDp()" style="position:fixed;inset:0;background:#00000090;z-index:350;display:none;align-items:flex-start;justify-content:center;padding:20px 12px;overflow-y:auto;">
+    <div class="dp" id="pro-dp">
+      <div class="dp-hd">
+        <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:4px;flex-shrink:0;background:#082f49;color:#7dd3fc">SC Prospect</span>
+        <h3 id="pro-dp-ttl">Prospect</h3>
+        <button class="dp-x" onclick="closeProDp()">✕</button>
+      </div>
+      <div class="dp-body" id="pro-dp-body"></div>
+    </div>
+  </div>
