@@ -8,12 +8,14 @@
 
 | | |
 |---|---|
-| **เวอร์ชันปัจจุบัน** | **V554.1** |
+| **เวอร์ชันปัจจุบัน** | **V558.0** |
 | **🆕 วิธีจัดการโค้ด** | **git + clasp** (`C:\bjh-dashboard`) — **เลิกใช้ bundle JSON แล้ว** |
 | **Bundle สุดท้าย** | `BJH_Sales_Dashboard_Tools__108_UPDATED.json` (V554.0) — **เก็บไว้อ้างอิงเท่านั้น ห้ามใช้ทำงานต่อ** |
 | **Base เริ่มต้น** | V479.75 (`__29_`) |
 | **เช็คเวอร์ชัน** | `_BUILD_VER` ใน `overrides.html` · หรือ badge `#ver-stamp` มุมซ้ายบน |
-| **ไฟล์ STATE** | `STATE_V555.md` — **ชื่อไฟล์มี version เสมอ** (เซฟทับตัวเก่าใน Project) |
+| **ไฟล์ STATE** | `STATE_V558.md` — **ชื่อไฟล์มี version เสมอ** |
+| **Deploy ปัจจุบัน** | **@851** (`clasp create-deployment -i AKfycbzO7...`) |
+| **GitHub** | `https://github.com/pongsakrak-pixel/BJH-Dashboard` (main) |
 
 > ⚠️ **เปลี่ยนวิธีทำงานตั้งแต่ 22 ก.ค. 2569** — ดูหัวข้อ **🚀 MIGRATION: git + clasp** ด้านล่าง
 > ไม่ต้องส่ง/รับ bundle JSON อีกแล้ว · ไม่ต้อง Ctrl+S ทีละไฟล์ · ย้อนกลับได้ด้วย git
@@ -255,6 +257,158 @@ a0b7e08  chore: add start.ps1 + .gitignore
 
 ---
 
+---
+
+# 📅 งานวันที่ 22 ก.ค. 2569 (รอบเย็น) — V555 → V558
+
+## V555.0 — ข้อความหน้า loading เป็นอังกฤษ
+
+แก้ **2 หน้า** ให้สอดคล้องกัน (เดิมไทยผสมอังกฤษ ดูเหมือน debug log)
+
+| ไฟล์ | overlay |
+|---|---|
+| `body_app_top.html` | Boot — ตอนเปิดหน้าครั้งแรก (6 ขั้น) |
+| `script_main.html` | FULL RELOAD — ตอนกด Update (7 ขั้น) |
+
+ข้อความใหม่: `System configuration` · `Master data · Install base and contracts` · `Transactions · Bills and quotations` · `Processing records` · `Actual FAD by representative` · `Forecast pipeline` · `Building your dashboard` · `Preparing your workspace…` · `Loading · ` · `Ready ✓`
+
+**ไม่แตะ** error message (ยังเป็นไทย เพราะเวลาพังต้องอ่านเข้าใจทันที) · console log
+
+## V556.0 → V557.1 — ✓ ไล่ลงตามลำดับ ไม่เด้งข้าม
+
+**ปัญหา:** บางขั้นรัน**ขนาน** (V482) → `actual`/`lowfc` เสร็จก่อน `master`/`tx`
+→ ติ๊ก ✓ ที่ข้อ 1, 5, 6 ทั้งที่ 2-4 ยังว่าง = ดูสับสน
+
+**V556.0** ลองซ่อนขั้นที่ยังไม่ถึง → **ผู้ใช้ไม่ชอบ** (อยากเห็นว่าต้องผ่านอะไรบ้าง)
+
+**V557.0 = ทางออกที่ใช้จริง** — แสดงครบทุกขั้นเสมอ แต่ติ๊กไล่จากบนลงล่าง:
+```js
+var ok      = i < doneCount;          // ติ๊กตามจำนวนที่เสร็จ ไม่ใช่ตามคีย์
+var active  = (i === doneCount);      // ขั้นที่กำลังทำ
+var opacity = ok ? '1' : (active ? '1' : '0.45');
+```
+- ✓ เขียว `#7ee2b8` · active `#93a4c0` (สว่างกว่า) · รอ `#5a6478` opacity 0.45
+- transition `opacity 0.35s, color 0.35s`
+
+> ⚠️ ชื่อขั้นที่ติ๊กอาจไม่ตรงกับที่เสร็จจริง — **ตั้งใจ** ผู้ใช้ไม่รู้และไม่สนใจ เห็นแค่ว่าคืบหน้า
+
+**V557.1** ลบ `margin-bottom` ที่ V556 ใส่ไว้ — ซ้ำกับ `gap:9px/10px` ของกล่อง ทำให้ห่างเกิน
+
+---
+
+# ⚡ PERFORMANCE — 29s → 14.1s (เร็วขึ้น 52%)
+
+## ขั้นที่ 1: ตั้ง `BJH_EXEC_URL` (V488 ค้างมานาน) → 18.5s
+
+รัน `bjhSetExecUrl()` ใน **GAS editor** (clasp รันฟังก์ชันไม่ได้)
+ยืนยันจาก console: **`[C14] HTTP FAST PATH (ยิงตรง ไม่ probe)`** ✅
+
+## ขั้นที่ 2: V558.0 ข้าม auto-migrate → 14.1s
+
+**Root cause:** `_getConfig_()` เรียก 3 ฟังก์ชัน migrate **ทุกครั้งที่โหลด** ทั้งที่เป็นงานย้ายข้อมูลครั้งเดียวที่ทำเสร็จนานแล้ว — แต่ละตัวอ่าน `getDataRange().getValues()` หลาย Sheet
+→ นี่คือเหตุผลที่ `config` กิน **14.6s** และเวลาแกว่ง 5.7 ↔ 19.4s
+
+**Fix (`Code.js` ~บรรทัด 731):**
+```js
+var _mgP = PropertiesService.getScriptProperties();
+if (!_mgP.getProperty('BJH_MIG_DONE')) {
+  try { _ckvAutoMigrate(ss); } catch(e){}
+  try { _logAutoMigrate(ss); } catch(e){}
+  try { _qnoAutoMigrate(ss); } catch(e){}
+  try {
+    var _lg=['fcsp','fcfad','display_config','hm_stage','status_group','tab_permissions',
+             'access_log','activity_log','unassigned_overrides','brand_overrides'];
+    var _left=0; for (var _z=0;_z<_lg.length;_z++){ if (ss.getSheetByName(_lg[_z])) _left++; }
+    if (_left===0) _mgP.setProperty('BJH_MIG_DONE','1');
+  } catch(e){}
+}
+```
+
+> 🔑 **ธงตั้งเฉพาะเมื่อ legacy sheet ทั้ง 10 ตัวหายหมด** — ถ้ายังมีเหลือ = รันปกติทุกครั้งเหมือนเดิม ปลอดภัย
+> 🔙 **ย้อนกลับ:** ลบ Script Property **`BJH_MIG_DONE`** ใน GAS (หรือ `git revert`)
+
+## ผลวัดจริง
+
+| | ก่อน | หลัง EXEC_URL | หลัง V558 |
+|---|---|---|---|
+| **รวม** | 29s | 18.5s | **14.1s** |
+| sheets | — | 7.3s | **4.7s** |
+| master | — | 1.0s | 0.8s |
+| tx | — | 2.2s | 1.8s |
+| etl | — | 4.6s | 3.9s |
+| render | — | 0.2s | 0.1s |
+
+ตรวจแล้ว: `config keys: 31` · `Actual FAD preloaded: 5 sales` · `[SLIM GUARD] ครบทุกตัว` — ข้อมูลไม่หาย ✅
+
+**ยังลดได้อีก:** `sheets 4.7s` + `etl 3.9s` = 8.6s จาก 14.1s
+
+---
+
+# ✅ DECISION (สรุปแล้ว อย่ารื้อซ้ำ)
+
+## ❌ ไม่เปิด cache กลับ
+`V479.59` ปิดไว้**ถูกแล้ว** — เปิดแล้วแต่ละคนเห็นข้อมูลไม่ตรงกัน อันตรายกว่าช้า **ปิดถาวร**
+
+## ❌ `NOTE_LOG` ตัดไม่ได้ — ตรวจแล้วมีใช้จริง 4 จุด
+
+| ที่ใช้ | ทำอะไร | ถ้าตัด |
+|---|---|---|
+| `DailySales` | `parseLastNote()` | คอลัมน์โน้ตว่าง |
+| `SalesProspect` | `_fcParseYearsFromFields()` หา "X ปี" | **จำนวนปีผิด → เงินผิด** |
+| `SalesProspect` | `_fcParseTimesPerYear()` หา "X ครั้ง" | ครั้ง/ปีผิด |
+| `SalesProspect` | ค้น SN (`snHayC`) | ค้นซีเรียลไม่เจอ |
+| `script_main` | popup ประวัติโน้ต | ประวัติหาย |
+
+**และโค้ดบีบให้แล้ว** — `o.NOTE_LOG.slice(-1)` เก็บโน้ตล่าสุดอันเดียว = 96% ที่ตั้งใจประหยัด **ทำไปแล้ว ไม่ต้องทำอะไรเพิ่ม**
+
+## ✅ ไม่ต้องเช็ค V535–V554
+ทีมใช้มาแล้วไม่มีใครแจ้งปัญหา = ถือว่าปกติ
+
+## ✅ `low` / `edits` ใน `getBootBundle` ตัดไม่ได้
+เคยคิดจะตัดเพราะ log บอก "ตัด getLowProspects ที่ซ้ำ" แต่ตรวจแล้ว:
+- `confirm_billing.html:433` ใช้ `window._bootBundle.edits`
+- `script_main.html:10576` ใช้ `B.low`
+
+---
+
+# 🔐 GITHUB (ตั้งใหม่ 22 ก.ค. 2569)
+
+```
+https://github.com/pongsakrak-pixel/BJH-Dashboard   (branch: main)
+```
+
+- remote ตั้งแล้ว · push ครั้งแรกสำเร็จ (90 objects)
+- **ตรวจความปลอดภัยก่อน public แล้ว:** `SMARTFLOW_USER` / `SMARTFLOW_PWD` อ่านจาก **Script Properties** ไม่มีรหัสฝังในไฟล์ · token ดึงสดทุกครั้ง cache 23 ชม. ✅
+- ⚠️ **อย่าลืม `git push` ท้ายทุกครั้งที่ deploy** ไม่งั้น GitHub ล้าหลัง
+
+---
+
+# 🛠 เครื่องมือที่เพิ่มเข้ามา
+
+| ไฟล์ | ทำอะไร |
+|---|---|
+| `start.ps1` | เซ็ต PATH + โชว์เวอร์ชัน + **guard เตือนถ้า Claude Code ไม่ใช่ 1.0.100** |
+| `helper.ps1` | ฟังก์ชัน **`err`** — ก็อป output ล่าสุดเข้า clipboard (พิมพ์ `err` แล้ว Ctrl+V ในแชท) |
+| `.gitignore` | กัน `.clasp.json` · `node_modules` · bundle เก่า |
+| **Desktop shortcut** | `BJH Dashboard.lnk` — ดับเบิลคลิกเปิดห้องทำงานพร้อมใช้ |
+
+## ⚠️ Claude Code เด้งกลับเป็น 2.x ได้เอง
+เจอ 2 ครั้งใน 1 วัน (npm ทับตอนลง package อื่น) → **Bun crash ทันที** (Trend Micro)
+**แก้:** `npm i -g @anthropic-ai/claude-code@1.0.100`
+`start.ps1` เตือนให้แล้ว — แต่ต้องเปิด shortcut ใหม่ถึงจะเห็น
+
+## ⚠️ Claude Code เขียนไฟล์ภาษาไทยเพี้ยน
+ลองให้เขียน STATE เอง → ได้ `�ปเดต�า�ด` ทั้งไฟล์ + ลบตัวเก่าทิ้ง (2,825 → 167 บรรทัด)
+**`git revert` กู้คืนได้** → **อย่าให้ Claude Code เขียนไฟล์ที่มีภาษาไทยเยอะ**
+
+## 🐛 บทเรียนการแพตช์
+- **anchor ต้องมาจากไฟล์จริงในเครื่อง ไม่ใช่ bundle เก่า** — V557 พลาดรอบแรกเพราะเยื้อง/ช่องว่างต่างกัน
+- แก้แล้วด้วย **regex ยืดหยุ่น** `[\s\S]*?` แทนการเทียบตรงตัว
+- คำสั่งยาวหลายบรรทัดใน PowerShell **ขาดกลางคันตอน copy** → ใช้ **บรรทัดเดียว + base64** แทน
+- `err` ต้องมี `Start-Sleep 2` ก่อน ไม่งั้นก็อปไม่ทัน output
+
+---
+
 # 🚦 กติกาการทำงาน (อ่านก่อนทุกครั้ง — ห้ามข้าม)
 
 ## 1. Workflow **แบบ B** (ผ่อนตามขนาดงาน — ตกลงกัน 22 ก.ค. 2569)
@@ -291,8 +445,17 @@ a0b7e08  chore: add start.ps1 + .gitignore
 ## 4. Deploy
 | แก้อะไร | คำสั่ง |
 |---|---|
-| HTML อย่างเดียว | `clasp push` |
-| `Code.js` / `Index.html` | `clasp push` **แล้ว** `clasp create-deployment` |
+| HTML อย่างเดียว | `clasp push` **แล้ว** `clasp create-deployment -i <ID>` |
+| `Code.js` / `Index.html` | เหมือนกัน (จำเป็นเสมอ) |
+
+> ⚠️ **`clasp push` อย่างเดียวไม่พอ** — `/exec` เสิร์ฟจาก deployment ที่ pin ไว้ ต้อง `create-deployment -i` ทับตัวเดิม ไม่งั้น URL เปลี่ยน ทีมเข้าไม่ได้
+
+**คำสั่ง deploy เต็ม:**
+```powershell
+clasp push
+clasp create-deployment -i AKfycbzO7LW1DPUOzosAxpZsJPvX8PoW4eJ8rDHuZI-GXwHpT9yXDERnrEdPVvdOoffQLVF-kw -d "V5NN.0 ..."
+git add -A; git commit -m "V5NN.0: ..."; git push
+```
 
 **เตือน user เสมอ:**
 - แก้ `Code.js` → ไม่ทำ `create-deployment` = ของเก่ายังทำงานอยู่
