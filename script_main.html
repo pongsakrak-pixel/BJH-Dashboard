@@ -10296,21 +10296,20 @@ function showSaveBtn(){
       var box = document.getElementById('fr-steps');
       if(box){
         var doneCount = STEPS.filter(function(s){ return _done[s.key]; }).length;
-        var nextIdx = doneCount; // ขั้นถัดไปที่กำลังโหลด
-        
-        box.innerHTML = STEPS.map(function(s, i){
-          var ok = !!_done[s.key];
-          // แสดงเฉพาะขั้นที่เสร็จแล้ว + ขั้นถัดไปอีก 1 อัน
-          var shouldShow = i <= nextIdx;
-          var opacity = shouldShow ? '1' : '0';
-          var maxH = shouldShow ? '24px' : '0';
-          var minH = shouldShow ? '24px' : '0';
-          var marginB = shouldShow ? '10px' : '0';
+
+          box.innerHTML = STEPS.map(function(s, i){
+            // [V557] show all steps; tick sequentially top-down
+            var ok      = i < doneCount;
+            var active  = (i === doneCount);
+            var opacity = ok ? '1' : (active ? '1' : '0.45');
+            var maxH = '24px';
+            var minH = '24px';
+            var marginB = '10px';
           return '<div style="display:flex;align-items:center;gap:10px;font-size:12.5px;'
-            + (ok ? 'color:#7ee2b8' : 'color:#5a6478') + ';font-weight:' + (ok?'700':'500') + ';'
+            + (ok ? 'color:#7ee2b8' : (active ? 'color:#93a4c0' : 'color:#5a6478')) + ';font-weight:' + (ok?'700':(active?'600':'500')) + ';'
             + 'opacity:' + opacity + ';max-height:' + maxH + ';min-height:' + minH + ';overflow:hidden;'
             + 'margin-bottom:' + marginB + ';'
-            + 'transition:opacity 0.3s ease,max-height 0.3s ease,min-height 0.3s ease,margin-bottom 0.3s ease">'
+            + 'transition:opacity 0.35s ease,color 0.35s ease">'
             + '<span style="width:16px;flex-shrink:0;text-align:center">' + (ok ? '✓' : '○') + '</span>'
             + '<span>' + s.label + '</span></div>';
         }).join('');
