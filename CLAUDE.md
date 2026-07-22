@@ -1,4 +1,4 @@
-﻿# BJH Sales Dashboard — CLAUDE.md
+# BJH Sales Dashboard — CLAUDE.md
 
 Google Apps Script (HtmlService) web app สำหรับทีมขาย/บริการเครื่องมือแพทย์ (ไทย)
 ติดตามรายได้ SC (Service Contract) / SP (Spare Parts), billing, forecast, install base, quotation, contract pipeline
@@ -72,6 +72,9 @@ V555.0: <สิ่งที่ทำสั้นๆ>
 - **`#boot-loading` มี `z-index:2147483647`** → Mobile UI ต้องสูงกว่า
 - **`background-clip:text` ทำ emoji เป็นก้อนดำ** → หุ้ม emoji ด้วย `.hb-ico` + `-webkit-text-fill-color:initial`
 - **cache key** bump เฉพาะตอน format ของ cache เปลี่ยน ไม่ใช่ตอน transform เปลี่ยน
+- **ห้ามใช้ `Set-Content -Encoding UTF8`** แก้ไฟล์โปรเจกต์ -> เติม BOM ที่หัวไฟล์
+  ใช้ `[IO.File]::WriteAllText($p, $t, (New-Object Text.UTF8Encoding($false)))` แทน
+  ตรวจด้วย `git diff` เสมอ - ถ้าเห็นบรรทัดแรกเปลี่ยนทั้งที่ไม่ได้แก้ = BOM
 - **Thai string ใน heredoc พัง** → ใช้ Python patch script เขียนไฟล์
 - **แก้ไฟล์: `assert src.count(anchor)==1` ก่อน `replace()`** ห้ามใช้ regex
 
