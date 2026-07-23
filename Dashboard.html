@@ -76,6 +76,14 @@
     .flow-formula{font-size:9px;color:var(--mu);font-style:italic;margin-bottom:3px}
     .flow-subname{font-size:8px;color:var(--mu);margin-bottom:3px;margin-top:-1px}
     .flow-card .flow-ico,.flow-card .flow-name,.flow-card .flow-subname{flex:0 0 auto}  /* [V572] */
+    /* [V579] ตัวเลขทุกการ์ดอยู่ระดับเดียวกัน — เดิมเฉพาะ SC/SP Ordered มี subname
+       ("Ordered + Carry") ทำให้ 2 ใบนั้นดันตัวเลขลงต่ำกว่าเพื่อน
+       วิธี: จองที่ subname ไว้ทุกใบด้วย ::after (ไม่ใช้ :has() เพราะเบราว์เซอร์เก่าไม่รองรับ) */
+    .flow-card .flow-name{min-height:13px}
+    .flow-card .flow-subname{min-height:11px;line-height:11px}
+    .flow-card .flow-name::after{content:'';display:block;height:11px;margin-bottom:3px}
+    .flow-card .flow-subname ~ .flow-val{margin-top:auto}
+    .flow-card .flow-subname{margin-top:-14px}
     .flow-sumcard{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:120px}
     /* [v231] ลดความสูงแถวล่าง Pipeline (min-height 120->90 + padding-bottom 28->14) */
     .flow-botrow .flow-card{min-height:90px;padding-bottom:14px}

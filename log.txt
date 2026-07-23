@@ -1,6 +1,6 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260723234300
+Start time: 20260724000731
 Username: BERLI\PongsakR
 RunAs User: BERLI\PongsakR
 Configuration Name: 
