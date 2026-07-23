@@ -7340,7 +7340,7 @@ function exportExcel(){
     'Sale Name','SC/SP Type','Product Group',
     'Customer Name','Major Brand','Model / Part Name',
     'SR Ref.','Contract / PO No.','QN',
-    'เลขบิล','วันที่บิล','ประเภทสัญญา',
+    'เลขบิล','วันที่บิล','ประเภทสัญญา','New/Renew',
     'Status','Internal Process',
     'รอบบิล / ส่งมอบ','ปีบิล',
     'ราคา In.VAT','ราคา Ex.VAT'
@@ -7357,6 +7357,19 @@ function exportExcel(){
       var d=new Date(str);
       if(!isNaN(d)) return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       return str.slice(0,10);
+    }catch(e){ return ''; }
+  }
+  // [V577] New/Renew — ใช้ _proMap (เหมือน Dashboard) แล้ว fallback ไปดูชื่อประเภทสัญญา
+  function _xlNewRenew(r){
+    try{
+      var qn = String(r.qn||'').trim();
+      var pro = (window._proMap||{})[qn];
+      if(pro && typeof pro.isNew === 'boolean') return pro.isNew ? 'New' : 'Renew';
+      var u = String(r.ctn||r.ct||'').toUpperCase().trim();
+      if(!u) return '';
+      if(u.indexOf('RENEW') >= 0) return 'Renew';
+      if(u.indexOf('NEW') >= 0)  return 'New';
+      return '';
     }catch(e){ return ''; }
   }
   var rows=[cols];
@@ -7386,6 +7399,7 @@ function exportExcel(){
       r.bn||'',                 // [V519] เลขบิล (BILL_NUMBER) — ว่างถ้ายังไม่เปิดบิล
       _xlBillDate(r.bd),        // [V519] วันที่บิล (BILL_PRINT_DATE)
       r.ctn||'',                // [V519] ประเภทสัญญา (CONTRACT_TYPE_NAME/CONTRACT_NAME)
+      _xlNewRenew(r),           // [V577] New / Renew
       r.st||'',
       r.ip||'',
       billRound,
