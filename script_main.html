@@ -760,7 +760,7 @@ function cfgTab(t){
   }catch(e){ console.warn('areaovr init:',e); } }
   if(t==='cttrack'){ try{ ctPopulateStatusLists(); }catch(e){} }
   if(t==='track'){ try{ trkPopulate(); }catch(e){} }
-  ['upload','fad','spfix','fcfad','budget','sabud','export','users','hmstage','sgroup','tabperm','stats','apicfg','pending','qfchips','dataquery','email','cttrack','track','provrep','bkksales','armon','hospgrp','areaovr','ctype','mblinks','mbusers'].forEach(function(n){
+  ['upload','fad','spfix','fcfad','budget','sabud','export','users','hmstage','sgroup','tabperm','stats','apicfg','pending','qfchips','dataquery','email','cttrack','track','provrep','bkksales','armon','hospgrp','areaovr','ctype','pstatus','mblinks','mbusers'].forEach(function(n){
     var pane=document.getElementById('cfg-pane-'+n);
     if(pane){ pane.style.display=n===t?'flex':'none'; if(n===t){ pane.style.flexDirection='column'; pane.style.flex='1'; } }
     var b=document.getElementById('cfg-tab-'+n);
