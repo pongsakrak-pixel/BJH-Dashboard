@@ -19,11 +19,12 @@
     .budget-card{display:flex;align-items:center;gap:16px;padding:16px 18px;background:linear-gradient(90deg,#0c1e3d 0%,var(--sur2) 60%);border:1px solid #2563eb;border-radius:9px;border-left:5px solid #3b82f6;box-shadow:0 0 22px rgba(59,130,246,.13)}  /* [V571] */
     .budget-ico{font-size:34px}  /* [V571] */
     .budget-content{flex:1}
-    .budget-lbl{font-size:11px;color:#93c5fd;font-weight:700;letter-spacing:0.9px;margin-bottom:2px}  /* [V571] */
+    .budget-lbl{font-size:14px;color:#93c5fd;font-weight:700;letter-spacing:0.8px;margin-bottom:2px}  /* [V572] 11->14 */
     .budget-val{font-size:42px;font-weight:800;font-family:var(--mono);color:#93c5fd;line-height:1;letter-spacing:-1px;white-space:nowrap;text-shadow:0 0 18px rgba(96,165,250,.45)}  /* [V571] */
 
     .flow-2groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-    .flow-group{padding:10px;background:#0a1322;border:1px solid var(--bd);border-radius:8px}
+    .flow-group{padding:10px;background:#0a1322;border:1px solid var(--bd);border-radius:8px;display:flex;flex-direction:column}  /* [V572] */
+    .flow-group>.flow-row{flex:1}  /* [V572] แถวการ์ดยืดเต็มความสูงกลุ่ม */
     .flow-group.group-a{border-top:2px solid #22c55e}
     .flow-group.group-b{border-top:2px solid #f472b6}
     .flow-group.group-ord{border-top:2px solid #fbbf24}
@@ -34,7 +35,8 @@
     .flow-group-sum{font-family:var(--mono);font-weight:800;font-size:15px;color:#f1f5f9;letter-spacing:-.3px;white-space:nowrap}  /* [V571] 11->15 */
     .flow-row{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:stretch}
 
-    .flow-card{padding:10px 8px 28px;background:var(--sur2);border-radius:6px;border:1px solid var(--bd2);text-align:center;position:relative;overflow:hidden;min-height:120px}
+    .flow-card{padding:10px 8px 28px;background:var(--sur2);border-radius:6px;border:1px solid var(--bd2);text-align:center;position:relative;overflow:hidden;min-height:120px;display:flex;flex-direction:column}  /* [V572] flex -> ตัวเลขเรียงระดับเดียวกัน */
+    .flow-card .flow-val{margin-top:auto;margin-bottom:auto}  /* [V572] ดันตัวเลขไปกลางพื้นที่ว่าง */
     .flow-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
     .flow-card.actual::before{background:#22c55e}
     .flow-card.ordered::before{background:#fbbf24}
@@ -53,6 +55,7 @@
     .flow-name{font-size:10px;font-weight:700;color:var(--mu2);letter-spacing:0.3px;margin-bottom:3px;text-transform:uppercase}
     .flow-formula{font-size:9px;color:var(--mu);font-style:italic;margin-bottom:3px}
     .flow-subname{font-size:8px;color:var(--mu);margin-bottom:3px;margin-top:-1px}
+    .flow-card .flow-ico,.flow-card .flow-name,.flow-card .flow-subname{flex:0 0 auto}  /* [V572] */
     .flow-sumcard{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:120px}
     /* [v231] ลดความสูงแถวล่าง Pipeline (min-height 120->90 + padding-bottom 28->14) */
     .flow-botrow .flow-card{min-height:90px;padding-bottom:14px}
@@ -359,7 +362,7 @@
       </div>
 
       <div class="flow-2rows">
-        <div class="flow-toprow" style="display:grid;grid-template-columns:1.35fr 1fr 0.85fr;gap:10px;margin-bottom:8px">
+        <div class="flow-toprow" style="display:grid;grid-template-columns:1.35fr 1fr 0.85fr;gap:10px;margin-bottom:8px;align-items:stretch"><!-- [V572] -->
           <div class="flow-group group-a">
             <div class="flow-group-title"><span>🔒 CONFIRMED</span><span class="flow-group-sum" id="db-conf-sum">฿0 (0%)</span></div>
             <div class="flow-row" style="grid-template-columns:1fr 1fr 1fr;gap:6px">
