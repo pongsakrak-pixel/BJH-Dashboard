@@ -99,8 +99,15 @@ function openConfirmBilling() {
   var ipEl = document.getElementById('cb-filter-ip');
   if (ipEl) {
     var ipSet = {};
+    // [V567] เอาเฉพาะ IP ที่มีจริงใน 7 สถานะที่ยืนยันได้ + เคารพสิทธิ์ sales
+    //   (เดิมโชว์ SC Billed/SP Billed/Bill Merge ที่เลือกแล้วได้ 0 รายการ)
+    var _myN = '';
+    try{ _myN = (typeof _currentUser!=='undefined' && _currentUser) ? (_currentUser.name||'') : ''; }catch(e){}
+    var _isSa = false;
+    try{ _isSa = (typeof isSales==='function') && isSales(); }catch(e){}
     (typeof D !== 'undefined' ? D : []).forEach(function(r){
-      if(r.st === 'Excluded' || r.st === 'Data Issue' || !r.st) return;
+      if(!r.st || !(window._CB_ALLOW_ST||{})[r.st]) return;
+      if(_isSa && r.sa !== _myN) return;
       if(r.ip && String(r.ip).trim()) ipSet[String(r.ip).trim()] = 1;
     });
     var ipList = Object.keys(ipSet).sort();
