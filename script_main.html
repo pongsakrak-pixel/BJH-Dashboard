@@ -707,9 +707,6 @@ function cfgTab(t){
   if(t==='provrep'){ try{ prPopulate(); }catch(e){} }
   if(t==='bkksales'){ try{ bksPopulate(); }catch(e){} }   // [V524]
   if(t==='mbusers'){ try{ mbuInit(); }catch(e){} }        // [V535]
-  // [C10] Sales Areas — กด tab แล้วเด้ง overlay เดิมทันที (z-index 99999 ทับ Config ได้)
-  if(t==='hospgrp'){ try{ if(window.saOpenHospGroup) window.saOpenHospGroup(); }catch(e){ console.warn('saOpenHospGroup:',e); } }
-  if(t==='areaovr'){ try{ if(window.saOpenAreaOverride) window.saOpenAreaOverride(); }catch(e){ console.warn('saOpenAreaOverride:',e); } }
   if(t==='ctype'){   try{ if(window.cfgCtypeInit) window.cfgCtypeInit(); }catch(e){} }   // [C17]
   if(t==='armon'){ try{ cfgArmonInit(); }catch(e){} }
   if(t==='mblinks'){ try{ cfgMblInit(); }catch(e){} }   // [V506]
