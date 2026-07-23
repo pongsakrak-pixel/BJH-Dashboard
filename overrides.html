@@ -1695,7 +1695,7 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V564.0';
+    var _BUILD_VER='V564.1';
     var _BUILD_TIME='21 ก.ค. 2569 (V554 Mobile 5 เมนู + auto load)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
@@ -2634,13 +2634,18 @@ window._bjhCdDebug = function(){
   };
 })();
 
-/* [V564] รวม Summary(By Team/By Sales) + Sales(All/ชื่อ) เป็น dropdown เดียว #f-view
+/* [V564.1] รวม Summary(By Team/By Sales) + Sales(All/ชื่อ) เป็น dropdown เดียว #f-view
    byteam  -> _sumBySales=false · f-sales=''
    bysales -> _sumBySales=true  · f-sales=''
-   <ชื่อ>  -> _sumBySales=true  · f-sales=<ชื่อ>   (กรองเฉพาะคนนั้น) */
+   <ชื่อ>  -> _sumBySales=true  · f-sales=<ชื่อ>
+   สิทธิ์: role sales -> เห็นเฉพาะชื่อตัวเอง · เลือกอย่างอื่นไม่ได้ (disabled + บังคับค่า) */
 (function(){
+  function _lock(){ try{ return window._SALES_LOCK || ''; }catch(e){ return ''; } }
+
   window._fViewChange = function(v){
     try{
+      var L = _lock();
+      if(L) v = L;                                  /* sales: บังคับเป็นชื่อตัวเองเสมอ */
       var sm = document.getElementById('f-sum-mode');
       var fs = document.getElementById('f-sales');
       var byTeam = (v === 'byteam');
@@ -2648,47 +2653,78 @@ window._bjhCdDebug = function(){
       window._sumBySales = !byTeam;
       if(sm){ sm.value = byTeam ? 'byteam' : 'bysales'; }
       if(fs){ fs.value = name; }
+      var fv = document.getElementById('f-view');
+      if(fv && fv.value !== v) fv.value = v;
       try{ af(); }catch(e){}
       try{ buildSummary(); }catch(e){}
     }catch(e){ console.warn('_fViewChange:',e); }
   };
-  /* เติมรายชื่อ sales เข้า #f-view ตาม #f-sales (ที่ระบบเดิม populate ไว้) */
+
+  /* เติมรายชื่อเข้า #f-view ตาม #f-sales ที่ระบบเดิม populate ไว้ */
   window._fViewSync = function(){
     try{
       var fv = document.getElementById('f-view'), fs = document.getElementById('f-sales');
       if(!fv || !fs) return;
+      var L = _lock();
       var cur = fv.value;
       var names = [];
       for(var i=0;i<fs.options.length;i++){
         var o = fs.options[i];
         if(o.value) names.push({v:o.value, t:o.textContent});
       }
-      var sig = names.map(function(n){return n.v;}).join('|');
+      var sig = L + '::' + names.map(function(n){return n.v;}).join('|');
       if(fv._bjhSig === sig) return;
       fv._bjhSig = sig;
+
+      if(L){
+        /* role sales: มีตัวเลือกเดียว = ชื่อตัวเอง */
+        fv.innerHTML = '<option value="'+String(L).replace(/"/g,'&quot;')+'">'+String(L).replace(/</g,'&lt;')+'</option>';
+        fv.value = L; fv.disabled = true;
+        var fs2 = document.getElementById('f-sales');
+        if(fs2){ fs2.value = L; fs2.disabled = true; }
+        window._sumBySales = true;
+        var sm2 = document.getElementById('f-sum-mode'); if(sm2) sm2.value='bysales';
+        return;
+      }
+
+      fv.disabled = false;
       var h = '<option value="byteam">By Team</option><option value="bysales">By Sales</option>';
       if(names.length){
-        h += '<optgroup label="\u2014 รายคน \u2014">';
+        h += '<optgroup label="\u2014 \u0e23\u0e32\u0e22\u0e04\u0e19 \u2014">';
         names.forEach(function(n){
           h += '<option value="'+String(n.v).replace(/"/g,'&quot;')+'">'+String(n.t).replace(/</g,'&lt;')+'</option>';
         });
         h += '</optgroup>';
       }
       fv.innerHTML = h;
-      /* คืนค่าที่เลือกไว้ ถ้ายังมีอยู่ */
       var ok=false;
       for(var j=0;j<fv.options.length;j++){ if(fv.options[j].value===cur){ ok=true; break; } }
       fv.value = ok ? cur : 'byteam';
-      /* sales role: ล็อกเป็นชื่อตัวเอง */
-      if(window._SALES_LOCK){
-        fv.value = window._SALES_LOCK;
-        fv.disabled = true;
-      }
     }catch(e){}
   };
-  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 1500);
-  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 4000);
-  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 9000);
+
+  /* sync ทันทีหลัง populateSales จริง (เดิมใช้ setTimeout เดา -> รายชื่อไม่ขึ้น) */
+  (function(){
+    var _try = 0;
+    var iv = setInterval(function(){
+      _try++;
+      if(typeof window.populateSales === 'function' && !window.populateSales._bjhWrapped){
+        var _orig = window.populateSales;
+        window.populateSales = function(){
+          var r = _orig.apply(this, arguments);
+          try{ window._fViewSync(); }catch(e){}
+          return r;
+        };
+        window.populateSales._bjhWrapped = true;
+        clearInterval(iv);
+      }
+      if(_try > 60) clearInterval(iv);
+    }, 500);
+  })();
+
+  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 3000);
+  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 12000);
+  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 30000);
 })();
 
 </script>

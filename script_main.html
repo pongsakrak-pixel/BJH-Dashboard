@@ -3573,6 +3573,7 @@ function af(){
   } catch(e){ console.warn('ETA flags compute:', e); }
   bindSearchBox();
   var fSales=document.getElementById('f-sales').value;
+  try{ if(window._SALES_LOCK) fSales = window._SALES_LOCK; }catch(e){}   // [V564.1] sales role: บังคับกรองเฉพาะตัวเอง
   var fMo=typeof _fMoSel!=='undefined'&&_fMoSel.length?_fMoSel:(document.getElementById('f-mo')?[parseInt(document.getElementById('f-mo').value||'0')].filter(Boolean):[]);
   var fYr=document.getElementById('f-yr').value;
   var fSt=_fStSel.length?_fStSel:null;
