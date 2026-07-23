@@ -56,7 +56,10 @@
     .flow-row{display:grid;grid-template-columns:1fr 14px 1fr;gap:6px;align-items:stretch}
 
     .flow-card{padding:10px 8px 28px;background:var(--sur2);border-radius:6px;border:1px solid var(--bd2);text-align:center;position:relative;overflow:hidden;min-height:120px;display:flex;flex-direction:column}  /* [V572] flex -> ตัวเลขเรียงระดับเดียวกัน */
-    .flow-card .flow-val{margin-top:auto;margin-bottom:auto}  /* [V572] ดันตัวเลขไปกลางพื้นที่ว่าง */
+    /* [V581] เลิกใช้ margin:auto — พื้นที่ว่างแต่ละใบไม่เท่ากัน (ใบแรกมี "Billed (...)" เกิน)
+       ยึดตัวเลขจากด้านบนแทน: ไอคอน+ชื่อสูงเท่ากันทุกใบ -> ตัวเลขอยู่ระดับเดียวกันเสมอ */
+    .flow-card .flow-val{margin-top:2px;margin-bottom:0}
+    .flow-card .flow-ico{min-height:18px;line-height:18px}
     .flow-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
     .flow-card.actual::before{background:#22c55e}
     .flow-card.ordered::before{background:#fbbf24}
