@@ -744,6 +744,7 @@ function cfgTab(t){
   if(t==='bkksales'){ try{ bksPopulate(); }catch(e){} }   // [V524]
   if(t==='mbusers'){ try{ mbuInit(); }catch(e){} }        // [V535]
   if(t==='ctype'){   try{ if(window.cfgCtypeInit) window.cfgCtypeInit(); }catch(e){} }   // [C17]
+  if(t==='pstatus'){ try{ if(window.cfgPsInit) window.cfgPsInit(); }catch(e){ console.warn('pstatus init:',e); } }   // [V562]
   if(t==='armon'){ try{ cfgArmonInit(); }catch(e){} }
   if(t==='mblinks'){ try{ cfgMblInit(); }catch(e){} }   // [V506]
   //  [V545] 2 tab นี้ย้ายมาแสดงในหน้า -> ต้อง init ตอนเปิด tab (เดิม popup init เอง)
