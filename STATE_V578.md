@@ -1,6 +1,6 @@
 # BJH Sales Dashboard — STATE
 
-> อัปเดตล่าสุด: **22 ก.ค. 2569**
+> อัปเดตล่าสุด: **23 ก.ค. 2569 (รอบเย็น)**
 
 ---
 
@@ -8,17 +8,51 @@
 
 | | |
 |---|---|
-| **เวอร์ชันปัจจุบัน** | **V559.0** |
+| **เวอร์ชันปัจจุบัน** | **V577.1** (V578.0 ทำแล้ว รอ deploy) |
 | **🆕 วิธีจัดการโค้ด** | **git + clasp** (`C:\bjh-dashboard`) — **เลิกใช้ bundle JSON แล้ว** |
 | **Bundle สุดท้าย** | `BJH_Sales_Dashboard_Tools__108_UPDATED.json` (V554.0) — **เก็บไว้อ้างอิงเท่านั้น ห้ามใช้ทำงานต่อ** |
 | **Base เริ่มต้น** | V479.75 (`__29_`) |
 | **เช็คเวอร์ชัน** | `_BUILD_VER` ใน `overrides.html` · หรือ badge `#ver-stamp` มุมซ้ายบน |
-| **ไฟล์ STATE** | `STATE_V559.md` — **ชื่อไฟล์มี version เสมอ** |
+| **ไฟล์ STATE** | `STATE_V578.md` — **ชื่อไฟล์มี version เสมอ** |
 | **Deploy ปัจจุบัน** | **@852** (`clasp create-deployment -i AKfycbzO7...`) |
 | **GitHub** | `https://github.com/pongsakrak-pixel/BJH-Dashboard` (main) — **Public แล้ว** |
 
 > ⚠️ **เปลี่ยนวิธีทำงานตั้งแต่ 22 ก.ค. 2569** — ดูหัวข้อ **🚀 MIGRATION: git + clasp** ด้านล่าง
 > ไม่ต้องส่ง/รับ bundle JSON อีกแล้ว · ไม่ต้อง Ctrl+S ทีละไฟล์ · ย้อนกลับได้ด้วย git
+
+---
+
+# ⛔ กติกาเหล็ก (อ่านก่อนแก้โค้ดทุกครั้ง)
+
+## ก่อนสร้าง patch — ต้องรู้สภาพจริงก่อน
+🔴 **ห้ามเดาว่า deploy สำเร็จหรือไม่จาก GitHub** — `git push` อาจ fail ทั้งที่ deploy สำเร็จ
+ถ้าไม่มั่นใจ ขอ Eak รันคำสั่งเช็ค `_BUILD_VER` + anchor จริงก่อนเสมอ (ดูตัวอย่างในหัวข้อบทเรียน 23 ก.ค.)
+
+## เครื่องของ Eak
+- 🔴 **ไม่มี `python`** → ใช้ PowerShell `[IO.File]::ReadAllText()` เท่านั้น
+- 🔴 **ไฟล์เป็น CRLF** แต่ repo เป็น LF → patch ต้อง `.Replace("\r\n","\n")` ก่อนเทียบ anchor เสมอ
+- 🔴 **ห้ามใส่ `exit`** ในคำสั่ง — หน้าต่าง PowerShell ปิดทันที ไม่เห็น ABORT
+- 🔴 **ห้ามใส่ `git checkout -- .`** ใน error path — เคยย้อน patch ที่ติดแล้วทิ้งเงียบๆ
+- ภาษาไทยในคำสั่ง → **base64 เสมอ** (`ConvertFrom-Json`)
+
+## รูปแบบคำสั่งมาตรฐาน
+```
+cd C:\bjh-dashboard; Start-Transcript ...; $b64='<patches>';
+  → ConvertFrom-Json → เช็ค anchor ทุกจุด (count ต้อง = 1)
+  → ไม่ตรง = ABORT ไม่แตะไฟล์เลย
+  → ตรงหมด = เขียนไฟล์ → bump _BUILD_VER (regex) → clasp push → create-deployment → git commit/push
+; Stop-Transcript
+```
+**Eak: copy → วาง → จบ · พังก็ลาก `log.txt` มาในแชท**
+
+## ก่อนส่งทุกครั้ง
+- `node --check` (ดึง `<script>` ออกมาเช็ค) — **แต่ syntax ผ่าน ≠ layout ถูก**
+- งาน CSS → ต้องดู mockup + ตรวจว่ากฎใหม่ไม่ขัดกฎเดิม (โดยเฉพาะ flex/grid)
+- งาน logic → jsdom/vm ทดสอบด้วยข้อมูลจริง
+- สีในหน้า Story → **ใช้ `var(--xxx)` เสมอ ห้าม hardcode** (ไม่งั้น light mode พัง)
+
+---
+
 
 ## 📂 ไฟล์ที่เปลี่ยนจาก base (12 ไฟล์ — ต้องอัปครบ)
 
@@ -366,6 +400,218 @@ if (!_mgP.getProperty('BJH_MIG_DONE')) {
 **หมายเหตุ:** ไม่ได้ทำให้เร็วขึ้น (GAS โหลดทุกไฟล์อยู่ดี) แต่ได้:
 - ผม/Claude อ่าน `Code.js` ผ่าน GitHub ได้ (เดิมโดน base64 กิน quota หมด)
 - `git diff` สะอาด ไม่มีบรรทัด 118 KB มาเกะกะ
+
+---
+
+# 📅 งานวันที่ 23 ก.ค. 2569 (รอบบ่าย–เย็น) — V562 → V578
+
+## 🔧 V562.0–V562.2 — Config: Parts Status Mapping
+
+**ปัญหา:** ใบเสนอราคาที่มีสถานะอะไหล่ `PR / TOR Process` ตกเป็น **Data Issue** เพราะไม่มีในตาราง hardcode
+
+**Root cause:** `script_main.html` มีตาราง `ORDERING` / `PENDING` / `SKIP` **hardcode 2 ที่ คนละชุดกัน**
+```
+บรรทัด 2061-2063  (path ปกติ)  ← ชุดที่ถูก
+บรรทัด 8951-8952  (cache path) ← ชุดเก่า มี 'Stock-In' สะกดผิด + 'Wait PO' ที่ไม่มีในข้อมูลจริง
+```
+บรรทัด 2386 `unknown = ไม่อยู่ใน ORDERING และ PENDING` → `st:'Data Issue', ip:'SPF:Data Issue'`
+
+**แก้:** ย้ายทั้ง 3 ตารางไป `_config_kv` section `parts_status` + Config tab ใหม่ **🔧 สถานะอะไหล่**
+- ปุ่ม **🔍 สแกนสถานะจากข้อมูลจริง** — เจอสถานะใหม่ที่ยังไม่ map จะเตือน + เพิ่มให้ (ตั้ง Pending ไว้ก่อน)
+- ตารางโชว์จำนวนจริงต่อสถานะ เรียงมาก→น้อย
+
+**V562.1** ลืมเรียก `cfgPsInit()` ใน `cfgTab()` → tab ว่าง
+**V562.2** ลืมใส่ `'pstatus'` ในลิสต์ pane ของ `cfgTab()` → pane ค้าง `display:none` (render สำเร็จแต่มองไม่เห็น)
+
+### 📊 สถานะอะไหล่จริง (สแกน 23 ก.ค. 2569) — `STATUS_DT_NAME`
+| สถานะ | จำนวน | กลุ่ม |
+|---|---|---|
+| Engineer Receive | 2,553 | ordering |
+| Canceled | 542 | skip |
+| Wait Stock-In | 97 | ordering |
+| (ว่าง) | 62 | — |
+| Engineer Receive (ไม่เบิกอะไหล่) | 22 | ordering |
+| อนุมัติสั่งซื้อ | 22 | pending |
+| Parts Ready (WG2) | 22 | ordering |
+| Stock In | 21 | ordering |
+| ขออนุมัติเบิกอะไหล่ | 13 | pending |
+| Admin Process | 9 | ordering |
+| Requested | 8 | pending |
+| PR / TOR Process | 8 | pending |
+| ขออนุมัติสั่งซื้อ | 7 | pending |
+| ขออนุมัติเคลมอะไหล่ | 5 | pending |
+| Rejected | 1 | skip |
+
+> **Timeline จริงของ SmartFlow:** Create Requested → Engineer Verified → Manager Approved → **Admin Requested PR** → Wait Stock In → **Stock In** → **Admin Process** → Parts Ready → Receive
+> `Admin Process` อยู่**หลัง** Stock In = ของมาแล้ว กำลังส่ง → **ordering** (ไม่ใช่ pending)
+
+---
+
+## 🧾 V564–V567 — Confirm Billing + dropdown มุมมอง
+
+### V564.0 (4 งานรวม)
+1. ถอน V563.0 (ปุ่ม Confirm Billing โชว์ตาม pill) — ไม่เอาแล้ว
+2. **Dropdown Status ใน popup** ตัด `Ordered` / `Backlog` ออก
+3. **รวม `Summary(By Team/By Sales)` + `Sales(All/ชื่อ)` → dropdown เดียว `#f-view`**
+4. ย้ายปุ่ม ✅ Confirm Billing ไปต่อจาก ⬇ Export
+
+### V564.1 — 🔴 ช่องโหว่สิทธิ์
+`af()` กรองจาก `f-sales.value` อย่างเดียว **ไม่เช็ค `_SALES_LOCK` ซ้ำ** → sales เลือก "By Team" ทำให้ `f-sales=''` = **เห็นข้อมูลทุกคน**
+**แก้ 2 ชั้น:** UI ล็อกตัวเลือก + `af()` บังคับ `fSales = window._SALES_LOCK` เสมอ
+
+### V566.0 / V566.1
+- ตัดตัวเลือก `By Sales` (แบบไม่กรอง) ออก · เปลี่ยนหัวกลุ่ม `— รายคน —` → `— By Sales —`
+- **sales role ต้องเห็น By Team ด้วย** (Summary รวมทีม) แต่ตารางล่างยังกรองเฉพาะตัวเอง
+
+### V565.0 / V567.0 — Confirm Billing whitelist
+เดิมเป็น **blacklist** (`!== 'Excluded' && !== 'Data Issue'`) → เห็น Billed/Sale Order ปนมา
+เปลี่ยนเป็น **whitelist 7 สถานะ** ที่ยืนยัน/ถอนได้:
+```js
+window._CB_ALLOW_ST = {
+  'SC Ordered':1, 'SC Carry':1, 'SC Carry (Pending)':1,
+  'SP Ordered (Ordering)':1, 'SP Ordered (Pending)':1,
+  'Offer':1, 'Backlog (Confirmed)':1
+};
+```
++ **ชื่อใน dropdown ดึงจาก Config Quick Filter** (`window._QF_CFG['qf_<pillId>_label']`) → แก้ที่ Config แล้วเปลี่ยนตาม
++ **V567.0** dropdown IP ก็ต้องใช้ whitelist เดียวกัน (เดิมโชว์ `SC Billed`/`Bill Merge` ที่เลือกแล้วได้ 0 รายการ) + เคารพสิทธิ์ sales
+
+**⚠️ `myName` อยู่ใน `cbRenderList()` — ใช้ใน `openConfirmBilling()` ไม่ได้** ต้องอ่าน `_currentUser.name` ตรงๆ
+
+---
+
+## ⚡ V568.0 — PERF: ปล่อย memory 61MB
+
+**เจอโดยไม่ต้องวัด** — `window._rawFiles[fname] = text` เก็บสตริงดิบ **30.5M chars (~61MB)**
+แต่ **ไม่มีโค้ดไหนอ่าน `_rawFiles` เลยทั้งโปรเจกต์** (ค้นแล้ว มีแค่ 2 บรรทัด: สร้าง + เขียน)
+
+**อาการที่ตรงกัน:** `ETL 4.4s` แต่ `classify` แค่ `0.2s` → 4.2s หายไปกับ GC
+```
+[Violation] 'setTimeout' handler took 3567ms   ← memory pressure
+```
+
+**แก้:** ไม่เขียน `_rawFiles` + `text=null; files[fname]=null;` ทันทีหลัง parse (peak memory ลดราวครึ่ง)
+
+---
+
+## 🛠 V569–V570 — SR Commercial (Coming Soon)
+
+- **desktop:** แท็บใหม่ **🛠 SR Commercial** ไว้**หน้าสุด** ใน Sales Prospect (ก่อน Alert) — `SalesProspect.html`
+- **mobile:** เปลี่ยน `🔔 New SR` → **`🛠 SR Commercial`** ให้ตรงกัน (Project เดียวกัน)
+- ฟิลด์ที่เตรียมไว้ (จากหน้าจอ SmartFlow จริง): เลขที่ SR · ลูกค้า · ยี่ห้อ/รุ่น · เลขที่เครื่อง · สถานะงาน · Priority/SLA · อาการเสีย · วิศวกรผู้รับผิดชอบ
+
+> ต้องเพิ่ม 4 จุดเสมอเวลาเพิ่ม tab ใน SalesProspect: **ปุ่ม · pane · ลิสต์ใน `spTab()` · tab permission (`sp_xxx`)**
+
+---
+
+## 🎨 V571–V576, V578 — Typography หน้า Story
+
+**ขนาดที่ลงตัว (V576.0):**
+| ส่วน | ขนาด |
+|---|---|
+| `📖 STORY OF 2026` | 20px |
+| `BUDGET 2026` | 24px |
+| `฿250.00M` | 28px |
+| `— Annual Target` · `H1` · `H2` | 18px |
+| ตัวเลขการ์ด `.flow-val` | 21px / weight 800 |
+| การ์ดใหญ่ `.flow-sumcard` | 28px |
+| การ์ดรวม `.flow-total` | 25px |
+| ยอดหัวกลุ่ม `.flow-group-sum` | 13px |
+
+**V573:** `CONFIRMED` รวมเป็นบรรทัดเดียว → `฿127.10M (50.8%) · SC ฿88.64M · SP ฿38.46M`
+
+### 🔴 V576.0 — light mode มองไม่เห็น
+**สาเหตุ:** ใส่สี hardcode `#60a5fa` + พื้น `linear-gradient(90deg,#0c1e3d ...)` ที่ออกแบบมาเพื่อพื้นดำ
+**แก้:** ใช้ **`var(--cyn)`** (dark `#0ea5e9` / light `#043d84`) + เอา gradient ดำออก ใช้ `var(--sur2)`
+
+> **กฎ:** สีในหน้านี้ต้องใช้ `var(--xxx)` เสมอ ห้าม hardcode — ไม่งั้น light mode พัง
+
+### 🔴 V576.1 — layout พังเพราะ flex-wrap
+V572 ทำ `.flow-card{display:flex;flex-direction:column}` เพื่อจัดตัวเลขให้อยู่ระดับเดียวกัน
+V576.0 ใส่ `flex-wrap:wrap` เพื่อให้ `% · items` อยู่บรรทัดเดียว → **ทุกอย่างเรียงแนวนอน ตัวเลขล้นการ์ด**
+**แก้:** ถอน `flex-wrap` ใช้ `position:absolute; left:100%` ดึง `.flow-sub` มาต่อท้าย `.flow-pct` แทน
+
+### V578.0 — สีรุ้ง + ไอคอนโยก (ยังไม่ deploy)
+- `STORY OF 2026` ไล่สีรุ้ง (gradient ชุดเดียวกับแถบบน) · light mode ใช้ gradient โทนเข้มแยกชุด
+- `📖` โยกซ้าย-ขวา 7° รอบละ 2.6s · หยุดตอน Present mode + `prefers-reduced-motion`
+- **`background-clip:text` ทำ emoji เป็นก้อนทึบ** → แยก `.story-ico` + `-webkit-text-fill-color:initial`
+
+---
+
+## 📤 V577.0 / V577.1 — Export: คอลัมน์ New/Renew
+
+เพิ่มคอลัมน์ **`New/Renew`** ตำแหน่งที่ 13 (ต่อจาก `ประเภทสัญญา`) ใน `exportExcel()`
+
+### 🔑 field ที่ถูกคือ `r.cnr` ไม่ใช่ `r.ctn`
+| field | มาจาก | เนื้อหา |
+|---|---|---|
+| `r.ctn` | `CONTRACT_TYPE_NAME` | **ชื่อความคุ้มครอง** — "สัญญาบริการ (รวมอะไหล่)" ❌ ไม่ใช่ New/Renew |
+| **`r.cnr`** | **`CON_TYPE_TYPE`** | **`NEW` / `RENEW`** ✅ |
+
+**ผลการวัดจริง (SC 3,051 ใบ):**
+```
+r.cnr:  RENEW=2299 · NEW=504 · (ว่าง)=232 · null=16   → ครอบคลุม 92%
+_proMap: 280 ใบ (9%)  — proMap มี 1,259 keys แต่ match SC ได้แค่ 280
+r.ctn:   0 ใบ (เป็นชื่อความคุ้มครองล้วน)
+```
+
+ลำดับการหา: `cnr` → `_proMap` → `ctn` (เผื่อไว้)
+
+---
+
+# 🔴 บทเรียนสำคัญ 23 ก.ค. (รอบบ่าย) — ห้ามพลาดซ้ำ
+
+## 1. ⛔ ห้ามเดาสถานะ deploy จาก GitHub — ต้องถามของจริง
+**พลาด 3 รอบติดกัน** (V574, V576, V577.1) เพราะเข้าใจว่า deploy ไม่สำเร็จ เลยสร้าง patch ที่ **รวม version ก่อนหน้าซ้ำเข้าไป** → `ABORT count=0`
+
+ความจริงคือ **deploy สำเร็จแล้ว แต่ `git push` อาจไม่สำเร็จ** → repo กับเครื่องไม่ตรงกัน
+
+### ✅ วิธีที่ถูก — ก่อนสร้าง patch ทุกครั้งที่ไม่มั่นใจ ให้ขอ:
+```powershell
+cd C:\bjh-dashboard; Start-Transcript -Path C:\bjh-dashboard\log.txt -Force; `
+Select-String -Path overrides.html -Pattern "_BUILD_VER='V"; `
+Write-Host "--- anchor ---"; `
+Select-String -Path <ไฟล์> -Pattern "<pattern ของ anchor>" | ForEach-Object { "$($_.LineNumber): $($_.Line.Trim())" }; `
+git log --oneline -3; Stop-Transcript
+```
+
+## 2. ⚠️ `Select-String` ตัดช่องว่างหน้าบรรทัด
+`$_.Line.Trim()` ทำให้เห็น anchor แบบไม่มีเยื้อง — **ห้ามเอาไปใช้เป็น anchor ตรงๆ** ต้องดูเยื้องจริงจากไฟล์ (`cat -A` หรือ grep แบบไม่ trim)
+
+## 3. ⚠️ ทดสอบ CSS layout ด้วย ไม่ใช่แค่ syntax
+V576.0 ผ่าน `node --check` แต่ layout พังยับ — เพราะ syntax check ไม่จับ CSS ที่ขัดกันเอง
+**→ งาน CSS ต้องดู mockup + ตรวจว่ากฎใหม่ไม่ขัดกับกฎเดิม (โดยเฉพาะ flex/grid)**
+
+## 4. ✅ workflow ที่ใช้ได้จริง (ยืนยัน 23 ก.ค.)
+1. Claude ส่ง **คำสั่ง PowerShell ชุดเดียว** (base64 ถ้ามีภาษาไทย) — patch + verify + push + deploy + commit ครบในตัว
+2. Eak **copy → วาง → จบ** ไม่ต้องโหลด/วางไฟล์เอง
+3. ทุกคำสั่งมี `Start-Transcript` → พังก็**ลาก `log.txt` มาวางในแชท**
+4. Guard: เช็ค anchor ทุกจุด**ก่อน**แตะไฟล์ · ไม่ตรง = ABORT ไม่เขียนอะไรเลย
+
+---
+
+# 📌 ข้อมูล field ที่เพิ่งยืนยัน (23 ก.ค.)
+
+| field ใน `window.D` | มาจาก | หมายเหตุ |
+|---|---|---|
+| `r.cnr` | `CON_TYPE_TYPE` | **NEW / RENEW** — ครอบคลุม 92% ของ SC |
+| `r.ctn` | `CONTRACT_TYPE_NAME` | ชื่อความคุ้มครอง (รวม/ไม่รวมอะไหล่) |
+| `p.STATUS_DT_NAME` | `RAW_Quotation_SP` | สถานะอะไหล่ (15 ค่า) |
+| `window._jsupParts` | — | array อะไหล่ทั้งหมด (~3,392 รายการ) |
+| `window._QF_CFG['qf_<id>_label']` | `_config_kv` | ชื่อ pill ที่ตั้งใน Config Quick Filter |
+| `window._SALES_LOCK` | — | ชื่อ sales ที่ล็อกไว้ (role=sales) |
+
+**pill id ↔ `r.st`:**
+| pill id | `r.st` | ชื่อที่ตั้งใน Config |
+|---|---|---|
+| `ordered` | `SC Ordered` | SC Ordered |
+| `co-ready` | `SC Carry` | SC Carry (Bill) |
+| `co-notready` | `SC Carry (Pending)` | SC Carry (PM) |
+| `spf-ord` | `SP Ordered (Ordering)` | SP Ordered |
+| `spf-proc` | `SP Ordered (Pending)` | SP Pending |
+| `pend` | `Offer` | Prospect |
+| `backlog-conf` | `Backlog (Confirmed)` | Sales Confirmed |
+| `backlog` | `Backlog` | Sale Order |
 
 ---
 
