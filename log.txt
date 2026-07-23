@@ -1,6 +1,6 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260723201622
+Start time: 20260723203440
 Username: BERLI\PongsakR
 RunAs User: BERLI\PongsakR
 Configuration Name: 
@@ -18,22 +18,5 @@ SerializationVersion: 1.1.0.1
 **********************
 Transcript started, output file is C:\bjh-dashboard\log.txt
 PATCH_OK
-└─ config_modal.html
-└─ confirm_billing.html
-└─ DailySales.html
-└─ Dashboard.html
-└─ Home.html
-└─ Index.html
-└─ libs.html
-└─ LOA.html
-└─ MA.html
-└─ Mobile.html
-└─ overrides.html
-└─ PdfAssets.js
-└─ QuotationCheck.html
-└─ SalesProspect.html
-└─ script_main.html
-└─ Seedbudgetsales2026.js
-└─ style.html
-└─ Territory map interactive.html
+
 
