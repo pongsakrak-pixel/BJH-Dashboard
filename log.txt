@@ -1,0 +1,31 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260723092345
+Username: BERLI\PongsakR
+RunAs User: BERLI\PongsakR
+Configuration Name: 
+Machine: PDNB-00H192094 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoExit -ExecutionPolicy Bypass -Command cd C:\bjh-dashboard; .\start.ps1
+Process ID: 42192
+PSVersion: 5.1.26100.7705
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7705
+BuildVersion: 10.0.26100.7705
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is C:\bjh-dashboard\log.txt
+removed=3
+PATCH_OK
+
+
+
+
+
+V561.1 DEPLOYED
+**********************
+Windows PowerShell transcript end
+End time: 20260723092500
+**********************

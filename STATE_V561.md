@@ -3031,3 +3031,43 @@ predict: customer_id + brand + model match = renewed · Section A(KPI) + B(Gap) 
 - **rollback test**: `BJH_EX_COL_OFF=true` → URL ไม่มี `ex_col` (ดึงเต็ม) ✅
 - **ไฟล์อื่น**: `_bjhExColFor_('other.json')` → `''` (ไม่ตัด) ✅
 - 🐛 **แก้บั๊ก 2 ตัว:** (1) URL ชน 2048 limit · (2) guard เคยอยู่หลัง `</script>`
+
+---
+
+# 23 JUL 2026 - V560 to V561.1
+
+## V560.0 - Mobile topbar scrollable + user-badge
+
+## V561.1 - FIX Sales Areas infinite loop
+
+Config > Sales Areas > "hospgrp" or "areaovr" = page freeze (infinite loop)
+
+ROOT CAUSE: cfgTab() in script_main.html had DUPLICATE blocks
+- [C10] old (~line 710-712): calls saOpenHospGroup() / saOpenAreaOverride()
+- [V545] new (~line 717-726): _saLoadConfig() + saHgRefreshGroupSel() + saOvRenderList()
+
+LOOP: button > cfgTab > [C10] saOpenHospGroup() > Dashboard.html:6428 openConfig() > cfgTab > loop forever
+
+FIX: deleted [C10] 3 lines (comment + 2 if). Kept [V545].
+saOpenHospGroup/saOpenAreaOverride still defined in Dashboard.html 6427/6844 - nothing calls them now.
+V561.0 = deploy failed silently (python missing). V561.1 = real fix, TESTED OK 23 JUL 2026.
+
+## LESSONS (cost 6 rounds)
+
+1. NO PYTHON ON THIS MACHINE - "Python was not found" - all python patch scripts never ran.
+   Use PowerShell [IO.File]::ReadAllLines() + foreach + .Trim().StartsWith()
+2. NO "exit" in pasted commands - closes the PowerShell window instantly, ABORT msg unseen. Use if/else.
+3. NO "git checkout -- ." in error path - it silently reverted a patch that HAD applied.
+   On ABORT: leave files alone.
+4. "git status" clean does NOT mean commit succeeded - may mean reverted. Verify with Select-String.
+5. Guard must re-check the REAL FILE with Select-String AFTER writing, before clasp push.
+
+## LOG WORKFLOW (agreed 23 JUL 2026)
+Start-Transcript -Path C:\bjh-dashboard\log.txt -Force ; <cmd> ; Stop-Transcript
+Then Eak drags log.txt into chat. ("err" clipboard = unreliable, dropped)
+Browser console: press Clear first, then click the broken button.
+
+## CASE LIST
+DONE: V561.1 Sales Areas hospgrp/areaovr freeze - 23 JUL 2026
+OPEN: perf (sheets 4.7s + etl 3.9s of 14.1s) | 6 mobile menus | Renewal.html | M3 SR (blocked) | M8 mobile black screen | SP reconcile
+
