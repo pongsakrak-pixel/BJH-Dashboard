@@ -7359,17 +7359,22 @@ function exportExcel(){
       return str.slice(0,10);
     }catch(e){ return ''; }
   }
-  // [V577] New/Renew — ใช้ _proMap (เหมือน Dashboard) แล้ว fallback ไปดูชื่อประเภทสัญญา
+  // [V577.1] New/Renew — อ่านจาก r.cnr (CON_TYPE_TYPE) เป็นหลัก = ครอบคลุม 92% ของ SC
+  //   เดิมใช้ _proMap ได้แค่ 9% · r.ctn คือ "ชื่อความคุ้มครอง" (รวม/ไม่รวมอะไหล่) ไม่ใช่ New/Renew
   function _xlNewRenew(r){
     try{
-      var qn = String(r.qn||'').trim();
-      var pro = (window._proMap||{})[qn];
-      if(pro && typeof pro.isNew === 'boolean') return pro.isNew ? 'New' : 'Renew';
-      var u = String(r.ctn||r.ct||'').toUpperCase().trim();
-      if(!u) return '';
-      if(u.indexOf('RENEW') >= 0) return 'Renew';
-      if(u.indexOf('NEW') >= 0)  return 'New';
-      return '';
+      function _pick(v){
+        var u = String(v==null?'':v).toUpperCase().trim();
+        if(!u || u==='NULL') return '';
+        if(u.indexOf('RENEW') >= 0) return 'Renew';   // RENEW / RENEWAL
+        if(u.indexOf('NEW')   >= 0) return 'New';
+        return '';
+      }
+      var v = _pick(r.cnr);                     // 1) CON_TYPE_TYPE — แหล่งหลัก
+      if(v) return v;
+      var pro = (window._proMap||{})[String(r.qn||'').trim()];
+      if(pro && typeof pro.isNew === 'boolean') return pro.isNew ? 'New' : 'Renew';  // 2) _proMap
+      return _pick(r.ctn);                      // 3) ชื่อสัญญา (เผื่อไว้)
     }catch(e){ return ''; }
   }
   var rows=[cols];
