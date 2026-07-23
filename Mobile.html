@@ -242,7 +242,7 @@
   //             mine (ซ้อนกับ SP Stock In — ดึงจาก mbParts() เหมือนกัน ต่างแค่จัดกลุ่ม)
   //     soon:1 = ยังไม่เปิดใช้ กดแล้วขึ้น Coming Soon
   var MB_MENU = [
-    { k:'sr',      ic:'🔔', tt:'New SR',      sub:'Coming soon', soon:1, bg:'rgba(244,63,94,.15)'  },
+    { k:'sr',      ic:'🛠', tt:'SR Commercial', sub:'Coming soon', soon:1, bg:'rgba(244,63,94,.15)'  },
     { k:'alert',   ic:'⚠️', tt:'Alert',                                  bg:'rgba(251,191,36,.15)' },
     { k:'spstock', ic:'📦', tt:'SP Stock In',                            bg:'rgba(52,211,153,.15)' },
     { k:'sn',      ic:'🔍', tt:'SN History',  sub:'Coming soon', soon:1, bg:'rgba(167,139,250,.15)'},
@@ -1094,18 +1094,22 @@
   // ═════════════════════════════════════════════════════
   function mbRenderSR(){
     var h = mbBack();
-    h += mbEmpty('🔔','ยังไม่เชื่อมข้อมูล',
-        'โครงหน้าพร้อมแล้ว<br>รอส่วนกลางกำหนดวิธีส่งงาน SR');
+    h += mbEmpty('🛠','Coming Soon',
+        'อยู่ระหว่างพัฒนา<br>รอข้อมูล SR จาก SmartFlow');
     h += '<div class="mb-st"><h3>ช่องข้อมูลที่เตรียมไว้</h3></div>';
-    [['เลข FR','FR26-XXXXXX'],
-     ['ชื่อโรงพยาบาล','— รอข้อมูล —'],
-     ['ชื่อผู้ติดต่อ','— รอข้อมูล —'],
-     ['อาการเสีย','— รอข้อมูล —']].forEach(function(f){
+    [['เลขที่ SR','DC26XXX-XXXXXX'],
+     ['ลูกค้า','— รอข้อมูล —'],
+     ['ยี่ห้อ / รุ่น','— รอข้อมูล —'],
+     ['เลขที่เครื่อง','— รอข้อมูล —'],
+     ['สถานะงาน','— รอข้อมูล —'],
+     ['Priority / SLA','— รอข้อมูล —'],
+     ['อาการเสีย','— รอข้อมูล —'],
+     ['วิศวกรผู้รับผิดชอบ','— รอข้อมูล —']].forEach(function(f){
       h += '<div class="mb-fld"><label>'+esc(f[0])+'</label><div class="box">'+esc(f[1])+'</div></div>';
     });
     h += '<div class="mb-more" style="text-align:left;line-height:1.6;padding:11px 13px;'
       +  'background:var(--mb-sur);border:1px solid var(--mb-bd);border-radius:10px">'
-      +  'พอส่วนกลางส่งข้อมูลมาได้ (ไฟล์ / API / Sheet)<br>'
+      +  'พอ SmartFlow ส่งข้อมูล SR มาได้<br>'
       +  'หน้านี้จะขึ้นเป็นการ์ดงาน + ปุ่มโทร + ปุ่มรับงานทันที</div>';
     el('mb-body').innerHTML = h;
   }
@@ -1151,7 +1155,7 @@
   //  router
   // ═════════════════════════════════════════════════════
   var MB_TITLE = {
-    home:'', sr:'🔔 งานใหม่ SR', alert:'⚠️ เครื่อง Alert', spstock:'📦 SP Stock In',
+    home:'', sr:'🛠 SR Commercial', alert:'⚠️ เครื่อง Alert', spstock:'📦 SP Stock In',
     quo:'📋 ใบเสนอราคา', sn:'🔍 เช็ค SN', cust:'🏥 ลูกค้าของฉัน',
     ctr:'📄 สัญญาใกล้หมด', mine:'✅ งานที่รับแล้ว', me:'👤 ของฉัน'
   };
