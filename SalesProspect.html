@@ -143,6 +143,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
 </style>
 
 <div class="sp-top">
+  <button class="sp-tab"    id="sp-tab-srcom"    onclick="spTab('srcom')">🛠 SR Commercial</button>
   <button class="sp-tab on" id="sp-tab-alert"    onclick="spTab('alert')">🚨 Alert</button>
   <button class="sp-tab"    id="sp-tab-install"   onclick="spTab('install')">🏥 Install Base</button>
   <button class="sp-tab"    id="sp-tab-renewal"   onclick="spTab('renewal')">📑 Contract Pipeline</button>
@@ -163,6 +164,23 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
 <div class="sp-body">
 
   <!-- ── ALERT PANE ── -->
+<!-- [V569] SR Commercial — รอ SmartFlow ส่งข้อมูล SR (Project เดียวกับ New SR) -->
+<div id="sp-pane-srcom" style="display:none;padding:40px 16px">
+  <div style="max-width:620px;margin:40px auto;text-align:center">
+    <div style="font-size:52px;line-height:1;margin-bottom:18px">🛠</div>
+    <div style="font-size:22px;font-weight:700;color:var(--tx,#e5e7eb);margin-bottom:10px">SR Commercial</div>
+    <div style="display:inline-block;font-size:12px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid #f59e0b;border-radius:20px;padding:5px 16px;margin-bottom:20px">Coming Soon</div>
+    <div style="font-size:13.5px;color:var(--mu,#94a3b8);line-height:1.9">
+      อยู่ระหว่างพัฒนา &mdash; รอข้อมูลจาก SmartFlow<br>
+      เมนูนี้จะรวมงานแจ้งซ่อม (Service Request) ของทีม Service Commercial<br>
+      ทั้งใบงาน สถานะงาน อาการเสีย และการเชื่อมโยงกับใบเสนอราคาอะไหล่
+    </div>
+    <div style="margin-top:26px;font-size:11.5px;color:var(--mu2,#64748b)">
+      SR &middot; ลูกค้า &middot; ยี่ห้อ/รุ่น &middot; เลขที่เครื่อง &middot; สถานะงาน &middot; Priority / SLA &middot; อาการเสีย &middot; วิศวกรผู้รับผิดชอบ
+    </div>
+  </div>
+</div>
+
 <div id="sp-pane-alert" style="display:block;padding:12px 16px">
   <div style="display:flex;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
     <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;flex-shrink:0">🔧 Critical Down<!-- [C5] เอา badge แดงออก — ซ้ำกับ chip "ทั้งหมด" ใน cd-filters (JS มี if(badge) guard อยู่แล้ว) --></div>
@@ -847,7 +865,7 @@ window.spLoadInstallBase = function(rows, customerData) {
 window.spTab = function(t) {
   _spTab = t;
   window._spCurrentTab = t;
-  ['alert','install','renewal','scquote','spquote','contract','ordsp','ordsc','billing','ar','forecast','pipeline','bg'].forEach(function(n){
+  ['srcom','alert','install','renewal','scquote','spquote','contract','ordsp','ordsc','billing','ar','forecast','pipeline','bg'].forEach(function(n){
     var p=document.getElementById('sp-pane-'+n);
     if(p) p.style.display=n===t?'block':'none';
     var b=document.getElementById('sp-tab-'+n);
@@ -874,6 +892,7 @@ window.spApplyTabPermissions = function(){
   // [v224] single-DOM — อ่านจาก window ตรง (ตัด window.parent) ; admin ตาม config
   var role = window._USER_ROLE || (window._currentUser && window._currentUser.role) || 'sales';
   var DEF = window._TAB_PERM_DEFAULT || {
+    sp_srcom:{admin:true,manager:true,sales:true},
     sp_alert:{admin:true,manager:true,sales:true},
     sp_install:{admin:true,manager:true,sales:true},
     sp_renewal:{admin:true,manager:true,sales:true},
