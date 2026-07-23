@@ -11,17 +11,17 @@
     .story-hdr{background:var(--sur2);border:1px solid var(--bd2);border-radius:10px;padding:14px 18px;margin-bottom:12px;position:relative;overflow:hidden}
     .story-hdr::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#22c55e 0%,#fbbf24 40%,#f97316 60%,#f472b6 75%,#ef4444 100%)}
     .story-hdr-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;flex-wrap:wrap;gap:6px}
-    .story-title{font-size:28px;color:var(--cyn);font-weight:700;letter-spacing:0.3px}  /* [V575] 13->28 */
+    .story-title{font-size:20px;color:var(--cyn);font-weight:700;letter-spacing:0.3px}  /* [V576] 28->20 */
     .story-meta{font-size:11px;color:var(--mu)}
     .story-meta b{color:var(--ylw2);font-family:var(--mono)}
 
     .budget-row{margin-bottom:12px}
-    .budget-card{display:flex;align-items:center;gap:16px;padding:16px 18px;background:linear-gradient(90deg,#0c1e3d 0%,var(--sur2) 60%);border:1px solid #2563eb;border-radius:9px;border-left:5px solid #3b82f6;box-shadow:0 0 22px rgba(59,130,246,.13)}  /* [V571] */
+    .budget-card{display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--sur2);border:1px solid var(--bd2);border-radius:9px;border-left:5px solid var(--cyn)}  /* [V576] เอา gradient ดำออก */
     .budget-ico{font-size:30px}  /* [V575] */
     .budget-content{flex:1}
-    .budget-lbl{font-size:28px;color:#93c5fd;font-weight:700;letter-spacing:0.2px;margin-bottom:2px;white-space:nowrap}  /* [V575] 14->28 */
+    .budget-lbl{font-size:24px;color:var(--cyn);font-weight:700;letter-spacing:0.2px;margin-bottom:2px;white-space:nowrap}  /* [V576] 28->24 + var(--cyn) */
     .budget-lbl .bud-sub{font-size:18px;color:var(--mu);font-weight:400;letter-spacing:0}  /* [V575] — Annual Target */
-    .budget-val{font-size:28px;font-weight:800;font-family:var(--mono);color:#60a5fa;line-height:1;letter-spacing:-.6px;white-space:nowrap;text-shadow:0 0 16px rgba(96,165,250,.6)}  /* [V575] 42->28 + น้ำเงินเข้ม */
+    .budget-val{font-size:28px;font-weight:800;font-family:var(--mono);color:var(--cyn);line-height:1;letter-spacing:-.6px;white-space:nowrap}  /* [V576] var(--cyn) -> light mode อ่านได้ */
 
     .flow-2groups{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
     .flow-group{padding:10px;background:#0a1322;border:1px solid var(--bd);border-radius:8px;display:flex;flex-direction:column}  /* [V572] */
@@ -83,6 +83,11 @@
     .flow-card.sford .flow-val{color:#fb923c}
     .flow-card.confirmed-order .flow-val{color:#a78bfa}
     .flow-pct{display:inline;font-size:10px;color:var(--mu);font-family:var(--mono);margin-top:2px;font-weight:600}
+    /* [V576] % + items บรรทัดเดียว (flow-card เป็น flex column -> inline ไม่พอ) */
+    .flow-card{flex-wrap:wrap;justify-content:center}
+    .flow-card .flow-ico,.flow-card .flow-name,.flow-card .flow-subname,.flow-card .flow-val{flex:0 0 100%}
+    .flow-card .flow-pct{flex:0 0 auto;margin-left:auto}
+    .flow-card .flow-pct + .flow-sub{flex:0 0 auto;margin-right:auto;margin-top:2px}
     .flow-sub{display:inline;font-size:9px;color:var(--mu);margin-top:1px}.flow-sub#db-prospect-split{display:block;position:absolute;left:8px;right:8px;bottom:8px;margin-top:0}.flow-pct + .flow-sub::before{content:" · ";color:var(--mu2)}
     .flow-arrow{font-size:18px;color:var(--mu2);text-align:center;font-weight:700;display:flex;align-items:center;justify-content:center}
 
