@@ -1695,7 +1695,7 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V563.0';
+    var _BUILD_VER='V564.0';
     var _BUILD_TIME='21 ก.ค. 2569 (V554 Mobile 5 เมนู + auto load)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
@@ -2634,29 +2634,61 @@ window._bjhCdDebug = function(){
   };
 })();
 
-/* [V563] ปุ่ม Confirm Billing โผล่เฉพาะ pill ที่ยังต้องยืนยัน/ถอนได้
-   ordered=SC Ordered · co-ready=SC Carry(Bill) · co-notready=SC Carry(PM)
-   spf-ord=SP Ordered · spf-proc=SP Pending · pend=Prospect · backlog-conf=Sales Confirmed */
+/* [V564] รวม Summary(By Team/By Sales) + Sales(All/ชื่อ) เป็น dropdown เดียว #f-view
+   byteam  -> _sumBySales=false · f-sales=''
+   bysales -> _sumBySales=true  · f-sales=''
+   <ชื่อ>  -> _sumBySales=true  · f-sales=<ชื่อ>   (กรองเฉพาะคนนั้น) */
 (function(){
-  var SHOW = {'ordered':1,'co-ready':1,'co-notready':1,'spf-ord':1,'spf-proc':1,'pend':1,'backlog-conf':1};
-  window._cbBtnSync = function(){
+  window._fViewChange = function(v){
     try{
-      var b = document.getElementById('btn-confirm-billing'); if(!b) return;
-      var roleOK = (typeof isSales==='function' && isSales()) || (typeof isManager==='function' && isManager());
-      var p = (typeof activePill!=='undefined' && activePill) ? activePill : (window.activePill||'');
-      b.style.display = (roleOK && SHOW[p]) ? '' : 'none';
+      var sm = document.getElementById('f-sum-mode');
+      var fs = document.getElementById('f-sales');
+      var byTeam = (v === 'byteam');
+      var name = (v === 'byteam' || v === 'bysales') ? '' : v;
+      window._sumBySales = !byTeam;
+      if(sm){ sm.value = byTeam ? 'byteam' : 'bysales'; }
+      if(fs){ fs.value = name; }
+      try{ af(); }catch(e){}
+      try{ buildSummary(); }catch(e){}
+    }catch(e){ console.warn('_fViewChange:',e); }
+  };
+  /* เติมรายชื่อ sales เข้า #f-view ตาม #f-sales (ที่ระบบเดิม populate ไว้) */
+  window._fViewSync = function(){
+    try{
+      var fv = document.getElementById('f-view'), fs = document.getElementById('f-sales');
+      if(!fv || !fs) return;
+      var cur = fv.value;
+      var names = [];
+      for(var i=0;i<fs.options.length;i++){
+        var o = fs.options[i];
+        if(o.value) names.push({v:o.value, t:o.textContent});
+      }
+      var sig = names.map(function(n){return n.v;}).join('|');
+      if(fv._bjhSig === sig) return;
+      fv._bjhSig = sig;
+      var h = '<option value="byteam">By Team</option><option value="bysales">By Sales</option>';
+      if(names.length){
+        h += '<optgroup label="\u2014 รายคน \u2014">';
+        names.forEach(function(n){
+          h += '<option value="'+String(n.v).replace(/"/g,'&quot;')+'">'+String(n.t).replace(/</g,'&lt;')+'</option>';
+        });
+        h += '</optgroup>';
+      }
+      fv.innerHTML = h;
+      /* คืนค่าที่เลือกไว้ ถ้ายังมีอยู่ */
+      var ok=false;
+      for(var j=0;j<fv.options.length;j++){ if(fv.options[j].value===cur){ ok=true; break; } }
+      fv.value = ok ? cur : 'byteam';
+      /* sales role: ล็อกเป็นชื่อตัวเอง */
+      if(window._SALES_LOCK){
+        fv.value = window._SALES_LOCK;
+        fv.disabled = true;
+      }
     }catch(e){}
   };
-  var _tp = window.tpill;
-  if(typeof _tp === 'function'){
-    window.tpill = function(name, ipFilter, stFilter){
-      var r = _tp.apply(this, arguments);
-      window._cbBtnSync();
-      return r;
-    };
-  }
-  try{ document.addEventListener('DOMContentLoaded', function(){ setTimeout(window._cbBtnSync, 800); }); }catch(e){}
-  setTimeout(function(){ try{ window._cbBtnSync(); }catch(e){} }, 2500);
+  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 1500);
+  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 4000);
+  setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 9000);
 })();
 
 </script>
