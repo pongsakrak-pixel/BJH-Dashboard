@@ -1695,7 +1695,7 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V562.2';
+    var _BUILD_VER='V563.0';
     var _BUILD_TIME='21 ก.ค. 2569 (V554 Mobile 5 เมนู + auto load)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
@@ -2633,4 +2633,30 @@ window._bjhCdDebug = function(){
     }catch(e){ msg('\u26a0 บันทึกไม่ได้: '+(e&&e.message||''),'#f87171'); }
   };
 })();
+
+/* [V563] ปุ่ม Confirm Billing โผล่เฉพาะ pill ที่ยังต้องยืนยัน/ถอนได้
+   ordered=SC Ordered · co-ready=SC Carry(Bill) · co-notready=SC Carry(PM)
+   spf-ord=SP Ordered · spf-proc=SP Pending · pend=Prospect · backlog-conf=Sales Confirmed */
+(function(){
+  var SHOW = {'ordered':1,'co-ready':1,'co-notready':1,'spf-ord':1,'spf-proc':1,'pend':1,'backlog-conf':1};
+  window._cbBtnSync = function(){
+    try{
+      var b = document.getElementById('btn-confirm-billing'); if(!b) return;
+      var roleOK = (typeof isSales==='function' && isSales()) || (typeof isManager==='function' && isManager());
+      var p = (typeof activePill!=='undefined' && activePill) ? activePill : (window.activePill||'');
+      b.style.display = (roleOK && SHOW[p]) ? '' : 'none';
+    }catch(e){}
+  };
+  var _tp = window.tpill;
+  if(typeof _tp === 'function'){
+    window.tpill = function(name, ipFilter, stFilter){
+      var r = _tp.apply(this, arguments);
+      window._cbBtnSync();
+      return r;
+    };
+  }
+  try{ document.addEventListener('DOMContentLoaded', function(){ setTimeout(window._cbBtnSync, 800); }); }catch(e){}
+  setTimeout(function(){ try{ window._cbBtnSync(); }catch(e){} }, 2500);
+})();
+
 </script>
