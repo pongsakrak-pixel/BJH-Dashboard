@@ -9254,6 +9254,8 @@ function _doNetworkLoad(){
     var files=d.files||{}, compressed=d.compressed||false;
     var _uncompressed=Array.isArray(d.uncompressedFiles)?d.uncompressedFiles:[];
     var _compressedOv=Array.isArray(d.compressedFiles)?d.compressedFiles:[];
+    // [V568] ไม่เก็บ raw string อีกแล้ว — ไม่มีโค้ดไหนอ่าน _rawFiles เลย (ตรวจทั้งโปรเจกต์)
+    //   เดิมถือ 30.5M chars (~61MB) ค้างไว้ -> heap พุ่ง -> GC หนัก -> setTimeout handler 3.5s
     window._rawFiles={};
     _jsupSC=null;_jsupParts=null;_jsupQuo=null;
     /* [V479.66] FIX: ห้ามล้าง _jsupContract — RAW_CONTRACT มาจาก master file (ไม่ใช่ tx)
@@ -9268,10 +9270,10 @@ function _doNetworkLoad(){
         var _td=Date.now();                                                  // [v482]
         var text=_doDecomp?_decompress(files[fname]):files[fname];
         try{ if(window._txT){ window._txT.decomp += Date.now()-_td; window._txT.chars += (text&&text.length)||0; } }catch(e){}
-        window._rawFiles[fname]=text;
         var _tj=Date.now();                                                  // [v482]
         var parsed=jsupExtractJSON(text);
         try{ if(window._txT) window._txT.jparse += Date.now()-_tj; }catch(e){}
+        text=null; files[fname]=null;   // [V568] ปล่อยสตริงดิบทันทีหลัง parse (ลด peak memory ~2 เท่า)
         if(!parsed) return;
         // IT wraps data: { status, meta, data:{RAW_SC_BILL...} } -> unwrap data layer
         if(parsed && typeof parsed==='object' && parsed.meta){ try{ window._bjhMeta = parsed.meta; }catch(e){} } // [v217] เก็บ meta
