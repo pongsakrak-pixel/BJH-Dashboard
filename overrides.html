@@ -1695,7 +1695,7 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V561.1';
+    var _BUILD_VER='V562.0';
     var _BUILD_TIME='21 ก.ค. 2569 (V554 Mobile 5 เมนู + auto load)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
@@ -2518,4 +2518,119 @@ window._bjhCdDebug = function(){
   };
 })();
 
+/* ══════════════════════════════════════════════════════════
+   [V562] Config: Parts Status Mapping (สถานะอะไหล่)
+   STATUS_DT_NAME -> ordering | pending | skip
+   ══════════════════════════════════════════════════════════ */
+(function(){
+  var GRP = [
+    {k:'ordering', n:'Ordering', c:'#4ade80'},
+    {k:'pending',  n:'Pending',  c:'#a78bfa'},
+    {k:'skip',     n:'Ignore',   c:'#94a3b8'}
+  ];
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function work(){
+    if(!window._psWork){
+      window._psWork = {};
+      var m = (window._psMap ? window._psMap() : {});
+      Object.keys(m).forEach(function(k){ window._psWork[k]=m[k]; });
+    }
+    return window._psWork;
+  }
+  function msg(t,c){ var e=document.getElementById('cfg-ps-msg'); if(e){ e.textContent=t||''; e.style.color=c||'var(--mu)'; } }
+
+  /* นับจำนวนจากข้อมูลจริงในเครื่อง */
+  function counts(){
+    var c = {};
+    try{
+      (window._jsupParts||[]).forEach(function(p){
+        var s = (p && p.STATUS_DT_NAME) || '';
+        if(!s) return;
+        c[s] = (c[s]||0)+1;
+      });
+    }catch(e){}
+    return c;
+  }
+
+  window.cfgPsInit = function(){
+    var box = document.getElementById('cfg-ps-body'); if(!box) return;
+    var w = work(), cnt = counts();
+    var keys = Object.keys(w);
+    /* สถานะที่มีในข้อมูลแต่ยังไม่ได้ map */
+    var miss = Object.keys(cnt).filter(function(s){ return !w[s]; });
+    keys.sort(function(a,b){ return (cnt[b]||0)-(cnt[a]||0) || (a<b?-1:1); });
+
+    var h = '';
+    if(miss.length){
+      h += '<div style="background:rgba(251,146,60,.10);border:1px solid #fb923c;border-radius:7px;padding:9px 12px;margin-bottom:12px;font-size:12px;color:#fb923c">'
+        +  '\u26A0 พบ <b>'+miss.length+'</b> สถานะที่ยังไม่ได้ map (ตกเป็น Data Issue) \u2014 กด <b>\ud83d\udd0d สแกน</b> เพื่อเพิ่ม</div>';
+    }
+    h += '<div style="border:1px solid var(--bd);border-radius:8px;overflow:hidden">'
+      +  '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      +  '<thead><tr style="background:var(--sur2)">'
+      +  '<th style="text-align:left;padding:7px 10px;font-weight:700;color:var(--mu2)">สถานะอะไหล่</th>'
+      +  '<th style="text-align:left;padding:7px 10px;font-weight:700;color:var(--mu2);width:150px">กลุ่ม</th>'
+      +  '<th style="text-align:right;padding:7px 10px;font-weight:700;color:var(--mu2);width:90px">จำนวน</th>'
+      +  '<th style="width:40px"></th></tr></thead><tbody>';
+    keys.forEach(function(k){
+      var g = w[k], n = cnt[k]||0;
+      var gc = (GRP.filter(function(x){return x.k===g;})[0]||{}).c || 'var(--mu)';
+      h += '<tr style="border-top:1px solid var(--bd)">'
+        +  '<td style="padding:5px 10px;color:var(--tx);font-family:var(--mono);font-size:11px">'+esc(k)+'</td>'
+        +  '<td style="padding:5px 10px"><select onchange="cfgPsSet(this,\''+esc(k).replace(/'/g,"\\'")+'\')" style="background:var(--sur2);color:'+gc+';border:1px solid var(--bd2);border-radius:4px;padding:3px 6px;font-size:11px;font-family:var(--font);font-weight:700">'
+        +  GRP.map(function(x){ return '<option value="'+x.k+'"'+(x.k===g?' selected':'')+'>'+x.n+'</option>'; }).join('')
+        +  '</select></td>'
+        +  '<td style="padding:5px 10px;text-align:right;color:'+(n?'var(--mu2)':'var(--mu)')+';font-family:var(--mono);font-size:11px">'+(n?n.toLocaleString():'\u2014')+'</td>'
+        +  '<td style="padding:5px 10px;text-align:center"><button onclick="cfgPsDel(\''+esc(k).replace(/'/g,"\\'")+'\')" style="background:transparent;border:none;color:#f87171;cursor:pointer;font-size:13px">\u00d7</button></td>'
+        +  '</tr>';
+    });
+    h += '</tbody></table></div>';
+    box.innerHTML = h;
+  };
+
+  window.cfgPsSet = function(sel, k){ work()[k] = sel.value; window.cfgPsInit(); msg(''); };
+  window.cfgPsDel = function(k){ delete work()[k]; window.cfgPsInit(); msg('\ud83d\uddd1 ลบ "'+k+'" \u2014 ยังไม่บันทึก','#fb923c'); };
+
+  window.cfgPsScan = function(){
+    var w = work(), cnt = counts();
+    var miss = Object.keys(cnt).filter(function(s){ return !w[s]; });
+    if(!miss.length){ msg('\u2705 ทุกสถานะในข้อมูล map ครบแล้ว','#4ade80'); return; }
+    miss.forEach(function(s){ w[s] = 'pending'; });
+    window.cfgPsInit();
+    msg('\u2795 เพิ่ม '+miss.length+' สถานะ (ตั้งเป็น Pending ไว้ก่อน) \u2014 ตรวจแล้วกดบันทึก','#fb923c');
+  };
+
+  window.cfgPsReset = function(){
+    window._psWork = null;
+    var d = window._PS_DEFAULT||{};
+    window._psWork = {};
+    Object.keys(d).forEach(function(k){ window._psWork[k]=d[k]; });
+    window.cfgPsInit();
+    msg('\u21ba กลับค่าเริ่มต้นแล้ว \u2014 กดบันทึกเพื่อยืนยัน','#fb923c');
+  };
+
+  window.cfgPsSave = function(){
+    var map = {}, w = work();
+    Object.keys(w).forEach(function(k){ if(w[k]) map[k]=w[k]; });
+    msg('กำลังบันทึก\u2026');
+    try{
+      if(typeof google!=='undefined' && google.script && google.script.run){
+        google.script.run
+          .withSuccessHandler(function(){
+            window._PARTS_STATUS = map;
+            try{ window._LAST_CONFIG = window._LAST_CONFIG||{}; window._LAST_CONFIG.parts_status = map; }catch(e){}
+            msg('\u2705 บันทึกแล้ว \u2014 กด Load Data สดเพื่อให้มีผล','#4ade80');
+          })
+          .withFailureHandler(function(){
+            window._PARTS_STATUS = map;
+            msg('\u26a0 เก็บ local (Code.gs ต้อง Deploy New Version)','#fb923c');
+          })
+          .saveConfigSection(JSON.stringify({section:'parts_status', data:map}));
+      } else {
+        window._PARTS_STATUS = map;
+        msg('\u2705 บันทึกแล้ว (local)','#4ade80');
+      }
+    }catch(e){ msg('\u26a0 บันทึกไม่ได้: '+(e&&e.message||''),'#f87171'); }
+  };
+})();
 </script>

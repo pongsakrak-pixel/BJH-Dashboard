@@ -745,6 +745,7 @@ function _getConfig_() {
     if (ckv.sum_status) config.sum_status = ckv.sum_status; // [C37] Summary status filter (ส่วนกลาง)
     if (ckv.note_sn) config.note_sn = ckv.note_sn; // [B8] Note ต่อ SN
     if (ckv.sales_region) config.sales_region = ckv.sales_region; // [B10] พื้นที่เซลล์
+    if (ckv.parts_status) config.parts_status = ckv.parts_status; // [V562] Parts Status Mapping
     if (ckv.mobile_links) config.mobile_links = ckv.mobile_links; // [V506] ลิงก์ภายนอกหน้า Mobile (BJH Contact ฯลฯ)
     if (ckv.bkk_sales) config.bkk_sales = ckv.bkk_sales; // [V521] sales ประจำ รพ. ในกรุงเทพฯ
     if (ckv.price_table) config.price_table = ckv.price_table; // [v403] Price table (brand||model -> {ages,excl})
@@ -1792,6 +1793,11 @@ function saveConfigSection(payloadStr) {
     }
     if (section === 'sales_region') {
       _ckvWriteSection(ss, 'sales_region', (data && typeof data==='object') ? data : {});
+      return JSON.stringify({ ok: true });
+    }
+    // [V562] Parts Status Mapping — { 'STATUS_DT_NAME': 'ordering'|'pending'|'skip', ... }
+    if (section === 'parts_status') {
+      _ckvWriteSection(ss, 'parts_status', (data && typeof data==='object') ? data : {});
       return JSON.stringify({ ok: true });
     }
     // [C37] Summary status filter — array pill id ที่ ON (ส่วนกลาง · แยกจาก Service Commercial Orders)

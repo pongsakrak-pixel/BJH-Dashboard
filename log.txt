@@ -1,6 +1,6 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260723092345
+Start time: 20260723104936
 Username: BERLI\PongsakR
 RunAs User: BERLI\PongsakR
 Configuration Name: 
@@ -17,15 +17,3 @@ PSRemotingProtocolVersion: 2.3
 SerializationVersion: 1.1.0.1
 **********************
 Transcript started, output file is C:\bjh-dashboard\log.txt
-removed=3
-PATCH_OK
-
-
-
-
-
-V561.1 DEPLOYED
-**********************
-Windows PowerShell transcript end
-End time: 20260723092500
-**********************

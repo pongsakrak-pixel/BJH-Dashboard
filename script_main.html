@@ -212,12 +212,48 @@ window.cfgCtypeReset = function(){
 // ═══ [C7] Config แยกตามเมนู ═══
 //   ไม่รื้อโครงเดิม: ปุ่ม tab เดิมยังอยู่ครบ แค่โชว์เฉพาะปุ่มในหมวดที่เลือก
 //   pane เดิมทั้งหมดไม่แตะ -> cfgTab() ทำงานเหมือนเดิม 100%
+// ══════════════════════════════════════════════════════════
+// [V562] Parts Status Mapping — STATUS_DT_NAME -> กลุ่ม
+//   ordering = สั่งแล้ว/ของมาแล้ว · pending = รออนุมัติ · skip = ไม่นับ
+//   เก็บใน _config_kv section 'parts_status' = { 'ชื่อสถานะ':'ordering'|'pending'|'skip' }
+// ══════════════════════════════════════════════════════════
+window._PS_DEFAULT = {
+  'Stock In':'ordering',
+  'Wait Stock-In':'ordering',
+  'Parts Ready (WG2)':'ordering',
+  'Admin Process':'ordering',
+  'Engineer Receive':'ordering',
+  'Engineer Receive (ไม่เบิกอะไหล่)':'ordering',
+  'อนุมัติสั่งซื้อ':'pending',
+  'PR Process (K2)':'pending',
+  'PR / TOR Process':'pending',
+  'Requested':'pending',
+  'ขออนุมัติสั่งซื้อ':'pending',
+  'ขออนุมัติเบิกอะไหล่':'pending',
+  'ขออนุมัติเคลมอะไหล่':'pending',
+  'Canceled':'skip',
+  'Rejected':'skip'
+};
+window._psMap = function(){
+  var m = {};
+  Object.keys(window._PS_DEFAULT).forEach(function(k){ m[k] = window._PS_DEFAULT[k]; });
+  try{
+    var c = window._PARTS_STATUS;
+    if(c && typeof c === 'object') Object.keys(c).forEach(function(k){ m[k] = c[k]; });
+  }catch(e){}
+  return m;
+};
+window._psGroup = function(g){
+  var m = window._psMap(), o = {};
+  Object.keys(m).forEach(function(k){ if(m[k] === g) o[k] = 1; });
+  return o;
+};
 window.CFG_GROUPS = [
   {g:'home',   keys:['pending']},
   {g:'sco',    keys:['qfchips']},
   {g:'sp',     keys:['armon','email']},
   {g:'area',   keys:['provrep','bkksales','hospgrp','areaovr']},   // [C10] Sales Areas · [V524] +bkksales (ต่อจาก provrep)
-  {g:'status', keys:['sgroup','hmstage','ctype']},             // [C17] + กลุ่มประเภทสัญญา
+  {g:'status', keys:['sgroup','hmstage','ctype','pstatus']},   // [C17] +ประเภทสัญญา · [V562] +สถานะอะไหล่
   {g:'sys',    keys:['users','tabperm','mbusers','mblinks','stats','apicfg','dataquery']}   // [C20] เอา upload ออก · [V535] +mbusers · [V545] +mblinks (เดิมไม่อยู่หมวดไหน -> โผล่ทุกหมวด)
 ];
 // [C19] tab ที่เลิกใช้แล้ว — ห้ามโชว์เด็ดขาด (ต่างจาก cfg-tab-adminonly ที่แค่ซ่อนตาม role)
@@ -2055,9 +2091,11 @@ function jsupETL(scRaw, partsRaw, quoRaw){
   var CONTRACT_DONE={'Contract Completed':1,'PO Completed':1,'ตรวจสอบเรียบร้อย':1,'รอตรวจสอบข้อมูล':1,'รับคู่สัญญาเรียบร้อย':1};
   var OFFER_ST={'รอใบสั่งจ้าง / รอทำสัญญา':1,'รอทำสัญญา':1,'อยู่ระหว่างทำสัญญา':1,'ส่งเอกสารให้ลูกค้า':1,'เอกสารรอส่งลูกค้า':1,'มอบอำนาจ / BG':1,'ส่งตีตราสาร':1};
   var BACKLOG_BILL={'ปริ้นบิลเรียบร้อย':1,'คืนบิล CFD':1,'รับบิลเรียบร้อย':1,'คืนบิลเรียบร้อย':1,'รอดำเนินการออกบิล':1,'CN Bill':1};
-  var ORDERING={'Stock In':1,'Wait Stock-In':1,'Parts Ready (WG2)':1,'Admin Process':1,'Engineer Receive':1};
-  var PENDING={'อนุมัติสั่งซื้อ':1,'PR Process (K2)':1,'Requested':1,'ขออนุมัติสั่งซื้อ':1,'ขออนุมัติเบิกอะไหล่':1};
-  var SKIP={'Canceled':1,'Rejected':1}; // [v251] เอา Engineer Receive ออก → เข้า ORDERING (Stock In)
+  // [V562] Parts Status Mapping — ย้ายมาเป็น config (แก้ได้ที่ Config -> 🔧 สถานะอะไหล่)
+  //   _PS_DEFAULT = ค่าเริ่มต้น · window._PARTS_STATUS (จาก _config_kv) ทับได้
+  var ORDERING = window._psGroup ? window._psGroup('ordering') : {};
+  var PENDING  = window._psGroup ? window._psGroup('pending')  : {};
+  var SKIP     = window._psGroup ? window._psGroup('skip')     : {};
 
   function parsePrice(s){ return parseFloat(String(s||'').replace(/,/g,''))||0; }
   function parseDateMY(s){ if(!s) return null; var d=new Date(s); return isNaN(d)?null:d; }
@@ -7762,6 +7800,7 @@ function applyConfig(cfg){
   }catch(e){}
   try{ window._NOTE_SN = cfg.note_sn || {}; }catch(e){ window._NOTE_SN={}; } // [B8]
   try{ window._SALES_REGION = cfg.sales_region || {}; if(window._applySalesRegion) window._applySalesRegion(); }catch(e){} // [B10]
+  try{ window._PARTS_STATUS = cfg.parts_status || {}; }catch(e){}   // [V562] Parts Status Mapping
   window._PRICE_TBL = cfg.price_table || {}; // [v403] Price table config (brand||model)
   window._PRICE_GROUPS = cfg.price_groups || {}; // [v433] Price table แบบกลุ่ม
   window._QSP_EXCEPTIONS = cfg.qsp_exceptions || {}; // [v448] QSP23/24 ที่ยกเว้นไม่ filter ออก
@@ -8945,8 +8984,9 @@ function gasLoadData(_force, cacheOnly){
       try {
         PARTS={};
         if(Array.isArray(_jsupParts)){
-          var _ORDERING={'Wait Stock-In':1,'Stock-In':1,'Ordered':1,'Ordering':1};
-          var _PENDING={'Wait PO':1,'Wait Quotation':1,'Wait Order':1,'In Process':1};
+          // [V562] ใช้ config ชุดเดียวกับ path ปกติ (เดิม hardcode คนละชุด + 'Stock-In' สะกดผิด)
+          var _ORDERING = window._psGroup ? window._psGroup('ordering') : {};
+          var _PENDING  = window._psGroup ? window._psGroup('pending')  : {};
           _jsupParts.forEach(function(p){
             var q=p && p.QH_DOC_NUMBER;
             if(!q) return;
