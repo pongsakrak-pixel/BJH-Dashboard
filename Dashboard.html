@@ -11,7 +11,26 @@
     .story-hdr{background:var(--sur2);border:1px solid var(--bd2);border-radius:10px;padding:14px 18px;margin-bottom:12px;position:relative;overflow:hidden}
     .story-hdr::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#22c55e 0%,#fbbf24 40%,#f97316 60%,#f472b6 75%,#ef4444 100%)}
     .story-hdr-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;flex-wrap:wrap;gap:6px}
-    .story-title{font-size:20px;color:var(--cyn);font-weight:700;letter-spacing:0.3px}  /* [V576] 28->20 */
+    /* [V578] STORY title — ตัวหนังสือไล่สีรุ้ง + ไอคอนโยกเบาๆ
+       background-clip:text ทำให้ emoji เป็นก้อนทึบ -> แยก .story-ico แล้วคืน text-fill ให้ */
+    .story-title{font-size:20px;font-weight:700;letter-spacing:0.3px;color:var(--cyn)}  /* [V576] 28->20 */
+    .story-title .story-tx{
+      background:linear-gradient(90deg,#22c55e 0%,#fbbf24 40%,#f97316 60%,#f472b6 75%,#ef4444 100%);
+      -webkit-background-clip:text;background-clip:text;
+      -webkit-text-fill-color:transparent;color:transparent;
+    }
+    html[data-theme="light"] .story-title .story-tx{
+      background:linear-gradient(90deg,#15803d 0%,#a16207 40%,#c2410c 60%,#be185d 75%,#b91c1c 100%);
+      -webkit-background-clip:text;background-clip:text;
+    }
+    .story-title .story-ico{
+      display:inline-block;transform-origin:50% 70%;
+      -webkit-text-fill-color:initial;color:initial;
+      animation:bjhStoryIco 2.6s ease-in-out infinite;
+    }
+    @keyframes bjhStoryIco{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+    .story-hdr.presenting .story-title .story-ico{animation:none}
+    @media(prefers-reduced-motion:reduce){ .story-title .story-ico{animation:none} }
     .story-meta{font-size:11px;color:var(--mu)}
     .story-meta b{color:var(--ylw2);font-family:var(--mono)}
 
@@ -354,7 +373,7 @@
     <div id="db-team-scene"></div>
     <div class="story-hdr">
       <div class="story-hdr-top">
-        <div class="story-title">📖 STORY OF <span id="db-story-yr">2026</span></div>
+        <div class="story-title"><span class="story-ico">📖</span> <span class="story-tx">STORY OF <span id="db-story-yr">2026</span></span></div><!-- [V578] -->
         <div class="story-meta">Current: <b id="db-curmo">May 2026</b> · MTD: <b id="db-mtd">฿0</b></div>
       </div>
 
