@@ -19,13 +19,6 @@
       <span style="font-size:11px;color:var(--mu2)">Status:</span>
       <select id="cb-filter-st" onchange="cbRenderList()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font)">
         <option value="">ทั้งหมด</option>
-        <option value="SC Ordered">SC Ordered</option>
-        <option value="SC Carry">SC Carry (Bill Pending)</option>
-        <option value="SC Carry (Pending)">SC Carry (PM Pending)</option>
-        <option value="SP Ordered (Pending)">SP Ordered Processing</option>
-        <option value="SP Ordered (Ordering)">SP Ordered (Ordering)</option>
-        <option value="Offer">Prospect</option>
-        <option value="Backlog (Confirmed)">Backlog (Confirmed)</option>
       </select>
       <span style="font-size:11px;color:var(--mu2)">IP:</span>
       <select id="cb-filter-ip" onchange="cbRenderList()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:5px;padding:3px 8px;font-size:11px;font-family:var(--font);min-width:110px">
@@ -143,8 +136,9 @@ function cbRenderList() {
 
   var pool = (typeof D !== 'undefined' ? D : []).filter(function(r) {
     if (isSales() && r.sa !== myName) return false;
-    // รับทุก status ยกเว้น Excluded + Data Issue (เปลี่ยนจาก whitelist เป็น blacklist)
-    if (r.st === 'Excluded' || r.st === 'Data Issue' || !r.st) return false;
+    // [V565] เฉพาะสถานะที่ยังต้อง "ยืนยันบิล" หรือ "ถอนยืนยัน" ได้เท่านั้น
+    //   (เดิม blacklist -> เห็น Billed/Sale Order ปนมาด้วย)
+    if (!r.st || !(window._CB_ALLOW_ST||{})[r.st]) return false;
     if (fSt && r.st !== fSt) return false;
     if (fIp && r.ip !== fIp) return false;
     // filter เดือน/ปี จาก r.mo / r.yr (fMo คือ number, ใช้ === แทน array indexOf)

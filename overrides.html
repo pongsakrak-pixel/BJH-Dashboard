@@ -1695,7 +1695,7 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V564.1';
+    var _BUILD_VER='V565.0';
     var _BUILD_TIME='21 ก.ค. 2569 (V554 Mobile 5 เมนู + auto load)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
@@ -2725,6 +2725,68 @@ window._bjhCdDebug = function(){
   setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 3000);
   setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 12000);
   setTimeout(function(){ try{ window._fViewSync(); }catch(e){} }, 30000);
+})();
+
+/* [V565] Confirm Billing — จำกัดเฉพาะสถานะที่ยืนยัน/ถอนได้ + ชื่อ dropdown ตาม Config Quick Filter */
+(function(){
+  /* r.st จริง -> pill id ที่ใช้อ่านชื่อจาก Config */
+  var MAP = [
+    {st:'SC Ordered',            pill:'ordered',      fb:'SC Ordered'},
+    {st:'SC Carry',              pill:'co-ready',     fb:'SC Carry (Bill)'},
+    {st:'SC Carry (Pending)',    pill:'co-notready',  fb:'SC Carry (PM)'},
+    {st:'SP Ordered (Ordering)', pill:'spf-ord',      fb:'SP Ordered'},
+    {st:'SP Ordered (Pending)',  pill:'spf-proc',     fb:'SP Pending'},
+    {st:'Offer',                 pill:'pend',         fb:'Prospect'},
+    {st:'Backlog (Confirmed)',   pill:'backlog-conf', fb:'Sales Confirmed'}
+  ];
+  window._CB_ALLOW_ST = {};
+  MAP.forEach(function(m){ window._CB_ALLOW_ST[m.st] = 1; });
+
+  function lbl(pill, fb){
+    try{
+      var c = (window._QF_CFG||{})['qf_'+pill+'_label'];
+      return (c && String(c).trim()) ? String(c).trim() : fb;
+    }catch(e){ return fb; }
+  }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+  window._cbFillStatus = function(){
+    try{
+      var sel = document.getElementById('cb-filter-st'); if(!sel) return;
+      var cur = sel.value;
+      var sig = MAP.map(function(m){ return lbl(m.pill, m.fb); }).join('|');
+      if(sel._bjhSig === sig) return;
+      sel._bjhSig = sig;
+      var h = '<option value="">ทั้งหมด</option>';
+      MAP.forEach(function(m){
+        h += '<option value="'+esc(m.st)+'">'+esc(lbl(m.pill, m.fb))+'</option>';
+      });
+      sel.innerHTML = h;
+      var ok=false;
+      for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===cur){ ok=true; break; } }
+      sel.value = ok ? cur : '';
+    }catch(e){ console.warn('_cbFillStatus:',e); }
+  };
+
+  /* เติมทุกครั้งที่เปิด popup (ชื่ออาจถูกแก้ใน Config ระหว่างทาง) */
+  (function(){
+    var t=0, iv=setInterval(function(){
+      t++;
+      if(typeof window.openConfirmBilling === 'function' && !window.openConfirmBilling._bjhWrapped){
+        var _o = window.openConfirmBilling;
+        window.openConfirmBilling = function(){
+          try{ window._cbFillStatus(); }catch(e){}
+          var r = _o.apply(this, arguments);
+          try{ window._cbFillStatus(); }catch(e){}
+          return r;
+        };
+        window.openConfirmBilling._bjhWrapped = true;
+        clearInterval(iv);
+      }
+      if(t>60) clearInterval(iv);
+    }, 500);
+  })();
+  setTimeout(function(){ try{ window._cbFillStatus(); }catch(e){} }, 3000);
 })();
 
 </script>
