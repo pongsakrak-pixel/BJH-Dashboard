@@ -1695,7 +1695,7 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V566.0';
+    var _BUILD_VER='V566.1';
     var _BUILD_TIME='21 ก.ค. 2569 (V554 Mobile 5 เมนู + auto load)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
@@ -2645,11 +2645,14 @@ window._bjhCdDebug = function(){
   window._fViewChange = function(v){
     try{
       var L = _lock();
-      if(L) v = L;                                  /* sales: บังคับเป็นชื่อตัวเองเสมอ */
+      /* [V566.1] sales เลือกได้แค่ byteam หรือชื่อตัวเอง (คนอื่น -> เด้งกลับ)
+         และ f-sales ต้องเป็นชื่อตัวเองเสมอ แม้เลือก By Team (Summary รวมทีม แต่ตารางเฉพาะตัวเอง) */
+      if(L && v !== 'byteam' && v !== L) v = L;
       var sm = document.getElementById('f-sum-mode');
       var fs = document.getElementById('f-sales');
       var byTeam = (v === 'byteam');
       var name = (v === 'byteam' || v === 'bysales') ? '' : v;
+      if(L) name = L;
       window._sumBySales = !byTeam;
       if(sm){ sm.value = byTeam ? 'byteam' : 'bysales'; }
       if(fs){ fs.value = name; }
@@ -2677,13 +2680,18 @@ window._bjhCdDebug = function(){
       fv._bjhSig = sig;
 
       if(L){
-        /* role sales: มีตัวเลือกเดียว = ชื่อตัวเอง */
-        fv.innerHTML = '<option value="'+String(L).replace(/"/g,'&quot;')+'">'+String(L).replace(/</g,'&lt;')+'</option>';
-        fv.value = L; fv.disabled = true;
+        /* [V566.1] role sales: เห็น By Team (Summary รวมทีม) + ชื่อตัวเอง — ไม่มีชื่อคนอื่น
+           ตารางล่างกรองเฉพาะตัวเองเสมอ (f-sales ล็อกชื่อตัวเอง + af() บังคับซ้ำ) */
+        var _cur = fv.value;
+        fv.innerHTML = '<option value="byteam">By Team</option>'
+          + '<optgroup label="\u2014 By Sales \u2014"><option value="'+String(L).replace(/"/g,'&quot;')+'">'+String(L).replace(/</g,'&lt;')+'</option></optgroup>';
+        fv.disabled = false;
+        fv.value = (_cur === 'byteam') ? 'byteam' : L;
         var fs2 = document.getElementById('f-sales');
         if(fs2){ fs2.value = L; fs2.disabled = true; }
-        window._sumBySales = true;
-        var sm2 = document.getElementById('f-sum-mode'); if(sm2) sm2.value='bysales';
+        var _bt = (fv.value === 'byteam');
+        window._sumBySales = !_bt;
+        var sm2 = document.getElementById('f-sum-mode'); if(sm2) sm2.value = _bt ? 'byteam' : 'bysales';
         return;
       }
 
