@@ -1734,7 +1734,8 @@ window.spShowInstallDetail = function(idx) {
   html += '</div>';
 
   // Body container
-  html += '<div id="sp-ibd-body" style="flex:1;overflow:auto;padding:14px 16px">';
+  // [V592] ลังความสูงem body คงที่ -> สลัະงໂานໂลໂมลະวໂถະง
+  html += '<div id="sp-ibd-body" style="flex:1;height:60vh;max-height:60vh;overflow:auto;padding:14px 16px">';
 
   // ── [V586] หมวด 1: ข้อมูลเครื่อง ────────────────────────────
   (function(){
