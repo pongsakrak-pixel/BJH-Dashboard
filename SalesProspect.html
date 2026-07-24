@@ -6653,7 +6653,7 @@ window.spCloseSPDetail = function(e){
 };
 
 // [v362] multi-select สถานะ + Issue เป็น exclusive mode แยกต่างหาก
-window._spOrdSPSubSet = window._spOrdSPSubSet || [];   // array สถานะที่เลือก (multi-select)
+window._spOrdSPSubSet = window._spOrdSPSubSet || [];   // [V582] สถานะที่เลือก — single-select (0 หรือ 1 ตัว)
 window._spOrdSPIssueMode = window._spOrdSPIssueMode || false; // Issue mode (exclusive, ไม่รวมกับสถานะ)
 window.spOrdSPSub = function(btn){
   var sub = btn.getAttribute('data-sub')||'';
@@ -6666,12 +6666,10 @@ window.spOrdSPSub = function(btn){
     window._spOrdSPIssueMode = true;
     window._spOrdSPSubSet = [];
   } else {
-    // toggle สถานะ multi-select
+    // [V582] เลือกได้ทีละอันเดียว (single-select) — กดซ้ำที่ chip เดิม = ยกเลิก -> กลับเป็น "ทั้งหมด"
     window._spOrdSPIssueMode = false;
-    var idx = window._spOrdSPSubSet.indexOf(sub);
-    if(idx>=0) window._spOrdSPSubSet.splice(idx,1);
-    else window._spOrdSPSubSet.push(sub);
-    // ว่างหมด → กลับไปสถานะ "ทั้งหมด" โดยอัตโนมัติ (ไม่ต้องทำอะไรเพิ่ม subSet=[] = ทั้งหมดอยู่แล้ว)
+    var cur = window._spOrdSPSubSet;
+    window._spOrdSPSubSet = (cur.length===1 && cur[0]===sub) ? [] : [sub];
   }
   spRenderOrdSP();
 };
