@@ -25,13 +25,8 @@
 #sp-i-model,#sp-i-modelgroup{max-width:170px;text-overflow:ellipsis}
 #sp-i-brand{max-width:150px;text-overflow:ellipsis}
 #sp-i-contract,#sp-i-trigger{display:none !important}
-/* [V585] ช่องค้นหาใน dropdown */
-.spf-wrap{position:relative;display:inline-block}
-.spf-search{position:absolute;left:0;right:0;top:100%;z-index:60;display:none;
-  padding:5px 8px;font-size:11px;font-family:inherit;
-  background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);
-  border:1px solid var(--bd2,#374151);border-bottom:none;border-radius:5px 5px 0 0;outline:none}
-.spf-wrap.on .spf-search{display:block}
+/* [V590] ถอนช่องค้นหาใน dropdown — วิธี position:absolute ไม่เข้ากับ <select multiple> ของเบราว์เซอร์
+   (ช่องลอยทับตาราง · คุมเปิด/ปิดไม่ได้) ถ้าจะทำใหม่ต้องสร้าง dropdown เองไม่ใช้ <select> */
 /* [V585] การ์ด KPI กดกรองได้ */
 .ib-card[data-ibg]{cursor:pointer;transition:border-color .12s,background .12s}
 .ib-card[data-ibg]:hover{border-color:var(--mu2,#64748b)}
@@ -1670,6 +1665,7 @@ window.spShowInstallDetail = function(idx) {
             qty: p.PARTS_QTY||'',
             status: String(p.STATUS_DT_NAME||''),
             ip: String(p.IP_DT_NAME||''),
+            jobSr: String(p.JOB_SR||p.SERVICE_JOB_SR||''),   // [V590] เลขงานซ่อม
             price: Number(p.BILL_JOB_PRICE||p.QH_TOTAL_AMT||p.PARTS_PRICE||0),
             contractName: String(p.CONTRACT_NAME||'') // [v434] ใช้แยกในประกัน/เสียเงิน
           });
@@ -1682,23 +1678,52 @@ window.spShowInstallDetail = function(idx) {
   var partsFreq = {}; // partsName → {count, totalQty, totalPrice}
   var modelMachines = {}; // unique qn for this brand+model
   try {
+    // [V590] ฐานข้อมูล 2 ชั้น: ถ้ารุ่นนี้อยู่ในกลุ่ม (G.Model) ใช้ทั้งกลุ่ม -> ฐานใหญ่ แม่นกว่า
+    //   ถ้าไม่อยู่ในกลุ่ม -> ใช้รุ่นเดียวเหมือนเดิม (G.Model ครอบคลุมแค่ 23% ของเครื่อง)
+    var _mgMap = window._MODEL_GROUP_LOCAL || {};
+    var _myGroup = String(_mgMap[model] || '').trim();
+    var _grpModels = {};                       /* lowercase model -> 1 */
+    if(_myGroup){
+      Object.keys(_mgMap).forEach(function(m){
+        if(String(_mgMap[m]||'').trim() === _myGroup) _grpModels[String(m).toLowerCase().trim()] = 1;
+      });
+    }
+    window._ibRiskBase = { group:_myGroup, models: _myGroup ? Object.keys(_grpModels).length : 1 };
+
     (window._jsupParts||[]).forEach(function(p){
-      var pbr = String(p.BRAND_NAME||'').toLowerCase().trim();
       var pml = String(p.MODEL_NAME||'').toLowerCase().trim();
-      if(pbr!==brand.toLowerCase().trim() || pml!==model.toLowerCase().trim()) return;
+      var hit;
+      if(_myGroup){
+        hit = !!_grpModels[pml];                                        /* ทั้งกลุ่ม (ไม่เช็ค brand — กลุ่มอาจข้ามยี่ห้อ) */
+      }else{
+        hit = (String(p.BRAND_NAME||'').toLowerCase().trim() === brand.toLowerCase().trim())
+           && (pml === model.toLowerCase().trim());                     /* รุ่นเดียว */
+      }
+      if(!hit) return;
+      if(String(p.STATUS_DT_NAME||'') === 'Canceled') return;           /* ตัดที่ยกเลิก */
       var pName = String(p.PARTS_NAME||'').trim();
       if(!pName) return;
-      if(!partsFreq[pName]) partsFreq[pName]={count:0,qty:0,price:0,uniqueQn:{}};
+      /* key ของ "งาน" — ใช้ QN ถ้ามี ไม่งั้นใช้เลข SR (นับทั้งเบิกซื้อและเบิกในประกัน) */
+      var jobKey = String(p.QH_DOC_NUMBER || p.JOB_SR || p.SERVICE_JOB_SR || '').trim();
+      if(!partsFreq[pName]) partsFreq[pName]={count:0,qty:0,price:0,uniqueQn:{},amts:[]};
       partsFreq[pName].count++;
       partsFreq[pName].qty += Number(p.PARTS_QTY||0)||0;
-      partsFreq[pName].price += Number(p.PARTS_PRICE||0)||0;
-      if(p.QH_DOC_NUMBER) partsFreq[pName].uniqueQn[p.QH_DOC_NUMBER]=1;
-      if(p.QH_DOC_NUMBER) modelMachines[p.QH_DOC_NUMBER]=1;
+      var _amt = Number(p.QH_TOTAL_AMT||p.PARTS_PRICE||p.BILL_JOB_PRICE||0)||0;
+      if(_amt > 0) partsFreq[pName].amts.push(_amt);
+      if(jobKey){ partsFreq[pName].uniqueQn[jobKey]=1; modelMachines[jobKey]=1; }
     });
   } catch(e){}
+  function _median(a){
+    if(!a || !a.length) return 0;
+    var s = a.slice().sort(function(x,y){ return x-y; });
+    var m = Math.floor(s.length/2);
+    return s.length % 2 ? s[m] : Math.round((s[m-1]+s[m])/2);
+  }
   var freqArr = Object.keys(partsFreq).map(function(k){
-    return {name:k, count:partsFreq[k].count, qty:partsFreq[k].qty, price:partsFreq[k].price, uniqueQns:Object.keys(partsFreq[k].uniqueQn).length};
-  }).sort(function(a,b){return b.count-a.count;}).slice(0,10);
+    return {name:k, count:partsFreq[k].count, qty:partsFreq[k].qty,
+            price:partsFreq[k].price, med:_median(partsFreq[k].amts),
+            uniqueQns:Object.keys(partsFreq[k].uniqueQn).length};
+  }).sort(function(a,b){ return b.uniqueQns - a.uniqueQns || b.count - a.count; }).slice(0,10);
 
   // ── Build HTML ─────────────────────────────────────────────────
   var html = '';
@@ -1978,6 +2003,7 @@ html += '</div>';
     })();
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--bd2,#334155)">'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">Date</th>'
+      +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">Job SR</th>'   /* [V590] */
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">Quotation</th>'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">Mat No</th>'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">Parts Name</th>'
@@ -1999,6 +2025,7 @@ html += '</div>';
         : '<span style="color:var(--mu,#94a3b8);font-size:10px">—</span>';
       html += '<tr style="border-bottom:1px solid var(--bd,#1e293b)">'
         +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px">'+_fmtDate(p.date)+'</td>'
+        +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:var(--mu2,#94a3b8);white-space:nowrap">'+_esc(p.jobSr||'—')+'</td>'   /* [V590] */
         +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:#7dd3fc">'+_esc(p.qn)+'</td>'
         +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:var(--mu2,#cbd5e1)">'+_esc(p.matNo)+'</td>'
         +'<td style="padding:5px;font-size:11px">'+_esc(p.partName)+'</td>'
@@ -2014,33 +2041,70 @@ html += '</div>';
 
   // Q4: รายการอะไหล่ที่มีความเสี่ยงสูง (filter ความถี่ ≥ 20%)
   var totalMachines = Object.keys(modelMachines).length;
+  // [V590] Predict ความเสี่ยง — เกณฑ์ 20% · สรุป 5 ชิ้น + ราคาประมาณ (median)
+  var _rb = window._ibRiskBase || {group:'', models:1};
   var riskArr = freqArr.filter(function(f){
     var pct = totalMachines>0 ? (f.uniqueQns/totalMachines*100) : 0;
     return pct >= 20;
   });
-  html += '<div class="ibd-sec" id="ibd-s4" style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:6px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px">4\u20e3 Predict ความเสี่ยงอะไหล่ — รุ่น '+_esc(brand)+' '+_esc(model)+' (ความถี่ ≥ 20% จาก '+totalMachines+' ใบเสนอราคา · '+riskArr.length+' รายการ)</div>';
+  var top5    = riskArr.slice(0,5);
+  var sumEst  = top5.reduce(function(s,f){ return s + (f.med||0); }, 0);
+  var thin    = totalMachines < 5;                       /* ฐานน้อยเกินจะเชื่อ */
+  var baseTxt = _rb.group
+      ? ('\ud83d\udce6 กลุ่มรุ่น: <b style="color:#facc15">'+_esc(_rb.group)+'</b> <span style="color:var(--mu,#94a3b8)">('+_rb.models+' รุ่น)</span>')
+      : ('\ud83d\udd27 รุ่น: <b style="color:var(--tx,#e2e8f0)">'+_esc(brand)+' '+_esc(model)+'</b> <span style="color:var(--mu,#94a3b8)">(ยังไม่ได้จัดกลุ่ม)</span>');
+
+  html += '<div class="ibd-sec" id="ibd-s4" style="margin-bottom:14px">';
+  html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:6px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px">4\u20e3 Predict ความเสี่ยงอะไหล่</div>';
+  html += '<div style="font-size:11px;color:var(--mu2,#cbd5e1);padding:2px 10px 9px;line-height:1.8">'
+        + baseTxt
+        + ' <span style="color:var(--mu2,#475569)">\u00b7</span> ฐานข้อมูล <b style="color:var(--tx,#e2e8f0)">'+totalMachines+'</b> งาน'
+        + (thin ? ' <span style="color:#fb923c">\u26a0 ข้อมูลน้อย \u2014 ตัวเลขอาจไม่แม่น</span>' : '')
+        + '</div>';
+
   if(!riskArr.length){
-    html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบอะไหล่ที่มีความเสี่ยงสูง (ความถี่ ≥ 20%) —</div>';
+    html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบอะไหล่ที่มีความเสี่ยงสูง (ความถี่ \u2265 20%) —</div>';
   } else {
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--bd2,#334155)">'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">#</th>'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">ชื่ออะไหล่</th>'
       +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ครั้งที่เปลี่ยน</th>'
-      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">จำนวนเครื่อง</th>'
+      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">จำนวนงาน</th>'
       +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ความถี่</th>'
+      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ราคาประมาณ</th>'
+      +'<th style="text-align:center;padding:6px;color:var(--mu,#94a3b8)">เครื่องนี้</th>'
       +'</tr></thead><tbody>';
     riskArr.forEach(function(f,i){
-      var freqPct = totalMachines>0 ? (f.uniqueQns/totalMachines*100) : 0;
+      var freqPct   = totalMachines>0 ? (f.uniqueQns/totalMachines*100) : 0;
       var freqColor = freqPct>=40?'#ef4444':freqPct>=30?'#fb923c':'#f59e0b';
-      html += '<tr style="border-bottom:1px solid var(--bd,#1e293b)">'
-        +'<td style="padding:5px;color:var(--mu,#94a3b8)">'+(i+1)+'</td>'
+      var isTop5    = i < 5;
+      /* เครื่องนี้เคยเปลี่ยนอะไหล่ตัวนี้แล้วหรือยัง */
+      var done = false;
+      try{ done = partsList.some(function(p){ return String(p.partName||'').trim() === f.name; }); }catch(e){}
+      html += '<tr style="border-bottom:1px solid var(--bd,#1e293b)'+(isTop5?';background:rgba(239,68,68,.035)':'')+'">'
+        +'<td style="padding:5px;color:'+(isTop5?'#f87171':'var(--mu,#94a3b8)')+';font-weight:'+(isTop5?'700':'400')+'">'+(i+1)+'</td>'
         +'<td style="padding:5px;font-size:11px">'+_esc(f.name)+'</td>'
         +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace)">'+f.count+'</td>'
-        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:var(--mu2,#cbd5e1)">'+f.uniqueQns+'</td>'
+        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace)">'+f.uniqueQns+'</td>'
         +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+freqColor+';font-weight:600">'+freqPct.toFixed(0)+'%</td>'
+        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(f.med?'var(--tx,#e2e8f0)':'var(--mu,#94a3b8)')+'">'+(f.med?_fmtB(f.med):'\u2014')+'</td>'
+        +'<td style="padding:5px;text-align:center;font-size:9.5px">'+(done?'<span style="color:#f87171">เปลี่ยนแล้ว</span>':'<span style="color:var(--mu,#64748b)">ยัง</span>')+'</td>'
         +'</tr>';
     });
     html += '</tbody></table>';
+
+    /* สรุป 5 ชิ้นเสี่ยงสุด + ราคารวมประมาณ */
+    if(top5.length){
+      html += '<div style="margin-top:9px;padding:9px 12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.35);border-radius:6px;'
+            + 'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+            + '<div style="font-size:11px;color:var(--mu2,#cbd5e1)">'
+            +   '\ud83d\udcb0 ประมาณการอะไหล่เสี่ยงสูงสุด <b style="color:var(--tx,#e2e8f0)">'+top5.length+'</b> ชิ้น'
+            +   '<div style="font-size:9.5px;color:var(--mu,#94a3b8);margin-top:2px">ราคากลาง (median) จากใบเสนอราคาที่ผ่านมา \u00b7 ไม่รวมค่าแรง/VAT</div>'
+            + '</div>'
+            + '<div style="font-size:19px;font-weight:800;font-family:var(--mono,monospace);color:'+(sumEst?'#f87171':'var(--mu,#94a3b8)')+';white-space:nowrap">'
+            +   (sumEst ? '~'+_fmtB(sumEst) : '\u2014 ไม่มีข้อมูลราคา')
+            + '</div></div>';
+    }
   }
   html += '</div>';
 
@@ -3060,42 +3124,6 @@ window._ibSetGroup = function(g){
   window._ibGroupFilter = (window._ibGroupFilter === g) ? '' : g;   /* กดซ้ำ = ยกเลิก */
   try{ spRenderInstall(); }catch(e){}
 };
-
-// ══════════════════════════════════════════════════════════
-// [V585] ช่องค้นหาใน multi-select (Brand / Model / G.Model)
-//   ไม่แตะ logic เดิม — spEnforceFirst / _getMultiVals ใช้ค่า select ตามปกติ
-// ══════════════════════════════════════════════════════════
-window._spAttachSelSearch = function(){
-  ['sp-i-brand','sp-i-model','sp-i-modelgroup'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(!el || el._spSearchOn) return;
-    el._spSearchOn = true;
-    var wrap = document.createElement('span');
-    wrap.className = 'spf-wrap';
-    el.parentNode.insertBefore(wrap, el);
-    wrap.appendChild(el);
-    var box = document.createElement('input');
-    box.type = 'text'; box.className = 'spf-search'; box.placeholder = 'พิมพ์เพื่อค้นหา...';
-    wrap.appendChild(box);
-    function applyFilter(){
-      var q = String(box.value||'').toLowerCase().trim();
-      for(var i=0;i<el.options.length;i++){
-        var o = el.options[i];
-        if(o.value === '' || o.disabled){ o.style.display=''; continue; }
-        o.style.display = (!q || o.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
-      }
-    }
-    function show(){ wrap.classList.add('on'); box.value=''; applyFilter(); setTimeout(function(){ try{box.focus();}catch(e){} },30); }
-    function hide(){ wrap.classList.remove('on'); box.value=''; applyFilter(); }
-    el.addEventListener('mousedown', function(){ if(!wrap.classList.contains('on')) setTimeout(show,10); });
-    el.addEventListener('blur', function(){ setTimeout(function(){ if(document.activeElement!==box) hide(); },180); });
-    box.addEventListener('input', applyFilter);
-    box.addEventListener('keydown', function(e){ if(e.key==='Escape'){ hide(); try{el.blur();}catch(x){} } });
-    box.addEventListener('blur', function(){ setTimeout(function(){ if(document.activeElement!==el) hide(); },180); });
-  });
-};
-try{ setTimeout(function(){ window._spAttachSelSearch(); }, 1200); }catch(e){}
-try{ setTimeout(function(){ window._spAttachSelSearch(); }, 5000); }catch(e){}
 
 window.spOpenModelGroupCfg = function() {
   // working copy จาก _MODEL_GROUP_LOCAL
