@@ -1456,7 +1456,7 @@ window.spRenderInstall = function() {
     ['buy', 'สัญญาซื้อขาย (Active)', nBuy+' เครื่อง',   '#38bdf8', _nCon(cnBuy)],
     ['svc', 'สัญญาบริการ (Active)',  nSvc+' เครื่อง',   '#22c55e', _nCon(cnSvc)],
     ['exp', 'หมดสัญญาแล้ว',          nExp+' เครื่อง',   '#fb923c', _nCon(cnExp)],
-    ['none','ไม่เคยมีสัญญา',         nNone+' เครื่อง',  '#94a3b8', 0]
+    ['none','ไม่มีข้อมูลสัญญา',      nNone+' เครื่อง',  '#94a3b8', 0]   /* [V591] ctype ว่าง 25% อาจมีสัญญาจริงแต่ข้อมูลไม่มา */
   ].map(function(k){
     var on = (k[0]===_curG) ? ' ib-on' : '';
     return '<div class="ib-card'+on+'" data-ibg="'+k[0]+'" onclick="window._ibSetGroup(\''+k[0]+'\')" title="คลิกเพื่อกรอง">'
@@ -1946,9 +1946,29 @@ if(!scHistory.length){
 html += '</div>';
 
 // [v446] ประวัติเสนอราคา — ตารางแยกจากประวัติสัญญา (RAW_Quotation, match SN เท่านั้น)
-html += '<div class="ibd-sec" id="ibd-s6" style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px;padding:6px 10px;background:rgba(167,139,250,0.06);border-left:3px solid #a78bfa;border-radius:4px">6\u20e3 ประวัติเสนอราคา ('+quoHistory.length+' รายการ)</div>';
+// [V591] แยกใบเสนอราคา 2 ชนิด — QSC (สัญญา) จาก _jsupQuo · QSP (อะไหล่) จาก partsList
+//   หมายเหตุ: _jsupQuo มีแต่ QSC ล้วน (5,805 ใบ ทั้งหมด QH_TYPE=SC) ส่วน QSP ฝังอยู่ใน _jsupParts
+var _spQuo = [];
+try{
+  var _spqMap = {};
+  partsList.forEach(function(p){
+    var q = String(p.qn||'').trim();
+    if(!q) return;                                    /* ไม่มี QN = เบิกในประกัน ไม่ใช่ใบเสนอราคา */
+    if(!_spqMap[q]) _spqMap[q] = { qn:q, date:p.date||'', items:[], amt:0, status:p.status||'' };
+    _spqMap[q].items.push(String(p.partName||''));
+    _spqMap[q].amt += Number(p.price)||0;
+    if(!_spqMap[q].date && p.date) _spqMap[q].date = p.date;
+  });
+  _spQuo = Object.keys(_spqMap).map(function(k){ return _spqMap[k]; });
+  _spQuo.sort(function(a,b){ return String(b.date||'').localeCompare(String(a.date||'')); });
+}catch(e){ console.warn('[V591] spQuo:', e); }
+
+html += '<div class="ibd-sec" id="ibd-s6" style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px;padding:6px 10px;background:rgba(167,139,250,0.06);border-left:3px solid #a78bfa;border-radius:4px">6\u20e3 ประวัติเสนอราคา ('+(quoHistory.length+_spQuo.length)+' ใบ)</div>';
+
+/* ── 6.1 ใบเสนอราคาสัญญา (QSC) ── */
+html += '<div style="font-size:11px;font-weight:700;color:#c4b5fd;margin:2px 0 5px;padding-left:2px">\ud83d\udccb สัญญา (QSC) \u2014 '+quoHistory.length+' ใบ</div>';
 if(!quoHistory.length){
-  html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบประวัติใบเสนอราคาของเครื่องนี้ —</div>';
+  html += '<div style="padding:10px;text-align:center;color:var(--mu,#94a3b8);font-size:10.5px">— ไม่พบใบเสนอราคาสัญญาของเครื่องนี้ —</div>';
 } else {
   html += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--bd2,#334155)">'
     +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">QN</th>'
@@ -1968,6 +1988,33 @@ if(!quoHistory.length){
       +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px">'+_fmtDate(h.endDate)+'</td>'
       +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace)">'+_fmtB(h.price)+'</td>'
       +'<td style="padding:5px;font-size:10px;color:var(--mu2,#cbd5e1)">'+_esc(h.status||'—')+'</td>'
+      +'</tr>';
+  });
+  html += '</tbody></table>';
+}
+
+/* ── [V591] 6.2 ใบเสนอราคาอะไหล่ (QSP) ── */
+html += '<div style="font-size:11px;font-weight:700;color:#fbbf24;margin:12px 0 5px;padding-left:2px">\ud83d\udd27 อะไหล่ (QSP) \u2014 '+_spQuo.length+' ใบ</div>';
+if(!_spQuo.length){
+  html += '<div style="padding:10px;text-align:center;color:var(--mu,#94a3b8);font-size:10.5px">— ไม่พบใบเสนอราคาอะไหล่ของเครื่องนี้ —</div>';
+} else {
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--bd2,#334155)">'
+    +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">QN</th>'
+    +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">วันที่</th>'
+    +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">รายการอะไหล่</th>'
+    +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ชิ้น</th>'
+    +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">มูลค่า</th>'
+    +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">สถานะ</th>'
+    +'</tr></thead><tbody>';
+  _spQuo.forEach(function(q){
+    var _list = q.items.filter(Boolean).join(', ');
+    html += '<tr style="border-bottom:1px solid var(--bd,#1e293b)">'
+      +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:#fbbf24;white-space:nowrap">'+_esc(q.qn)+'</td>'
+      +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px">'+_fmtDate(q.date)+'</td>'
+      +'<td style="padding:5px;font-size:10px;max-width:280px" title="'+_esc(_list)+'">'+_esc(_list.slice(0,55))+(_list.length>55?'\u2026':'')+'</td>'
+      +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace)">'+q.items.length+'</td>'
+      +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(q.amt?'var(--tx,#e2e8f0)':'var(--mu,#94a3b8)')+'">'+(q.amt?_fmtB(q.amt):'\u2014')+'</td>'
+      +'<td style="padding:5px;font-size:10px;color:var(--mu2,#cbd5e1)">'+_esc(q.status||'—')+'</td>'
       +'</tr>';
   });
   html += '</tbody></table>';
