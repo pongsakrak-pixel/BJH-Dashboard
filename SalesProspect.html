@@ -1441,18 +1441,30 @@ window.spRenderInstall = function() {
   //   บริการ  = สัญญาบริการ + รายครั้งเดียว
   //   ไม่มีสัญญา = ว่าง + ยกเลิก + ไม่มีสัญญา
   var nTotal = rows.length, nBuy = 0, nSvc = 0, nNoCt = 0;
-  rows.forEach(function(x){ var g = window._ibGroupOf(x); if(g==='buy') nBuy++; else if(g==='svc') nSvc++; else nNoCt++; });
+  // [V586] +นับจำนวนสัญญา (unique CON_NO) — 1 สัญญาครอบได้หลายเครื่อง
+  //   CON_NO เติม 91% ของเครื่องที่มีสัญญา · กลุ่ม none ไม่โชว์ (ข้อมูลไม่สมบูรณ์)
+  var cnAll = {}, cnBuy = {}, cnSvc = {};
+  rows.forEach(function(x){
+    var g = window._ibGroupOf(x);
+    if(g==='buy') nBuy++; else if(g==='svc') nSvc++; else nNoCt++;
+    var cn = String((x.r && x.r.CON_NO) || '').trim();
+    if(!cn) return;
+    cnAll[cn] = 1;
+    if(g==='buy') cnBuy[cn] = 1; else if(g==='svc') cnSvc[cn] = 1;
+  });
+  function _nCon(o){ return Object.keys(o).length; }
+  function _sub(n){ return n ? '<div class="sub" style="font-size:10.5px;color:var(--mu,#94a3b8);margin-top:2px;font-family:var(--mono,monospace)">'+n.toLocaleString()+' สัญญา</div>' : ''; }
   var ibKpi = document.getElementById('sp-ib-kpis');
   var _curG = window._ibGroupFilter || '';
   if (ibKpi) ibKpi.innerHTML = [
-    ['',    'เครื่องทั้งหมด',   nTotal+' เครื่อง', '#e2e8f0'],
-    ['buy', 'กลุ่มสัญญาซื้อขาย', nBuy+' เครื่อง',   '#38bdf8'],
-    ['svc', 'กลุ่มสัญญาบริการ',  nSvc+' เครื่อง',   '#22c55e'],
-    ['none','กลุ่มไม่มีสัญญา',   nNoCt+' เครื่อง',  '#f59e0b'],
+    ['',    'เครื่องทั้งหมด',   nTotal+' เครื่อง', '#e2e8f0', _nCon(cnAll)],
+    ['buy', 'กลุ่มสัญญาซื้อขาย', nBuy+' เครื่อง',   '#38bdf8', _nCon(cnBuy)],
+    ['svc', 'กลุ่มสัญญาบริการ',  nSvc+' เครื่อง',   '#22c55e', _nCon(cnSvc)],
+    ['none','กลุ่มไม่มีสัญญา',   nNoCt+' เครื่อง',  '#f59e0b', 0],
   ].map(function(k){
     var on = (k[0]===_curG) ? ' ib-on' : '';
     return '<div class="ib-card'+on+'" data-ibg="'+k[0]+'" onclick="window._ibSetGroup(\''+k[0]+'\')" title="คลิกเพื่อกรอง">'
-      + '<div class="lbl">'+k[1]+'</div><div class="num" style="color:'+k[3]+'">'+k[2]+'</div></div>';
+      + '<div class="lbl">'+k[1]+'</div><div class="num" style="color:'+k[3]+'">'+k[2]+'</div>'+_sub(k[4])+'</div>';
   }).join('');
 
   function _fmtAge(ms) {
@@ -1696,7 +1708,44 @@ window.spShowInstallDetail = function(idx) {
   html += '</div>';
 
   // Body container
-  html += '<div style="flex:1;overflow:auto;padding:14px 16px">';
+  html += '<div id="sp-ibd-body" style="flex:1;overflow:auto;padding:14px 16px">';
+
+  // ── [V586] หมวด 1: ข้อมูลเครื่อง ────────────────────────────
+  (function(){
+    function _f(lbl, val, col){
+      return '<div style="padding:7px 9px;background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:5px">'
+        + '<div style="font-size:9px;color:var(--mu,#64748b)">'+_esc(lbl)+'</div>'
+        + '<div style="font-size:11.5px;color:'+(col||'var(--tx,#e5e7eb)')+';margin-top:1px;word-break:break-word">'+(val||'—')+'</div></div>';
+    }
+    var _gm = '';
+    try{ _gm = (window._MODEL_GROUP_LOCAL||{})[model] || ''; }catch(e){}
+    var _ageTxt = (function(ms){
+      if(ms===null||ms===undefined||ms<0) return '—';
+      var d=Math.floor(ms/86400000), y=Math.floor(d/365), m=Math.floor((d%365)/30);
+      if(y>0&&m>0) return y+' ปี '+m+' ด.'; if(y>0) return y+' ปี'; if(m>0) return m+' เดือน'; return d+' วัน';
+    })(x.ageMs);
+    var _conTxt = x.hasCon
+      ? ('<span style="color:#4ade80">มีสัญญา</span>' + (x.daysLeft!==null ? ' <span style="color:var(--mu,#64748b);font-size:10px">('+(x.daysLeft<0?('หมดแล้ว '+Math.abs(x.daysLeft)+' วัน'):('เหลือ '+x.daysLeft+' วัน'))+')</span>' : ''))
+      : '<span style="color:#fbbf24">ไม่มีสัญญา</span>';
+    var _conNo = String((x.r && x.r.CON_NO) || '').trim();
+    html += '<div class="ibd-sec" id="ibd-s1" style="margin-bottom:14px">';
+    html += '<div style="font-size:12px;font-weight:700;color:#7dd3fc;margin-bottom:6px;padding:6px 10px;background:rgba(125,211,252,0.06);border-left:3px solid #7dd3fc;border-radius:4px">1\u20e3 ข้อมูลเครื่อง</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px">'
+      + _f('ลูกค้า', _esc(cu))
+      + _f('จังหวัด', _esc((x.r&&x.r['จังหวัด'])||''))
+      + _f('ผู้แทน SC', _esc(x.sales||''))
+      + _f('ยี่ห้อ', _esc(brand))
+      + _f('รุ่น', _esc(model))
+      + (_gm ? _f('กลุ่มรุ่น', _esc(_gm), '#facc15') : '')
+      + _f('SN', '<span style="font-family:var(--mono,monospace);font-size:11px">'+_esc(sn||'')+'</span>')
+      + _f('วันติดตั้ง', _fmtDate(x.installDate))
+      + _f('อายุเครื่อง', _esc(_ageTxt))
+      + _f('สถานะสัญญา', _conTxt)
+      + (_conNo ? _f('เลขที่สัญญา', '<span style="font-family:var(--mono,monospace);font-size:11px;color:#7dd3fc">'+_esc(_conNo)+'</span>') : '')
+      + (x.ctype ? _f('ประเภทสัญญา', _esc(x.ctype)) : '')
+      + (x.endDate ? _f('วันหมดสัญญา', _fmtDate(x.endDate)) : '')
+      + '</div></div>';
+  })();
 
   // ── [v441] ราคาแนะนำจากกลุ่มราคา (_pgFindGroup) — Adjust ราคาเปลี่ยนเป็นกดเอง ไม่คำนวณอัตโนมัติแล้ว ─────
 (function(){
@@ -1718,8 +1767,8 @@ window.spShowInstallDetail = function(idx) {
   //   เดิม: เจอ "ยกเว้น" (ไม่มีคำว่า "ไม่รวม") จะตกไปที่ full ทำให้เทียบกับช่องที่อาจยังไม่ได้ตั้งราคา (=0) ผลลัพธ์ผิด
   var baseType = /ไม่รวม/.test(oldCtype) ? 'plain' : (/ยกเว้น/.test(oldCtype) ? 'excl0' : 'full');
 
-  html += '<div style="margin-bottom:14px">';
-  html += '<div style="font-size:12px;font-weight:700;color:#34d399;margin-bottom:6px;padding:6px 10px;background:rgba(52,211,153,0.06);border-left:3px solid #34d399;border-radius:4px">💵 ตารางราคาอ้างอิง (สำหรับเซลล์เท่านั้น — ไม่ใช้โชว์ลูกค้าตรงๆ)' + (ageRow?(' · อายุ '+ (ageYr>=10?'10+':ageYr) +' ปี'):'') + '</div>';
+  html += '<div class="ibd-sec" id="ibd-s5" style="margin-bottom:14px">';
+  html += '<div style="font-size:12px;font-weight:700;color:#34d399;margin-bottom:6px;padding:6px 10px;background:rgba(52,211,153,0.06);border-left:3px solid #34d399;border-radius:4px">5\u20e3 แนะนำราคา · ตารางราคาอ้างอิง (สำหรับเซลล์เท่านั้น)' + (ageRow?(' · อายุ '+ (ageYr>=10?'10+':ageYr) +' ปี'):'') + '</div>';
   html += '<div style="font-size:11px;color:var(--mu,#94a3b8);padding:2px 10px 8px;line-height:1.9">'
     + 'ราคาเดิม: <b style="color:var(--tx,#e2e8f0)">' + _fmtB(oldPrice) + '</b>'
     + ' &nbsp;·&nbsp; แบบสัญญาเดิม: <b style="color:var(--tx,#e2e8f0)">' + _esc(oldCtype) + '</b>'
@@ -1830,7 +1879,7 @@ window._pgTryAdjust = function(){
 };
 
 // ── [v434] ประวัติสัญญา (เอากลับมาจากที่ตัดไปตอน V406) — ใช้ scHistory ที่คำนวณไว้แล้ว ─────
-html += '<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:6px;padding:6px 10px;background:rgba(56,189,248,0.06);border-left:3px solid #38bdf8;border-radius:4px">📜 ประวัติสัญญา ('+scHistory.length+' รายการ)</div>';
+html += '<div class="ibd-sec" id="ibd-s2" style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:6px;padding:6px 10px;background:rgba(56,189,248,0.06);border-left:3px solid #38bdf8;border-radius:4px">2\u20e3 ประวัติสัญญา ('+scHistory.length+' รายการ)</div>';
 if(!scHistory.length){
   html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบประวัติสัญญาของลูกค้ารายนี้ —</div>';
 } else {
@@ -1859,7 +1908,7 @@ if(!scHistory.length){
 html += '</div>';
 
 // [v446] ประวัติเสนอราคา — ตารางแยกจากประวัติสัญญา (RAW_Quotation, match SN เท่านั้น)
-html += '<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px;padding:6px 10px;background:rgba(167,139,250,0.06);border-left:3px solid #a78bfa;border-radius:4px">📜 ประวัติเสนอราคา ('+quoHistory.length+' รายการ)</div>';
+html += '<div class="ibd-sec" id="ibd-s6" style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px;padding:6px 10px;background:rgba(167,139,250,0.06);border-left:3px solid #a78bfa;border-radius:4px">6\u20e3 ประวัติเสนอราคา ('+quoHistory.length+' รายการ)</div>';
 if(!quoHistory.length){
   html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบประวัติใบเสนอราคาของเครื่องนี้ —</div>';
 } else {
@@ -1887,14 +1936,33 @@ if(!quoHistory.length){
 }
 html += '</div>';
 
-  // Q3: รายการที่เคยเปลี่ยนอะไหล่ + ปุ่ม Export CSV
-  html += '<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px;padding:6px 10px;background:rgba(167,139,250,0.06);border-left:3px solid #a78bfa;border-radius:4px;display:flex;align-items:center;gap:8px">'
-    +'<span style="flex:1">🔧 รายการที่เคยเปลี่ยนอะไหล่ — SN: '+_esc(snFirst||'—')+' ('+partsList.length+' รายการ)</span>'
+  // [V586] หมวด 3: อะไหล่ — แยกการ์ดสรุป เบิกในประกัน vs เบิกซื้อ
+  html += '<div class="ibd-sec" id="ibd-s3" style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px;padding:6px 10px;background:rgba(167,139,250,0.06);border-left:3px solid #a78bfa;border-radius:4px;display:flex;align-items:center;gap:8px">'
+    +'<span style="flex:1">3\u20e3 ประวัติอะไหล่ — SN: '+_esc(snFirst||'—')+' ('+partsList.length+' รายการ)</span>'
     +(partsList.length?'<button onclick="window._spExportPartsCSV&&window._spExportPartsCSV()" style="background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.4);color:#a78bfa;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600">📥 Export CSV</button>':'')
     +'</div>';
   if(!partsList.length){
     html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบประวัติอะไหล่ของ SN นี้ —</div>';
   } else {
+    // [V586] การ์ดสรุป เบิกในประกัน vs เบิกซื้อ (เกณฑ์ [v436]: qn ว่าง = ในประกัน)
+    (function(){
+      var wN=0, wB=0, pN=0, pB=0;
+      partsList.forEach(function(p){
+        var amt = Number(p.price)||0;
+        if(!String(p.qn||'').trim()){ wN++; wB+=amt; } else { pN++; pB+=amt; }
+      });
+      html += '<div style="display:flex;gap:7px;margin-bottom:9px">'
+        + '<div style="flex:1;padding:8px 10px;background:rgba(74,222,128,.07);border:1px solid #15803d;border-radius:6px">'
+        +   '<div style="font-size:9.5px;color:#4ade80;font-weight:700">\u2713 เบิกในประกัน</div>'
+        +   '<div style="font-size:17px;font-weight:800;font-family:var(--mono,monospace);color:#4ade80;margin-top:2px">'+wN+' <span style="font-size:10px;color:var(--mu,#64748b)">รายการ</span></div>'
+        +   '<div style="font-size:10px;color:var(--mu,#64748b);font-family:var(--mono,monospace)">'+_fmtB(wB)+'</div>'
+        + '</div>'
+        + '<div style="flex:1;padding:8px 10px;background:rgba(248,113,113,.07);border:1px solid #b91c1c;border-radius:6px">'
+        +   '<div style="font-size:9.5px;color:#f87171;font-weight:700">\u2717 เบิกซื้อ (เสียเงิน)</div>'
+        +   '<div style="font-size:17px;font-weight:800;font-family:var(--mono,monospace);color:#f87171;margin-top:2px">'+pN+' <span style="font-size:10px;color:var(--mu,#64748b)">รายการ</span></div>'
+        +   '<div style="font-size:10px;color:var(--mu,#64748b);font-family:var(--mono,monospace)">'+_fmtB(pB)+'</div>'
+        + '</div></div>';
+    })();
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--bd2,#334155)">'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">Date</th>'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">Quotation</th>'
@@ -1937,7 +2005,7 @@ html += '</div>';
     var pct = totalMachines>0 ? (f.uniqueQns/totalMachines*100) : 0;
     return pct >= 20;
   });
-  html += '<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:6px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px">⚠ รายการอะไหล่ที่มีความเสี่ยงสูง — รุ่น '+_esc(brand)+' '+_esc(model)+' (ความถี่ ≥ 20% จาก '+totalMachines+' ใบเสนอราคา · '+riskArr.length+' รายการ)</div>';
+  html += '<div class="ibd-sec" id="ibd-s4" style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:6px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px">4\u20e3 Predict ความเสี่ยงอะไหล่ — รุ่น '+_esc(brand)+' '+_esc(model)+' (ความถี่ ≥ 20% จาก '+totalMachines+' ใบเสนอราคา · '+riskArr.length+' รายการ)</div>';
   if(!riskArr.length){
     html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบอะไหล่ที่มีความเสี่ยงสูง (ความถี่ ≥ 20%) —</div>';
   } else {
@@ -2005,6 +2073,38 @@ html += '</div>';
   }
   modal.innerHTML = '<div style="background:var(--sur,#0f172a);border:1px solid var(--bd2,#334155);border-radius:10px;max-width:1200px;width:96%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,0.5);overflow:hidden">'+html+'</div>';
   modal.style.display = 'flex';
+
+  // ── [V586] จัดลำดับหมวด 1-6 + แท็บกระโดด (ทำหลัง render ไม่รื้อโค้ดสร้าง html) ──
+  try{
+    var bodyEl = modal.querySelector('#sp-ibd-body');
+    if (bodyEl) {
+      var ORDER = [
+        ['ibd-s1','1\u20e3 ข้อมูลเครื่อง',    '#7dd3fc'],
+        ['ibd-s2','2\u20e3 ประวัติสัญญา',     '#38bdf8'],
+        ['ibd-s3','3\u20e3 ประวัติอะไหล่',    '#a78bfa'],
+        ['ibd-s4','4\u20e3 ความเสี่ยงอะไหล่', '#ef4444'],
+        ['ibd-s5','5\u20e3 แนะนำราคา',        '#34d399'],
+        ['ibd-s6','6\u20e3 ประวัติเสนอราคา',  '#c4b5fd']
+      ];
+      ORDER.forEach(function(o){ var el = bodyEl.querySelector('#'+o[0]); if (el) bodyEl.appendChild(el); });
+      var bar = document.createElement('div');
+      bar.style.cssText = 'position:sticky;top:-14px;z-index:5;display:flex;gap:3px;flex-wrap:wrap;'
+        + 'margin:-14px -16px 12px;padding:9px 16px;background:var(--sur,#0f172a);border-bottom:1px solid var(--bd,#1e293b)';
+      ORDER.forEach(function(o){
+        var sec = bodyEl.querySelector('#'+o[0]);
+        if (!sec) return;
+        var b = document.createElement('button');
+        b.textContent = o[1];
+        b.style.cssText = 'font-size:11px;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:inherit;white-space:nowrap;'
+          + 'border:1px solid var(--bd2,#334155);background:transparent;color:'+o[2];
+        b.onmouseover = function(){ b.style.background='rgba(255,255,255,.05)'; };
+        b.onmouseout  = function(){ b.style.background='transparent'; };
+        b.onclick = function(){ try{ sec.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ sec.scrollIntoView(); } };
+        bar.appendChild(b);
+      });
+      if (bar.children.length) bodyEl.insertBefore(bar, bodyEl.firstChild);
+    }
+  }catch(e){ console.warn('[V586] ibd tabs:', e); }
 };
 
 // ── [v403] Price Table config (Tools → ตั้งราคาสัญญาบริการ) — manager/admin ─────
