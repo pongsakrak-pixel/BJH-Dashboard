@@ -21,6 +21,21 @@
 .sp-filters select option{background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);}
 .filterbar select option{background:#1e293b;color:#e2e8f0;}
 #sp-i-ctype option{background:#1e293b;color:#e2e8f0;}
+/* [V585] Model/Brand กว้างเกินเพราะชื่อยาว -> ล็อกความกว้าง */
+#sp-i-model,#sp-i-modelgroup{max-width:170px;text-overflow:ellipsis}
+#sp-i-brand{max-width:150px;text-overflow:ellipsis}
+#sp-i-contract,#sp-i-trigger{display:none !important}
+/* [V585] ช่องค้นหาใน dropdown */
+.spf-wrap{position:relative;display:inline-block}
+.spf-search{position:absolute;left:0;right:0;top:100%;z-index:60;display:none;
+  padding:5px 8px;font-size:11px;font-family:inherit;
+  background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);
+  border:1px solid var(--bd2,#374151);border-bottom:none;border-radius:5px 5px 0 0;outline:none}
+.spf-wrap.on .spf-search{display:block}
+/* [V585] การ์ด KPI กดกรองได้ */
+.ib-card[data-ibg]{cursor:pointer;transition:border-color .12s,background .12s}
+.ib-card[data-ibg]:hover{border-color:var(--mu2,#64748b)}
+.ib-card.ib-on{border-color:#38bdf8 !important;background:rgba(56,189,248,.07)}
 .sp-sec{font-size:12px;font-weight:700;color:var(--mu,#94a3b8);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
 .sp-tbl{width:100%;border-collapse:collapse;font-size:12px;}
 .sp-tbl th{text-align:left;font-size:11px;color:var(--mu,#94a3b8);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--bd,#2d3748);cursor:pointer;white-space:nowrap;}
@@ -157,8 +172,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   <button class="sp-tab"    id="sp-tab-forecast"  onclick="spTab('forecast')" style="display:none">Revenue Forecast</button>
   <button class="sp-tab"    id="sp-tab-bg"         onclick="spTab('bg')">📊 BG Monitor</button>
   <button class="sp-tab"    id="sp-tab-pipeline"  onclick="spTab('pipeline')" style="display:none">Quotation Pipeline</button>
-  <div style="flex:1"></div>
-  <button onclick="spExportCSV()" style="font-size:11px;padding:4px 12px;border:1px solid var(--bd2,#374151);border-radius:5px;background:transparent;color:var(--mu,#94a3b8);cursor:pointer;font-family:inherit;">⬇ Export CSV</button>
+  <div style="flex:1"></div><!-- [V585] ตัดปุ่ม Export CSV (ฟังก์ชัน spExportCSV ยังอยู่) -->
 </div>
 
 <div class="sp-body">
@@ -483,13 +497,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
       <button onclick="spOpenModelGroupCfg()" title="จัดกลุ่มรุ่น" style="font-size:13px;padding:3px 8px;border:1px solid var(--bd2,#374151);border-radius:5px;background:transparent;color:var(--mu,#94a3b8);cursor:pointer">⚙</button>
       <span class="flbl">จังหวัด:</span>
       <select class="fsel" id="sp-i-prov" multiple size="1" onchange="spEnforceFirst('sp-i-prov');spRenderInstall()" style="min-width:110px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);" title="จังหวัด"><option value="" selected>ทุกจังหวัด</option></select>
-      <select class="fsel" id="sp-i-contract" multiple size="1" onchange="spEnforceFirst('sp-i-contract');spRenderInstall()" style="min-width:145px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);" title="สถานะสัญญา">
-        <option value="" selected>สัญญา: ทั้งหมด</option>
-        <option value="active">มีสัญญา Active</option>
-        <option value="near">มีสัญญา ใกล้หมด (≤180 วัน)</option>
-        <option value="expired">มีสัญญา หมดแล้ว</option>
-        <option value="none">ไม่มีสัญญา</option>
-      </select>
+      <select class="fsel" id="sp-i-contract" multiple size="1" style="display:none"><option value="" selected></option></select><!-- [V585] ซ่อน -->
       <select class="fsel" id="sp-i-age" multiple size="1" onchange="spEnforceFirst('sp-i-age');spRenderInstall()" style="min-width:100px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);" title="อายุเครื่อง (ปี)">
         <option value="" selected>ทุกอายุ</option>
         <option value="0">0 ปี</option>
@@ -502,11 +510,8 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
       </select>
       <select class="fsel" id="sp-i-ctype" multiple size="1" onchange="spEnforceFirst('sp-i-ctype');spRenderInstall()" style="min-width:130px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);" title="ประเภทสัญญา"><option value="" selected>ทุกประเภทสัญญา</option></select>
       <select class="fsel" id="sp-i-trigger" multiple size="1" onchange="spEnforceFirst('sp-i-trigger');spRenderInstall()" style="min-width:120px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);" title="สถานะเสนอราคา">
-        <option value="" selected>เสนอราคา: ทั้งหมด</option>
-        <option value="0">รอเสนอราคา</option>
-        <option value="1">เสนอราคาแล้ว</option>
-        <option value="2">ไม่เสนอราคา</option>
-      </select>
+        <option value="" selected></option>
+      </select><!-- [V585] ซ่อน (trigger ไม่มีข้อมูลจริงเลยทั้งระบบ) -->
       <input class="fsel" type="text" id="sp-i-search" placeholder="ค้นหาลูกค้า / Brand / รุ่น / SN..." oninput="spRenderInstall()" style="width:200px;">
       <button onclick="spClearInstallFilter()" style="font-size:11px;padding:3px 10px;border:1px solid var(--bd2,#374151);border-radius:5px;background:transparent;color:var(--mu,#94a3b8);cursor:pointer;white-space:nowrap">✕ Clear Filter</button>
     </div>
@@ -522,11 +527,8 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
         <th>SN</th>
         <th>สัญญา</th>
         <th class="sp-sort" onclick="spISort('ctype')">ประเภทสัญญา</th>
-        <th>เสนอราคา</th>
-        <th class="sp-sort" onclick="spISort('end_date')">วันหมดสัญญา</th>
-        <th class="sp-sort desc" onclick="spISort('days_left')">เหลือ</th>
-      </tr></thead>
-      <tbody id="sp-install-body"><tr><td colspan="10" class="sp-empty">กำลังโหลด...</td></tr></tbody>
+      </tr></thead><!-- [V585] ตัด เสนอราคา/วันหมดสัญญา/เหลือ -> ย้ายไป Renewal -->
+      <tbody id="sp-install-body"><tr><td colspan="9" class="sp-empty">กำลังโหลด...</td></tr></tbody>
     </table></div>
     <div style="padding:0 16px;font-size:11px;color:var(--mu,#94a3b8);text-align:right" id="sp-install-foot"></div>
   </div>
@@ -1087,7 +1089,28 @@ function spPopulateInstallFilters() {
   var isAll = !curVals.length || curVals.indexOf('') >= 0 || ctEl.options.length <= 1;
   ctEl.innerHTML = '<option value="" style="background:#1e293b;color:#e2e8f0"'+(isAll?' selected':'')+'>ทุกประเภทสัญญา</option>';
   ctEl.innerHTML += '<option value="__empty__" style="background:#1e293b;color:#94a3b8"'+(curVals.indexOf('__empty__')>=0?' selected':'')+'>ไม่มีสัญญาบริการ (ว่าง)</option>';
-  Object.keys(ctypes).sort().forEach(function(c){
+  // [V585] เรียงตามลำดับธุรกิจ: ซื้อขาย/เช่า -> สัญญาบริการ -> รายครั้ง -> บริจาค -> ไม่มี -> ยกเลิก
+  //   ชื่อใหม่ที่ไม่รู้จัก ต่อท้ายอัตโนมัติ ไม่หาย
+  function _ctRank(c){
+    var s = String(c||'');
+    if (s.indexOf('ยกเลิก') >= 0) return 90;
+    if (s.indexOf('ไม่มีสัญญา') >= 0) return 80;
+    if (s.indexOf('บริจาค') >= 0) return 70;
+    if (s.indexOf('รายครั้ง') >= 0) return 60;
+    if (s.indexOf('เช่าซื้อ') >= 0) return 12;
+    if (s.indexOf('เช่า') >= 0) return 11;
+    if (s.indexOf('ซื้อขาย') >= 0) return 10;
+    if (s.indexOf('บริการ') >= 0) {
+      var noParts = s.indexOf('ไม่') >= 0;
+      var exempt  = s.indexOf('ยกเว้น') >= 0;
+      return 20 + (noParts?2:0) + (exempt?1:0);
+    }
+    return 50;
+  }
+  Object.keys(ctypes).sort(function(a,b){
+    var ra=_ctRank(a), rb=_ctRank(b);
+    return ra!==rb ? ra-rb : String(a).localeCompare(String(b),'th');
+  }).forEach(function(c){
     if (!c) return;
     var sel = (!isAll && curVals.indexOf(c) >= 0) ? ' selected' : '';
     ctEl.innerHTML += '<option value="'+_esc(c)+'"'+sel+' style="background:#1e293b;color:#e2e8f0">'+_esc(c)+'</option>';
@@ -1389,6 +1412,8 @@ window.spRenderInstall = function() {
       var ctypeMatch = fCtypes.some(function(fc){ return fc === '__empty__' ? !x.ctype : x.ctype === fc; });
       if (!ctypeMatch) return false;
     }
+    // [V585] กรองตามการ์ด KPI ที่กด (buy / svc / none)
+    if (window._ibGroupFilter && window._ibGroupOf(x) !== window._ibGroupFilter) return false;
     if (fAges.length) {
       var ageYr = x.ageMs!==null ? Math.floor(x.ageMs/(365.25*86400000)) : -1;
       var ageKey = ageYr<0?'':ageYr>=6?'6':String(ageYr);
@@ -1411,24 +1436,23 @@ window.spRenderInstall = function() {
     return 0;
   });
 
-  // KPIs — นับจาก filtered rows
-  var nTotal = rows.length, nActive = 0, nNone = 0, nNear = 0, nExpired = 0;
-  rows.forEach(function(x){
-    if (x.hasCon) {
-      if (x.daysLeft !== null && x.daysLeft >= 0 && x.daysLeft <= 180) { nNear++; }
-      else if (x.daysLeft !== null && x.daysLeft < 0) { nExpired++; }
-      else { nActive++; } // daysLeft > 180 หรือ null (ไม่มีวันหมด)
-    } else { nNone++; }
-  });
+  // [V585] KPI = แบ่งตามประเภทสัญญา (หน้านี้ไว้ดูประวัติ ไม่ใช่หน้าสั่งงานเร่งด่วน)
+  //   ซื้อขาย = ซื้อขาย + บริจาค + เช่า/เช่าซื้อ
+  //   บริการ  = สัญญาบริการ + รายครั้งเดียว
+  //   ไม่มีสัญญา = ว่าง + ยกเลิก + ไม่มีสัญญา
+  var nTotal = rows.length, nBuy = 0, nSvc = 0, nNoCt = 0;
+  rows.forEach(function(x){ var g = window._ibGroupOf(x); if(g==='buy') nBuy++; else if(g==='svc') nSvc++; else nNoCt++; });
   var ibKpi = document.getElementById('sp-ib-kpis');
+  var _curG = window._ibGroupFilter || '';
   if (ibKpi) ibKpi.innerHTML = [
-    ['เครื่องทั้งหมด', nTotal+' เครื่อง', '#e2e8f0'],
-    ['มีสัญญา Active', nActive+' เครื่อง', '#22c55e'],
-    ['ใกล้หมดสัญญา (≤180 วัน)', nNear+' เครื่อง', '#7c6fe0'],
-    ['หมดสัญญาแล้ว', nExpired+' เครื่อง', '#e8344a'],
-    ['ไม่มีสัญญา', nNone+' เครื่อง', '#f59e0b'],
+    ['',    'เครื่องทั้งหมด',   nTotal+' เครื่อง', '#e2e8f0'],
+    ['buy', 'กลุ่มสัญญาซื้อขาย', nBuy+' เครื่อง',   '#38bdf8'],
+    ['svc', 'กลุ่มสัญญาบริการ',  nSvc+' เครื่อง',   '#22c55e'],
+    ['none','กลุ่มไม่มีสัญญา',   nNoCt+' เครื่อง',  '#f59e0b'],
   ].map(function(k){
-    return '<div class="ib-card"><div class="lbl">'+k[0]+'</div><div class="num" style="color:'+k[2]+'">'+k[1]+'</div></div>';
+    var on = (k[0]===_curG) ? ' ib-on' : '';
+    return '<div class="ib-card'+on+'" data-ibg="'+k[0]+'" onclick="window._ibSetGroup(\''+k[0]+'\')" title="คลิกเพื่อกรอง">'
+      + '<div class="lbl">'+k[1]+'</div><div class="num" style="color:'+k[3]+'">'+k[2]+'</div></div>';
   }).join('');
 
   function _fmtAge(ms) {
@@ -1453,7 +1477,7 @@ window.spRenderInstall = function() {
     var pg = window._ibPage;
     var pageRows = window._ibAllRows.slice(pg * PAGE_SIZE, (pg + 1) * PAGE_SIZE);
     var body = document.getElementById('sp-install-body');
-    if (!pageRows.length) { body.innerHTML = '<tr><td colspan="11" class="sp-empty">ไม่พบข้อมูล</td></tr>'; return; }
+    if (!pageRows.length) { body.innerHTML = '<tr><td colspan="9" class="sp-empty">ไม่พบข้อมูล</td></tr>'; return; }
     body.innerHTML = pageRows.map(function(x){
       var dcls = x.daysLeft===null ? '' : x.daysLeft<=30 ? 'sp-days-r' : x.daysLeft<=90 ? 'sp-days-y' : 'sp-days-g';
       // เก็บ index ใน window._ibAllRows เพื่อให้ click handler ลูกค้นได้
@@ -1479,16 +1503,7 @@ window.spRenderInstall = function() {
             +(x.endDate && x.daysLeft !== null && x.daysLeft < 0 ? '<div style="font-size:9px;color:#e8344a;margin-top:2px">หมดแล้ว</div>' : '')
           : '<span class="sp-badge sp-bM">ไม่มีสัญญา</span>')+'</td>'
         +'<td style="font-size:11px;color:var(--mu)">'+_esc(_short(x.ctype,20)||'—')+'</td>'
-        +(function(){
-          var tg=x.trigger;
-          var expired = x.hasCon && x.daysLeft !== null && x.daysLeft < 0;
-          var tlbl;
-          if (tg==='1') { tlbl='<span style="font-size:10px;color:#22c55e">เสนอแล้ว</span>'; } else if (tg==='2') { tlbl='<span style="font-size:10px;color:#94a3b8">ไม่เสนอ</span>'; } else if (expired) { tlbl='<span style="font-size:10px;color:#e8344a;font-weight:600">⚠ รอเสนอราคา</span>'; } else { tlbl='<span style="font-size:10px;color:#f59e0b">รอเสนอราคา</span>'; }
-          return '<td>'+tlbl+'</td>';
-        })()
-        +'<td style="font-size:11px">'+_fmtDate(x.endDate)+'</td>'
-        +'<td class="'+dcls+'">'+(x.daysLeft!==null ? x.daysLeft+' วัน' : '—')+'</td>'
-        +'</tr>';
+        +'</tr>';   // [V585] ตัด 3 คอลัมน์ท้าย
     }).join('');
     var total = window._ibAllRows.length;
     var pg2 = window._ibPage;
@@ -1503,7 +1518,7 @@ window.spRenderInstall = function() {
   window._renderIbPage = _renderIbPage;
 
   var body = document.getElementById('sp-install-body');
-  if (!rows.length) { body.innerHTML = '<tr><td colspan="13" class="sp-empty">ไม่พบข้อมูล</td></tr>'; return; }
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="9" class="sp-empty">ไม่พบข้อมูล</td></tr>'; return; }
   window._ibPage = 0;
   _renderIbPage();
 
@@ -2883,6 +2898,60 @@ window.spSaveNote = function() {
 // โครงเก็บ: 1 รุ่น = 1 กลุ่ม (model → group)
 window._spMgWork = {};   // working copy ของ map ระหว่างแก้ (ยังไม่ save)
 window._spMgSelGroup = '';  // กลุ่มที่กำลังจัดอยู่
+
+// ══════════════════════════════════════════════════════════
+// [V585] จัดกลุ่มเครื่องตามประเภทสัญญา (ctype) — ใช้กับการ์ด KPI
+// ══════════════════════════════════════════════════════════
+window._ibGroupFilter = window._ibGroupFilter || '';
+window._ibGroupOf = function(x){
+  var c = String((x && x.ctype) || '').trim();
+  if (!c) return 'none';                                   /* ว่าง = ไม่มีสัญญา */
+  if (c.indexOf('ยกเลิก') >= 0) return 'none';
+  if (c.indexOf('ไม่มีสัญญา') >= 0) return 'none';
+  if (c.indexOf('ซื้อขาย') >= 0 || c.indexOf('เช่า') >= 0 || c.indexOf('บริจาค') >= 0) return 'buy';
+  if (c.indexOf('บริการ') >= 0 || c.indexOf('รายครั้ง') >= 0) return 'svc';
+  return 'none';
+};
+window._ibSetGroup = function(g){
+  window._ibGroupFilter = (window._ibGroupFilter === g) ? '' : g;   /* กดซ้ำ = ยกเลิก */
+  try{ spRenderInstall(); }catch(e){}
+};
+
+// ══════════════════════════════════════════════════════════
+// [V585] ช่องค้นหาใน multi-select (Brand / Model / G.Model)
+//   ไม่แตะ logic เดิม — spEnforceFirst / _getMultiVals ใช้ค่า select ตามปกติ
+// ══════════════════════════════════════════════════════════
+window._spAttachSelSearch = function(){
+  ['sp-i-brand','sp-i-model','sp-i-modelgroup'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el || el._spSearchOn) return;
+    el._spSearchOn = true;
+    var wrap = document.createElement('span');
+    wrap.className = 'spf-wrap';
+    el.parentNode.insertBefore(wrap, el);
+    wrap.appendChild(el);
+    var box = document.createElement('input');
+    box.type = 'text'; box.className = 'spf-search'; box.placeholder = 'พิมพ์เพื่อค้นหา...';
+    wrap.appendChild(box);
+    function applyFilter(){
+      var q = String(box.value||'').toLowerCase().trim();
+      for(var i=0;i<el.options.length;i++){
+        var o = el.options[i];
+        if(o.value === '' || o.disabled){ o.style.display=''; continue; }
+        o.style.display = (!q || o.textContent.toLowerCase().indexOf(q) >= 0) ? '' : 'none';
+      }
+    }
+    function show(){ wrap.classList.add('on'); box.value=''; applyFilter(); setTimeout(function(){ try{box.focus();}catch(e){} },30); }
+    function hide(){ wrap.classList.remove('on'); box.value=''; applyFilter(); }
+    el.addEventListener('mousedown', function(){ if(!wrap.classList.contains('on')) setTimeout(show,10); });
+    el.addEventListener('blur', function(){ setTimeout(function(){ if(document.activeElement!==box) hide(); },180); });
+    box.addEventListener('input', applyFilter);
+    box.addEventListener('keydown', function(e){ if(e.key==='Escape'){ hide(); try{el.blur();}catch(x){} } });
+    box.addEventListener('blur', function(){ setTimeout(function(){ if(document.activeElement!==el) hide(); },180); });
+  });
+};
+try{ setTimeout(function(){ window._spAttachSelSearch(); }, 1200); }catch(e){}
+try{ setTimeout(function(){ window._spAttachSelSearch(); }, 5000); }catch(e){}
 
 window.spOpenModelGroupCfg = function() {
   // working copy จาก _MODEL_GROUP_LOCAL
