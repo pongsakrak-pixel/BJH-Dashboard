@@ -1116,9 +1116,7 @@ function spPopulateInstallFilters() {
   var mgEl = document.getElementById('sp-i-modelgroup');
   if (mgEl) {
     var mgMap = window._MODEL_GROUP_LOCAL || {};
-    var groups = {};
-    Object.keys(mgMap).forEach(function(m){ var g=String(mgMap[m]||'').trim(); if(g) groups[g]=1; });
-    var gList = Object.keys(groups).sort();
+    var gList = (window._mgAllGroups ? window._mgAllGroups(mgMap) : []);   /* [V593] รองรับหลายกลุ่ม */
     var mgCur = Array.from(mgEl.selectedOptions||[]).map(function(o){ return o.value; });
     var mgAll = !mgCur.length || mgCur.indexOf('') >= 0 || mgEl.options.length <= 1;
     mgEl.innerHTML = '<option value=""'+(mgAll?' selected':'')+' style="background:#1e293b;color:#e2e8f0">ทุกกลุ่มรุ่น</option>';
@@ -1382,8 +1380,9 @@ window.spRenderInstall = function() {
     }
     if (fBrand.length && fBrand.indexOf(x.brand) < 0) return false;
     if (fMGroups.length) {
-      var _mg = (window._MODEL_GROUP_LOCAL || {})[x.model] || '';
-      var mgOk = fMGroups.some(function(fg){ return fg === '__ungrouped__' ? !_mg : _mg === fg; });
+      /* [V593] รุ่นอยู่ได้หลายกลุ่ม — ตรงกับกลุ่มใดกลุ่มหนึ่งที่เลือกก็ผ่าน (เครื่องโผล่ครั้งเดียว) */
+      var _mgs = (window._mgOf ? window._mgOf(x.model) : []);
+      var mgOk = fMGroups.some(function(fg){ return fg === '__ungrouped__' ? !_mgs.length : _mgs.indexOf(fg) >= 0; });
       if (!mgOk) return false;
     }
     if (fModels.length && fModels.indexOf(x.model) < 0) return false;
@@ -1680,15 +1679,20 @@ window.spShowInstallDetail = function(idx) {
   try {
     // [V590] ฐานข้อมูล 2 ชั้น: ถ้ารุ่นนี้อยู่ในกลุ่ม (G.Model) ใช้ทั้งกลุ่ม -> ฐานใหญ่ แม่นกว่า
     //   ถ้าไม่อยู่ในกลุ่ม -> ใช้รุ่นเดียวเหมือนเดิม (G.Model ครอบคลุมแค่ 23% ของเครื่อง)
+    // [V593] รุ่นอยู่หลายกลุ่ม -> รวมรุ่นจากทุกกลุ่ม (ฐานใหญ่สุด)
     var _mgMap = window._MODEL_GROUP_LOCAL || {};
-    var _myGroup = String(_mgMap[model] || '').trim();
+    var _myGroups = (window._mgOf ? window._mgOf(model) : []);
     var _grpModels = {};                       /* lowercase model -> 1 */
-    if(_myGroup){
+    if(_myGroups.length){
       Object.keys(_mgMap).forEach(function(m){
-        if(String(_mgMap[m]||'').trim() === _myGroup) _grpModels[String(m).toLowerCase().trim()] = 1;
+        var gs = window._mgArr(_mgMap[m]);
+        for(var i=0;i<gs.length;i++){
+          if(_myGroups.indexOf(gs[i]) >= 0){ _grpModels[String(m).toLowerCase().trim()] = 1; break; }
+        }
       });
     }
-    window._ibRiskBase = { group:_myGroup, models: _myGroup ? Object.keys(_grpModels).length : 1 };
+    var _myGroup = _myGroups.join(' + ');
+    window._ibRiskBase = { group:_myGroup, models: _myGroups.length ? Object.keys(_grpModels).length : 1 };
 
     (window._jsupParts||[]).forEach(function(p){
       var pml = String(p.MODEL_NAME||'').toLowerCase().trim();
@@ -1745,7 +1749,7 @@ window.spShowInstallDetail = function(idx) {
         + '<div style="font-size:11.5px;color:'+(col||'var(--tx,#e5e7eb)')+';margin-top:1px;word-break:break-word">'+(val||'—')+'</div></div>';
     }
     var _gm = '';
-    try{ _gm = (window._MODEL_GROUP_LOCAL||{})[model] || ''; }catch(e){}
+    try{ _gm = (window._mgOf ? window._mgOf(model) : []).join(', '); }catch(e){}   /* [V593] */
     var _ageTxt = (function(ms){
       if(ms===null||ms===undefined||ms<0) return '—';
       var d=Math.floor(ms/86400000), y=Math.floor(d/365), m=Math.floor((d%365)/30);
@@ -3152,6 +3156,38 @@ window._ibGroupFilter = window._ibGroupFilter || '';
 //   svc  = บริการ/รายครั้ง     + สัญญายังไม่หมด
 //   exp  = เคยมีสัญญา แต่หมดอายุแล้ว  ← กลุ่มที่ตามกลับได้
 //   none = ไม่เคยมีสัญญาเลย
+// ══════════════════════════════════════════════════════════
+// [V593] G.Model: 1 รุ่นอยู่ได้หลายกลุ่ม
+//   โครงสร้างใหม่ _MODEL_GROUP_LOCAL = { model: ["A","B"] }
+//   ของเดิมเป็น string { model: "A" } -> อ่านได้ทั้ง 2 แบบ (backward compatible)
+// ══════════════════════════════════════════════════════════
+window._mgArr = function(v){                     /* ค่าใน map -> array เสมอ */
+  if (v === null || v === undefined) return [];
+  if (Array.isArray(v)) return v.map(function(s){ return String(s||'').trim(); }).filter(Boolean);
+  var s = String(v).trim();
+  return s ? [s] : [];
+};
+window._mgOf = function(model){                  /* รุ่น -> array ของกลุ่ม */
+  try{ return window._mgArr((window._MODEL_GROUP_LOCAL||{})[model]); }catch(e){ return []; }
+};
+window._mgHas = function(model, g){              /* รุ่นอยู่ในกลุ่ม g ไหม */
+  return window._mgOf(model).indexOf(g) >= 0;
+};
+window._mgAllGroups = function(map){             /* กลุ่มทั้งหมด (unique) */
+  var m = map || window._MODEL_GROUP_LOCAL || {}, o = {};
+  Object.keys(m).forEach(function(k){ window._mgArr(m[k]).forEach(function(g){ if(g) o[g]=1; }); });
+  return Object.keys(o).sort();
+};
+window._mgAdd = function(map, model, g){         /* เพิ่มกลุ่มให้รุ่น */
+  var a = window._mgArr(map[model]);
+  if (a.indexOf(g) < 0) a.push(g);
+  map[model] = a;
+};
+window._mgDel = function(map, model, g){         /* เอากลุ่มออกจากรุ่น */
+  var a = window._mgArr(map[model]).filter(function(x){ return x !== g; });
+  if (a.length) map[model] = a; else delete map[model];
+};
+
 window._ibCtypeOf = function(x){          /* ประเภทสัญญาดิบ (ไม่สนวันหมด) */
   var c = String((x && x.ctype) || '').trim();
   if (!c) return 'none';
@@ -3177,7 +3213,8 @@ window.spOpenModelGroupCfg = function() {
   // working copy จาก _MODEL_GROUP_LOCAL
   window._spMgWork = {};
   var src = window._MODEL_GROUP_LOCAL || {};
-  Object.keys(src).forEach(function(m){ window._spMgWork[m] = src[m]; });
+  /* [V593] แปลงเป็น array เสมอ (ข้อมูลเก่าเป็น string) */
+  Object.keys(src).forEach(function(m){ window._spMgWork[m] = window._mgArr(src[m]); });
   window._spMgSelGroup = '';
 
   var ov = document.getElementById('sp-mg-overlay');
@@ -3252,9 +3289,9 @@ function _spMgAllModels() {
 }
 function _spMgGroups() {
   var g = {};
+  /* [V593] 1 รุ่นอยู่ได้หลายกลุ่ม */
   Object.keys(window._spMgWork||{}).forEach(function(m){
-    var v = String(window._spMgWork[m]||'').trim();
-    if (v) g[v] = 1;
+    window._mgArr(window._spMgWork[m]).forEach(function(v){ if (v) g[v] = 1; });
   });
   return Object.keys(g).sort();
 }
@@ -3316,9 +3353,8 @@ window.spMgCreateGroup = function() {
 window.spMgDeleteGroup = function() {
   var g = window._spMgSelGroup;
   if (!g) return;
-  Object.keys(window._spMgWork).forEach(function(m){
-    if (window._spMgWork[m] === g) delete window._spMgWork[m];
-  });
+  /* [V593] ลบเฉพาะกลุ่มนี้ออกจากทุกรุ่น — กลุ่มอื่นของรุ่นนั้นยังอยู่ */
+  Object.keys(window._spMgWork).forEach(function(m){ window._mgDel(window._spMgWork, m, g); });
   window._spMgSelGroup = '';
   spMgRefreshGroupSel();
   spMgRenderModels();
@@ -3338,10 +3374,15 @@ window.spMgRenderModels = function() {
   });
   if (!list.length) { box.innerHTML = '<div style="padding:12px;color:#64748b;font-size:12px;text-align:center">ไม่พบรุ่น</div>'; return; }
   box.innerHTML = list.map(function(it){
-    var grp = window._spMgWork[it.model] || '';
-    var tag = grp ? '<span style="font-size:10px;color:#a5b4fc;background:#312e81;padding:1px 6px;border-radius:8px;margin-left:4px">'+_esc(grp)+'</span>' : '';
+    /* [V593] รุ่นอยู่ได้หลายกลุ่ม — โชว์ป้ายทุกกลุ่ม · ติ๊กถูกถ้าอยู่ในกลุ่มที่กำลังจัด */
+    var grps = window._mgArr(window._spMgWork[it.model]);
+    var inSel = window._spMgSelGroup && grps.indexOf(window._spMgSelGroup) >= 0;
+    var tag = grps.map(function(g){
+      var cur = (g === window._spMgSelGroup);
+      return '<span style="font-size:10px;color:'+(cur?'#c7d2fe':'#a5b4fc')+';background:'+(cur?'#4338ca':'#312e81')+';padding:1px 6px;border-radius:8px;margin-left:4px">'+_esc(g)+'</span>';
+    }).join('');
     return '<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid #1e293b;cursor:pointer;font-size:12px;color:#e2e8f0">'
-      + '<input type="checkbox" class="sp-mg-mchk" value="'+_esc(it.model)+'"'+(grp===window._spMgSelGroup&&grp?' checked':'')+' onchange="spMgToggleModel(this)" style="cursor:pointer">'
+      + '<input type="checkbox" class="sp-mg-mchk" value="'+_esc(it.model)+'"'+(inSel?' checked':'')+' onchange="spMgToggleModel(this)" style="cursor:pointer">'
       + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(it.model)+' <span style="color:#64748b;font-size:10px">('+_esc(it.brand)+')</span></span>'
       + tag
       + '</label>';
@@ -3353,7 +3394,7 @@ window.spMgRenderMembers = function() {
   if (!box) return;
   var g = window._spMgSelGroup;
   if (!g) { box.innerHTML = '<div style="padding:12px;color:#64748b;font-size:11px;text-align:center">เลือกกลุ่มก่อน</div>'; return; }
-  var members = Object.keys(window._spMgWork).filter(function(m){ return window._spMgWork[m]===g; }).sort();
+  var members = Object.keys(window._spMgWork).filter(function(m){ return window._mgArr(window._spMgWork[m]).indexOf(g) >= 0; }).sort();   /* [V593] */
   if (!members.length) { box.innerHTML = '<div style="padding:12px;color:#64748b;font-size:11px;text-align:center">ยังไม่มีรุ่นในกลุ่มนี้</div>'; return; }
   box.innerHTML = members.map(function(m){
     return '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid #1e293b;font-size:12px;color:#e2e8f0">'
@@ -3367,8 +3408,9 @@ window.spMgToggleModel = function(cb) {
   var g = window._spMgSelGroup;
   if (!g) { cb.checked = false; spMgStatus('⚠️ เลือก/สร้างกลุ่มก่อน'); return; }
   var m = cb.value;
-  if (cb.checked) { window._spMgWork[m] = g; }
-  else { if (window._spMgWork[m] === g) delete window._spMgWork[m]; }
+  /* [V593] เพิ่ม/ลบเฉพาะกลุ่มที่กำลังจัด — กลุ่มอื่นของรุ่นนี้ไม่กระทบ */
+  if (cb.checked) { window._mgAdd(window._spMgWork, m, g); }
+  else { window._mgDel(window._spMgWork, m, g); }
   spMgRefreshGroupSel();
   spMgRenderMembers();
 };
@@ -3379,7 +3421,7 @@ window.spMgAddSelected = function() {
   var chks = document.querySelectorAll('.sp-mg-mchk:checked');
   if (!chks.length) { spMgStatus('⚠️ ติ๊กรุ่นก่อน'); return; }
   var n = 0;
-  chks.forEach(function(c){ window._spMgWork[c.value] = g; n++; });
+  chks.forEach(function(c){ window._mgAdd(window._spMgWork, c.value, g); n++; });   /* [V593] */
   spMgRefreshGroupSel();
   spMgRenderModels();
   spMgRenderMembers();
@@ -3387,7 +3429,9 @@ window.spMgAddSelected = function() {
 };
 
 window.spMgRemoveMember = function(m) {
-  if (window._spMgWork[m]) delete window._spMgWork[m];
+  /* [V593] เอาออกเฉพาะกลุ่มที่กำลังดู ไม่ลบกลุ่มอื่นของรุ่นนี้ */
+  if (window._spMgSelGroup) window._mgDel(window._spMgWork, m, window._spMgSelGroup);
+  else delete window._spMgWork[m];
   spMgRefreshGroupSel();
   spMgRenderModels();
   spMgRenderMembers();

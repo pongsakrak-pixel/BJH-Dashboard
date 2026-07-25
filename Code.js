@@ -1092,11 +1092,15 @@ function _getConfig_() {
 
     // ── model_group (Installation Base: model → group) ────────────
     // อ่านจาก _config_kv เท่านั้น (ไม่มี legacy sheet)
+    // [V593] 1 รุ่นอยู่ได้หลายกลุ่ม -> ค่าเป็น array · ของเดิมเป็น string ก็ยังอ่านได้
     if (ckv.model_group && Object.keys(ckv.model_group).length > 0) {
       config.model_group = {};
       Object.keys(ckv.model_group).forEach(function(k){
-        var v = String(ckv.model_group[k]||'').trim();
-        if (v) config.model_group[k] = v;
+        var raw = ckv.model_group[k];
+        var arr = Array.isArray(raw)
+          ? raw.map(function(s){ return String(s||'').trim(); }).filter(function(s){ return !!s; })
+          : (String(raw||'').trim() ? [String(raw).trim()] : []);
+        if (arr.length) config.model_group[k] = arr;
       });
     }
 
@@ -2168,10 +2172,17 @@ function saveConfigSection(payloadStr) {
 
     if (section === 'model_group') {
       // ใหม่: เขียน _config_kv (model → group name)
+      // [V593] รับ array (หลายกลุ่ม) · รับ string เดิมด้วยเพื่อความเข้ากันได้
       var mgMap = {};
       Object.keys(data||{}).forEach(function(m){
-        var v = String(data[m]||'').trim();
-        if (v) mgMap[m] = v;  // ค่าว่าง = เอาออกจากกลุ่ม (ไม่เขียน)
+        var raw = data[m];
+        var arr = Array.isArray(raw)
+          ? raw.map(function(s){ return String(s||'').trim(); }).filter(function(s){ return !!s; })
+          : (String(raw||'').trim() ? [String(raw).trim()] : []);
+        // ตัดกลุ่มซ้ำ
+        var seen = {}, uniq = [];
+        arr.forEach(function(g){ if(!seen[g]){ seen[g]=1; uniq.push(g); } });
+        if (uniq.length) mgMap[m] = uniq;   // ว่าง = เอาออกจากทุกกลุ่ม (ไม่เขียน)
       });
       _ckvWriteSection(ss, 'model_group', mgMap);
       return JSON.stringify({ok:true});
