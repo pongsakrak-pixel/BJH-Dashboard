@@ -7887,8 +7887,8 @@ function applyConfig(cfg){
   if(cfg.model_group&&typeof cfg.model_group==='object'){
     var mgObj={};
     Object.keys(cfg.model_group).forEach(function(k){
-      var v=String(cfg.model_group[k]||'').trim();
-      if(v) mgObj[k]=v;
+        var v=(window._mgArr?window._mgArr(cfg.model_group[k]):[String(cfg.model_group[k]||'').trim()]).filter(Boolean); /* [V599] */
+        if(v.length) mgObj[k]=v;
     });
     window._MODEL_GROUP_LOCAL=mgObj;
     try{ if(typeof window.spPopulateInstallFilters==='function') window.spPopulateInstallFilters(); }catch(e){} // [V470] re-populate G.Model dropdown หลัง config โหลด (แก้ race dropdown กลุ่มรุ่นว่างเป็นบางครั้ง)

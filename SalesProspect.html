@@ -1700,7 +1700,9 @@ window.spShowInstallDetail = function(idx) {
   } catch(e){}
 
   // ── Q5: โอกาสอะไหล่เสียของรุ่นนี้ — group by parts_name ของรุ่นเดียวกัน ─────
-  var partsFreq = {}; // partsName → {count, totalQty, totalPrice}
+  /* [V599] normalize ชื่ออะไหล่ — ตัดอักขระที่ไม่ใช่ A-Z0-9 ทิ้ง แล้วเทียบตัวพิมพ์ใหญ่ */
+  function _pKey(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+  var partsFreq = {}; // partsKey → {count, totalQty, totalPrice, names}
   var modelMachines = {}; // unique qn for this brand+model
   var modelSNs = {};      // [V594] SN ไม่ซ้ำในฐาน = จำนวนเครื่องจริง
   /* [V594] map SN -> วันติดตั้ง (ใช้คำนวณ "อายุตอนเปลี่ยน")
@@ -1748,11 +1750,18 @@ window.spShowInstallDetail = function(idx) {
       }
       if(!hit) return;
       if(String(p.STATUS_DT_NAME||'') === 'Canceled') return;           /* ตัดที่ยกเลิก */
-      var pName = String(p.PARTS_NAME||'').trim();
+      var pRaw = String(p.PARTS_NAME||'').trim();
+      if(!pRaw) return;
+      /* [V599] รวมอะไหล่ที่ชื่อ normalize แล้วตรงกันเป๊ะ (ต่างแค่ช่องว่าง/ตัวพิมพ์/วงเล็บท้าย)
+         เคสจริง: APDCAN-94014078CM BATTERY PACK,LB-4A มี 2 Mat No (MI5S05474 / MI5D05082) สถิติโดนหารครึ่ง
+         ไม่ทำ fuzzy — ชื่อต้องตรงทุกตัวอักษรหลัง normalize เท่านั้น จึงไม่มีทางรวมผิด
+         ที่ต้องคนตัดสิน (เช่น Battery 12V/9AH Yuasa กับ Battery 12V/9Ah) รอ Config กลุ่มอะไหล่ */
+      var pName = _pKey(pRaw);
       if(!pName) return;
       /* key ของ "งาน" — ใช้ QN ถ้ามี ไม่งั้นใช้เลข SR (นับทั้งเบิกซื้อและเบิกในประกัน) */
       var jobKey = String(p.QH_DOC_NUMBER || p.JOB_SR || p.SERVICE_JOB_SR || '').trim();
-      if(!partsFreq[pName]) partsFreq[pName]={count:0,qty:0,price:0,uniqueQn:{},amts:[],sns:{},ages:[]};
+      if(!partsFreq[pName]) partsFreq[pName]={count:0,qty:0,price:0,uniqueQn:{},amts:[],sns:{},ages:[],names:{}};
+      partsFreq[pName].names[pRaw] = (partsFreq[pName].names[pRaw]||0) + 1;   /* [V599] ชื่อที่พบบ่อยสุดใช้แสดง */
       /* [V594] เก็บ SN + อายุตอนเปลี่ยน (วันเบิก - วันติดตั้ง) */
       var _pSn = _snNorm(p.SN);
       if(_pSn.length >= 4){
@@ -1786,10 +1795,24 @@ window.spShowInstallDetail = function(idx) {
     var s = a.slice().sort(function(x,y){ return x-y; });
     return s[Math.min(s.length-1, Math.floor(s.length*f))];
   }
+  /* [V599] ประวัติเปลี่ยนของ "เครื่องนี้" — key เดียวกับ partsFreq เพื่อเช็คว่าเปลี่ยนไปแล้วหรือยัง */
+  var _myLast = {};
+  try{
+    partsList.forEach(function(p){
+      var k = _pKey(p.partName || p.matNo);
+      if(!k) return;
+      var d = new Date(p.date||'');
+      if(isNaN(+d)) return;
+      if(!_myLast[k] || +d > +_myLast[k].d) _myLast[k] = { d:d, txt:String(p.date||'').slice(0,10) };
+    });
+  }catch(e){}
   var freqArr = Object.keys(partsFreq).map(function(k){
     var o = partsFreq[k];
     var ag = o.ages || [];
-    return {name:k, count:o.count, qty:o.qty,
+    var _nm = Object.keys(o.names||{}).sort(function(a,b){ return o.names[b]-o.names[a]; })[0] || k;
+    var _mine = _myLast[k] || null;
+    return {name:_nm, nameCount:Object.keys(o.names||{}).length, mine:_mine,
+            count:o.count, qty:o.qty,
             price:o.price, med:_median(o.amts),
             uniqueQns:Object.keys(o.uniqueQn).length,
             snCount:Object.keys(o.sns||{}).length,        /* [V594] เครื่องที่เคยเปลี่ยนตัวนี้ */
@@ -2181,66 +2204,79 @@ html += '</div>';
 
   // [V594] Q4: Predict ความเสี่ยงอะไหล่ — ฐาน G.Model + อายุตอนเปลี่ยน (เลิกตัดที่ 20%)
   var totalMachines = Object.keys(modelMachines).length;
-  // [V594] Predict ความเสี่ยงอะไหล่ — ฐาน G.Model · อายุตอนเปลี่ยน · โหมด A/B · สิทธิ์ตาม role
+  // [V599] แผนดูแลอะไหล่ตามอายุการใช้งาน — ตอบว่า "เครื่องนี้ควรวางแผนอะไร" ไม่ใช่ "รุ่นนี้พังบ่อยแค่ไหน"
   var _rb   = window._ibRiskBase || {group:'', models:1};
-  var _totSN = Object.keys(modelSNs).length;                 /* เครื่องในฐาน (SN ไม่ซ้ำ) */
-  var thin   = _totSN > 0 && _totSN < 5;                     /* ฐานน้อยเกินจะเชื่อ */
+  var _totSN = Object.keys(modelSNs).length;
+  var thin   = _totSN > 0 && _totSN < 5;
   var riskArr = freqArr.filter(function(f){ return f.snCount > 0 || f.uniqueQns > 0; });
-  var top5    = riskArr.slice(0,5);
-  /* อายุเครื่องนี้ (ปี) — ไม่มีวันติดตั้ง = null → ไม่ตีป้ายถึงคิว */
   var _ageNow = (x.ageMs !== null && x.ageMs !== undefined && x.ageMs >= 0) ? (x.ageMs/31557600000) : null;
-  /* โหมด A = เครื่องอยู่ในสัญญารวมอะไหล่ที่ยังไม่หมด → ตัวเลขเงินคือ "ต้นทุน" ไม่ใช่ยอดขาย */
+  var _ageR   = _ageNow === null ? null : Math.round(_ageNow);
   var _ctS   = String((x && x.ctype) || '');
   var _modeA = !!(x.hasCon && (x.daysLeft === null || x.daysLeft >= 0)
                   && /รวมอะไหล่/.test(_ctS) && !/ไม่รวมอะไหล่/.test(_ctS));
-  var _isSales   = !!window._spIsSales;
-  /* [V596] ทุก role เห็นเหมือนกัน — แก้ที่ "คำ" ให้ทนสายตาลูกค้า แทนการซ่อนตัวเลข */
-  var _hideMoney = false;
 
-  /* ป้ายสถานะ: อายุ ≥ median = ถึงคิว · p25–median = ใกล้ถึง · < p25 = ยังไม่ถึง */
+  /* [V599] ปัดเศษ "ครั้งเดียว" แล้วเทียบค่าที่ปัดแล้ว
+     เดิม V596 ปัดเฉพาะตอนแสดง แต่ตรรกะเทียบค่าจริง -> จอโชว์ "4-7 ปี · เครื่อง 7 ปี · ใกล้ถึงรอบ" ขัดกันเอง
+     ความละเอียดที่เสียไปไม่มีความหมาย เพราะช่วงกว้าง 3-4 ปีอยู่แล้ว */
+  function _p25(f){ return Math.round(f.age25); }
+  function _p50(f){ return Math.round(f.age50); }
   function _dueOf(f){
-    if(_ageNow === null || !f.ageN) return {k:'na',  t:'—',            c:'var(--mu,#64748b)'};
-    if(_ageNow >= f.age50)          return {k:'due', t:'🔴 ถึงรอบแล้ว',   c:'#f87171'};
-    if(_ageNow >= f.age25)          return {k:'soon',t:'🟡 ใกล้ถึงรอบ',  c:'#facc15'};
-    return {k:'no', t:'🟢 ยังไม่ถึงรอบ', c:'#4ade80'};
+    if(f.mine)                     return {k:'done', t:'\u2705 เปลี่ยนไปแล้ว', c:'#4ade80', o:0};
+    if(_ageR === null || !f.ageN)  return {k:'na',   t:'\u2014',                c:'var(--mu,#64748b)', o:4};
+    if(_ageR >= _p50(f))           return {k:'due',  t:'\U0001f534 ถึงรอบแล้ว',  c:'#f87171', o:1};
+    if(_ageR >= _p25(f))           return {k:'soon', t:'\U0001f7e1 ใกล้ถึงรอบ', c:'#facc15', o:2};
+    return {k:'no', t:'\U0001f7e2 ยังไม่ถึงรอบ', c:'#4ade80', o:3};
   }
-  /* [V596] ปัดเศษทิ้ง — ช่วงกว้างพออยู่แล้ว ทศนิยมทำให้ดูเป๊ะเกินจริง */
   function _yrTxt(f){
-    if(!f.ageN) return '—';
-    var a=Math.round(f.age25), b=Math.round(f.age50);
-    return (a===b ? String(a) : (a+'–'+b)) + ' ปี';
+    if(!f.ageN) return '\u2014';
+    var a=_p25(f), b=_p50(f);
+    return (a===b ? String(a) : (a+'\u2013'+b)) + ' ปี';
   }
-  /* แถบช่วงอายุ 0–15 ปี : แถบฟ้า = p25–p75 · เส้นฟ้า = median · เส้นแดง = อายุเครื่องนี้ */
+  /* พบบ่อย -> จุด 3 ระดับ  (เดิมโชว์ "28% (28/101)" ลูกค้าอ่านได้ว่าสินค้าเรา 28% พัง) */
+  function _dotsOf(f){
+    var pct = _totSN>0 ? (f.snCount/_totSN*100) : 0;
+    var n = pct>=30 ? 3 : pct>=15 ? 2 : 1;
+    var c = n===3 ? '#f87171' : n===2 ? '#fb923c' : 'var(--mu,#94a3b8)';
+    var s='';
+    for(var i=0;i<3;i++) s += '<span style="color:'+(i<n?c:'#334155')+'">'+(i<n?'\u25cf':'\u25cb')+'</span>';
+    return '<span title="'+f.snCount+'/'+_totSN+' เครื่องในกลุ่มรุ่นเคยเปลี่ยน ('+pct.toFixed(0)+'%)" style="letter-spacing:1px">'+s+'</span>';
+  }
+  /* แถบช่วงอายุ + แกน 0/5/10/15 ปี */
   function _barOf(f){
     if(!f.ageN) return '<span style="color:var(--mu,#475569);font-size:10px">ไม่มีข้อมูลอายุ</span>';
-    var MX = 15, L = function(v){ return Math.max(0, Math.min(100, v/MX*100)); };
-    var s = '<div style="position:relative;height:16px;min-width:130px;background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:3px">'
-      + '<div style="position:absolute;top:3px;height:10px;border-radius:2px;background:rgba(125,211,252,.28);left:'+L(f.age25)+'%;width:'+Math.max(1,(L(f.age75)-L(f.age25)))+'%"></div>'
-      + '<div style="position:absolute;top:1px;width:2px;height:14px;background:#7dd3fc;left:'+L(f.age50)+'%"></div>';
-    if(_ageNow !== null) s += '<div style="position:absolute;top:-2px;width:2px;height:20px;background:#f87171;left:'+L(_ageNow)+'%"></div>';
-    return s + '</div>';
+    var MX=15, L=function(v){ return Math.max(0, Math.min(100, v/MX*100)); };
+    var s = '<div style="min-width:150px">'
+      + '<div style="position:relative;height:15px;background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:3px">'
+      + '<div style="position:absolute;top:3px;height:9px;border-radius:2px;background:rgba(125,211,252,.3);left:'+L(f.age25)+'%;width:'+Math.max(1,(L(f.age75)-L(f.age25)))+'%"></div>'
+      + '<div style="position:absolute;top:1px;width:2px;height:13px;background:#7dd3fc;left:'+L(f.age50)+'%"></div>';
+    if(_ageNow !== null) s += '<div style="position:absolute;top:-3px;width:2px;height:21px;background:#f87171;left:'+L(_ageNow)+'%"></div>';
+    s += '</div><div style="position:relative;height:11px;margin-top:1px;font-size:8px;color:#475569">'
+      + '<span style="position:absolute;left:0">0</span><span style="position:absolute;left:33.3%;transform:translateX(-50%)">5</span>'
+      + '<span style="position:absolute;left:66.6%;transform:translateX(-50%)">10</span><span style="position:absolute;right:0">15</span>'
+      + '</div></div>';
+    return s;
   }
 
   html += '<div class="ibd-sec" id="ibd-s4" style="margin-bottom:14px">';
-  html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:6px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-    +   '<span style="flex:1;min-width:0">4\u20e3  แผนดูแลอะไหล่ตามอายุการใช้งาน</span>'
+  html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:9px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    +   '<span style="flex:1;min-width:0">4\u20e3 แผนดูแลอะไหล่ตามอายุการใช้งาน</span>'
     +   (_modeA ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,222,128,.12);color:#4ade80;border:1px solid rgba(74,222,128,.3)">อยู่ในสัญญารวมอะไหล่</span>' : '')
     +   '<button onclick="window._ibLogicToggle&&window._ibLogicToggle()" style="background:rgba(125,211,252,.14);border:1px solid rgba(125,211,252,.4);color:#7dd3fc;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600">\u2139 วิธีคิด</button>'
     + '</div>';
 
-  /* [V594] กล่องอธิบายวิธีคิด — สำหรับผู้บริหาร ซ่อนไว้ก่อน */
   html += '<div id="ibd-logic" style="display:none;margin-bottom:9px;padding:10px 13px;background:rgba(125,211,252,.05);border:1px solid rgba(125,211,252,.3);border-radius:6px;font-size:11px;color:var(--mu2,#cbd5e1);line-height:1.95">'
     + '<b style="color:#7dd3fc">คำนวณจากอะไร</b><br>'
-    + '<b>1.</b> เลือกฐานเทียบ — รุ่นนี้อยู่ในกลุ่ม G.Model → ใช้ทุกรุ่นในกลุ่ม · ไม่อยู่ → ใช้รุ่นเดียวกันเป๊ะ<br>'
+    + '<b>1.</b> เลือกฐานเทียบ — รุ่นนี้อยู่ในกลุ่ม G.Model \u2192 ใช้ทุกรุ่นในกลุ่ม \u00b7 ไม่อยู่ \u2192 ใช้รุ่นเดียวกันเป๊ะ<br>'
     + '<b>2.</b> ดึงประวัติเบิกอะไหล่จริงของฐานนั้นทั้งหมด (ตัดรายการ Canceled)<br>'
     + '<b>3.</b> อายุตอนเปลี่ยน = วันเบิกอะไหล่ \u2212 วันติดตั้งเครื่อง (จับคู่ด้วย S/N)<br>'
-    + '<b>4.</b> แต่ละอะไหล่หา p25 / median ของอายุ แล้วเทียบกับอายุเครื่องนี้<br>'
-    + '&nbsp;&nbsp;&nbsp;&nbsp;อายุ \u2265 median = <span style="color:#f87171">ถึงรอบ</span> · p25\u2013median = <span style="color:#facc15">ใกล้ถึงรอบ</span> · &lt; p25 = <span style="color:#4ade80">ยังไม่ถึงรอบ</span><br>'
-    + '<b>5.</b> ราคา = median จากใบเสนอราคาที่ผ่านมา (ไม่รวมค่าแรง / VAT)<br>'
-    + '<span style="color:var(--mu,#94a3b8)">ข้อจำกัด: จับคู่ S/N ได้ราว 77% ของงานเบิก · เครื่องที่ไม่มีวันติดตั้งจะไม่ถูกนำมาคิดอายุ แต่ยังนับความถี่ตามปกติ</span>'
+    + '<b>4.</b> หา p25 / median ของอายุ ปัดเป็นปีเต็ม แล้วเทียบกับอายุเครื่องนี้ที่ปัดแล้วเหมือนกัน<br>'
+    + '&nbsp;&nbsp;&nbsp;&nbsp;\u2265 median = <span style="color:#f87171">ถึงรอบ</span> \u00b7 p25\u2013median = <span style="color:#facc15">ใกล้ถึงรอบ</span> \u00b7 &lt; p25 = <span style="color:#4ade80">ยังไม่ถึงรอบ</span><br>'
+    + '<b>5.</b> ถ้าเครื่องนี้เคยเปลี่ยนตัวนั้นไปแล้ว \u2192 ย้ายไปกลุ่ม "เปลี่ยนไปแล้ว" ไม่นับเป็นถึงรอบ<br>'
+    + '<b>6.</b> มูลค่า = median จากใบเสนอราคาที่ผ่านมา (ไม่รวมค่าแรง / VAT)<br>'
+    + '<span style="color:var(--mu,#94a3b8)">ข้อจำกัด: จับคู่ S/N ได้ราว 77% ของงานเบิก \u00b7 เครื่องที่ไม่มีวันติดตั้งไม่ถูกนำมาคิดอายุ \u00b7 '
+    + 'ยังประเมิน "รอบเปลี่ยนซ้ำ" ไม่ได้ เพราะมีเครื่องที่เปลี่ยนซ้ำเพียง 6% และช่วงที่พบสั้นผิดปกติ (median 8 เดือน) ซึ่งน่าจะเป็นการเบิกแยกงวดมากกว่าการสึกหรอ</span>'
     + '</div>';
 
-  /* แถบฐานข้อมูล */
   html += '<div style="font-size:11px;color:var(--mu2,#cbd5e1);background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:6px;padding:8px 11px;margin-bottom:9px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">'
     + (_rb.group
         ? '<span>\ud83d\udce6 ฐาน: <b style="color:#facc15">'+_esc(_rb.group)+'</b> <span style="color:var(--mu,#94a3b8)">('+_rb.models+' รุ่น)</span></span>'
@@ -2248,76 +2284,89 @@ html += '</div>';
     + '<span><b style="color:var(--tx,#e2e8f0)">'+_totSN+'</b> เครื่อง \u00b7 <b style="color:var(--tx,#e2e8f0)">'+totalMachines+'</b> งานเบิก</span>'
     + (thin ? '<span style="color:#fb923c">\u26a0 ข้อมูลน้อย \u2014 ตัวเลขอาจไม่แม่น</span>' : '')
     + '<span style="flex:1"></span>'
-    + '<span style="font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(125,211,252,.12);color:#7dd3fc;border:1px solid rgba(125,211,252,.35)">เครื่องนี้อายุ '+(_ageNow===null?'\u2014':Math.round(_ageNow)+' ปี')+'</span>'
+    + '<span style="font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(125,211,252,.12);color:#7dd3fc;border:1px solid rgba(125,211,252,.35)">เครื่องนี้อายุ '+(_ageR===null?'\u2014':_ageR+' ปี')+'</span>'
     + '</div>';
 
   if(!riskArr.length){
-    /* [V594] ฐาน 0 — บอกตรงๆ ว่าทำนายไม่ได้ + บอกวิธีแก้ (เดิมขึ้น "ไม่พบอะไหล่เสี่ยง" อ่านแล้วเข้าใจผิดว่าปลอดภัย) */
     html += '<div style="padding:14px 16px;background:rgba(251,146,60,.06);border:1px solid rgba(251,146,60,.35);border-radius:6px;font-size:11px;color:var(--mu2,#cbd5e1);line-height:1.9">'
       + '<b style="color:#fb923c">\u26a0 ยังทำนายไม่ได้</b> \u2014 รุ่นนี้ไม่ได้อยู่ในกลุ่ม G.Model และไม่มีประวัติเบิกอะไหล่ของรุ่นเดียวกัน<br>'
       + '<span style="color:var(--mu,#94a3b8)">จัดกลุ่มรุ่นนี้ที่ Config \u203a กลุ่มรุ่น (G.Model) แล้วระบบจะคำนวณให้อัตโนมัติ</span>'
       + '</div>';
   } else {
-    /* การ์ด 3 ใบ — ถึงคิว / ใกล้ถึง / ยังไม่ถึง */
-    (function(){
-      var g = {due:{n:0,b:0}, soon:{n:0,b:0}, no:{n:0,b:0}, na:{n:0,b:0}};
-      riskArr.forEach(function(f){ var d=_dueOf(f); g[d.k].n++; g[d.k].b += (f.med||0); });
-      function card(lbl, col, bg, bd, o){
-        return '<div style="flex:1;padding:8px 10px;background:'+bg+';border:1px solid '+bd+';border-radius:6px">'
-          + '<div style="font-size:9.5px;color:'+col+';font-weight:700">'+lbl+'</div>'
-          + '<div style="font-size:17px;font-weight:800;font-family:var(--mono,monospace);color:'+col+';margin-top:2px">'+o.n+' <span style="font-size:10px;color:var(--mu,#64748b)">รายการ</span></div>'
-          + '<div style="font-size:10px;color:var(--mu,#64748b);font-family:var(--mono,monospace)">'+(_hideMoney ? '\u2014' : (o.b ? _fmtB(o.b) : '\u2014'))+'</div>'
-          + '</div>';
-      }
-      html += '<div style="display:flex;gap:7px;margin-bottom:10px">'
-        + card('\ud83d\udd34 ถึงรอบพิจารณาเปลี่ยน', '#f87171', 'rgba(248,113,113,.07)', '#b91c1c', g.due)
-        + card('\ud83d\udfe1 ใกล้ถึงรอบ', '#facc15', 'rgba(250,204,21,.07)', '#a16207', g.soon)
-        + card('\ud83d\udfe2 ยังอยู่ในช่วงปกติ', '#4ade80', 'rgba(74,222,128,.07)', '#15803d', g.no)
-        + '</div>';
-      if(_modeA){
-        html += '<div style="font-size:10px;color:#4ade80;margin:-4px 0 9px;padding:5px 10px;background:rgba(74,222,128,.06);border-radius:4px">'
-          + '\u2713 เครื่องอยู่ในสัญญารวมอะไหล่ \u2014 รายการที่ถึงรอบจะถูกวางแผนดูแลภายใต้สัญญา'
-          + '</div>';
-      }
-    })();
+    riskArr.sort(function(a,b){
+      var da=_dueOf(a), db=_dueOf(b);
+      return da.o - db.o || b.snCount - a.snCount || b.count - a.count;
+    });
+    var _g = {due:[], soon:[], done:[], rest:[]};
+    riskArr.forEach(function(f){
+      var k=_dueOf(f).k;
+      if(k==='due') _g.due.push(f); else if(k==='soon') _g.soon.push(f);
+      else if(k==='done') _g.done.push(f); else _g.rest.push(f);
+    });
+    var _sumDue = _g.due.reduce(function(s,f){ return s+(f.med||0); }, 0);
+
+    /* [V599] ประโยคเดียวแทนการ์ดเงิน 3 ก้อน — ตีราคาเฉพาะของที่ถึงรอบจริง */
+    html += '<div style="background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:7px;padding:11px 13px;margin-bottom:10px">'
+      + '<div style="font-size:12.5px;color:var(--tx,#e2e8f0);line-height:1.85">'
+      +   'เครื่องนี้ใช้งานมา <b style="color:#7dd3fc;font-size:14px">'+(_ageR===null?'\u2014':_ageR+' ปี')+'</b>'
+      +   ' \u2014 ถึงรอบพิจารณาเปลี่ยน <b style="color:#f87171;font-size:14px">'+_g.due.length+'</b> รายการ'
+      +   (_g.soon.length ? ' \u00b7 ใกล้ถึงรอบ <b style="color:#facc15;font-size:14px">'+_g.soon.length+'</b>' : '')
+      +   (_g.done.length ? ' \u00b7 เปลี่ยนไปแล้ว <b style="color:#4ade80;font-size:14px">'+_g.done.length+'</b>' : '')
+      +   (_g.rest.length ? ' \u00b7 ที่เหลืออีก '+_g.rest.length+' รายการยังอยู่ในช่วงปกติ' : '')
+      + '</div>'
+      + '<div style="font-size:10px;color:#64748b;margin-top:5px">'
+      +   (_sumDue ? ('ประมาณการงบสำหรับ '+_g.due.length+' รายการที่ถึงรอบ \u00b7 <b style="color:var(--mu2,#cbd5e1)">'+_fmtB(_sumDue)+'</b> \u00b7 ') : '')
+      +   'อ้างอิงจากประวัติจริงของ'+(_rb.group ? 'กลุ่มรุ่น '+_esc(_rb.group) : 'รุ่นเดียวกัน')
+      + '</div></div>';
 
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--bd2,#334155)">'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">#</th>'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">ชื่ออะไหล่</th>'
-      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">เครื่องที่เคยเปลี่ยน</th>'
-      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ครั้ง</th>'
-      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">อายุตอนเปลี่ยน</th>'
-      +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">ช่วงอายุ (0\u201315 ปี)</th>'
-      + (_hideMoney ? '' : '<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">มูลค่าโดยประมาณ</th>')
+      +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8);width:190px">ช่วงอายุที่มักเปลี่ยน</th>'
+      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">มักเปลี่ยนปีที่</th>'
+      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">พบบ่อย</th>'
+      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">มูลค่าโดยประมาณ</th>'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">สถานะ</th>'
       +'</tr></thead><tbody>';
-    riskArr.forEach(function(f,i){
-      var d      = _dueOf(f);
-      var isTop5 = i < 5;
-      var pct    = _totSN>0 ? (f.snCount/_totSN*100) : 0;
-      var pctCol = pct>=40?'#ef4444':pct>=25?'#fb923c':'var(--tx,#e2e8f0)';
-      html += '<tr class="'+(isTop5?'':'ibd-r4x')+'" style="border-bottom:1px solid var(--bd,#1e293b)'+(isTop5?';background:rgba(239,68,68,.035)':'')+(isTop5?'':';display:none')+'">'
-        +'<td style="padding:5px;color:'+(isTop5?'#f87171':'var(--mu,#94a3b8)')+';font-weight:'+(isTop5?'700':'400')+'">'+(i+1)+'</td>'
-        +'<td style="padding:5px;font-size:11px">'+_esc(f.name)+'</td>'
-        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+pctCol+';font-weight:600">'+pct.toFixed(0)+'% <span style="color:var(--mu,#64748b);font-size:10px;font-weight:400">('+f.snCount+'/'+_totSN+')</span></td>'
-        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace)">'+f.count+'</td>'
-        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(f.ageN?'#7dd3fc':'var(--mu,#64748b)')+'">'+_yrTxt(f)+'</td>'
+
+    var _n = 0;
+    function _grpRow(txt){
+      return '<tr><td colspan="7" style="background:rgba(148,163,184,.05);font-size:10px;font-weight:700;color:var(--mu,#94a3b8);padding:5px 6px">'+txt+'</td></tr>';
+    }
+    function _row(f, hidden){
+      _n++;
+      var d = _dueOf(f);
+      return '<tr class="'+(hidden?'ibd-r4x':'')+'" style="border-bottom:1px solid var(--bd,#1e293b)'+(hidden?';display:none':'')+'">'
+        +'<td style="padding:5px;color:var(--mu,#94a3b8)">'+_n+'</td>'
+        +'<td style="padding:5px;font-size:11px">'+_esc(f.name)
+          + (f.nameCount>1 ? ' <span title="รวมจากชื่อที่เขียนต่างกัน '+f.nameCount+' แบบ" style="font-size:9px;color:#fb923c">รวม '+f.nameCount+' ชื่อ</span>' : '')
+          + (f.mine ? '<div style="font-size:9.5px;color:#4ade80;margin-top:2px">เปลี่ยนล่าสุด '+_esc(f.mine.txt)+'</div>' : '')
+        +'</td>'
         +'<td style="padding:5px">'+_barOf(f)+'</td>'
-        + (_hideMoney ? '' : '<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(f.med?'var(--tx,#e2e8f0)':'var(--mu,#94a3b8)')+'">'+(f.med?_fmtB(f.med):'\u2014')+'</td>')
+        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(f.ageN?'#7dd3fc':'var(--mu,#64748b)')+'">'+_yrTxt(f)+'</td>'
+        +'<td style="padding:5px;text-align:right">'+_dotsOf(f)+'</td>'
+        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(f.med?'var(--tx,#e2e8f0)':'var(--mu,#94a3b8)')+'">'+(f.med?_fmtB(f.med):'\u2014')+'</td>'
         +'<td style="padding:5px"><span style="font-size:9.5px;font-weight:700;color:'+d.c+';white-space:nowrap">'+d.t+'</span></td>'
         +'</tr>';
-    });
+    }
+    if(_g.due.length){  html += _grpRow('\U0001f534 ถึงรอบพิจารณาเปลี่ยน \u2014 ควรคุยกับลูกค้าตอนนี้'); _g.due.forEach(function(f){ html += _row(f,false); }); }
+    if(_g.soon.length){ html += _grpRow('\U0001f7e1 ใกล้ถึงรอบ \u2014 เตรียมงบไว้');                  _g.soon.forEach(function(f){ html += _row(f,false); }); }
+    if(_g.done.length){ html += _grpRow('\u2705 เปลี่ยนไปแล้ว \u2014 เครื่องนี้เคยเบิกตัวนี้');        _g.done.forEach(function(f){ html += _row(f,false); }); }
+    if(_g.rest.length){ html += _grpRow('\U0001f7e2 ยังอยู่ในช่วงปกติ ('+_g.rest.length+' รายการ)');   _g.rest.forEach(function(f){ html += _row(f,true); }); }
     html += '</tbody></table>';
 
-    if(riskArr.length > 5){
+    if(_g.rest.length){
       html += '<div style="margin-top:10px;text-align:center">'
-        + '<button onclick="window._ibRiskToggleAll&&window._ibRiskToggleAll(this)" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#a78bfa;padding:6px 16px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600">\ud83d\udccb ดูทั้งหมด (อีก '+(riskArr.length-5)+' รายการ)</button>'
+        + '<button onclick="window._ibRiskToggleAll&&window._ibRiskToggleAll(this)" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#a78bfa;padding:6px 16px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600">\ud83d\udccb ดูรายการที่ยังไม่ถึงรอบ ('+_g.rest.length+' รายการ)</button>'
         + '</div>';
     }
 
-    html += '<div style="margin-top:10px;font-size:10px;color:var(--mu,#64748b);border-top:1px dashed var(--bd,#1e293b);padding-top:8px;line-height:1.75">'
-      + '\u24d8 <b>อายุตอนเปลี่ยน</b> = วันเบิกอะไหล่ \u2212 วันติดตั้งเครื่อง แสดงเป็น p25\u2013median ของฐาน<br>'
-      + '\u24d8 แถบช่วงอายุ: แถบฟ้า = p25\u2013p75 \u00b7 เส้นฟ้า = median \u00b7 <span style="color:#f87171">เส้นแดง = อายุเครื่องนี้</span>'
+    html += '<div style="margin-top:10px;font-size:10px;color:var(--mu,#64748b);border-top:1px dashed var(--bd,#1e293b);padding-top:8px;line-height:1.8">'
+      + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(125,211,252,.3);vertical-align:-1px;margin-right:3px"></span>ช่วงที่เครื่องส่วนใหญ่เปลี่ยน &nbsp;'
+      + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#7dd3fc;vertical-align:-1px;margin-right:3px"></span>จุดกลาง &nbsp;'
+      + '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#f87171;vertical-align:-1px;margin-right:3px"></span>อายุเครื่องนี้'
+      + (_ageR!==null ? ' ('+_ageR+' ปี)' : '') + '<br>'
+      + '\u24d8 <b>พบบ่อย</b> = สัดส่วนเครื่องในฐานที่เคยเปลี่ยนชิ้นนี้ (ชี้ที่จุดเพื่อดูตัวเลข) \u00b7 ใช้จัดลำดับเท่านั้น'
       + '</div>';
   }
   html += '</div>';
@@ -3325,11 +3374,20 @@ window._ibGroupFilter = window._ibGroupFilter || '';
 //   ของเดิมเป็น string { model: "A" } -> อ่านได้ทั้ง 2 แบบ (backward compatible)
 // ══════════════════════════════════════════════════════════
 window._mgArr = function(v){                     /* ค่าใน map -> array เสมอ */
+  /* [V599] split comma + ตัดซ้ำ — ซ่อมข้อมูลที่เคยโดน String(array) ยุบเป็น "A,B,A"
+       (เกิดจาก save/load เดิมบีบ array เป็น string ทุกรอบ พอกซ้ำไปเรื่อยๆ)
+       ผลข้างเคียงที่ยอมรับ: ชื่อกลุ่มห้ามมี comma — กันไว้ที่ช่องสร้างกลุ่มใหม่แล้ว */
   if (v === null || v === undefined) return [];
-  if (Array.isArray(v)) return v.map(function(s){ return String(s||'').trim(); }).filter(Boolean);
-  var s = String(v).trim();
-  return s ? [s] : [];
-};
+  var raw = Array.isArray(v) ? v : [v];
+  var out = [];
+  raw.forEach(function(item){
+    String(item||'').split(',').forEach(function(s){
+      var t = String(s||'').trim();
+      if (t && out.indexOf(t) < 0) out.push(t);
+    });
+  });
+  return out;
+  };
 window._mgOf = function(model){                  /* รุ่น -> array ของกลุ่ม */
   try{ return window._mgArr((window._MODEL_GROUP_LOCAL||{})[model]); }catch(e){ return []; }
 };
@@ -3542,11 +3600,11 @@ window.spMgRenderModels = function() {
     var inSel = window._spMgSelGroup && grps.indexOf(window._spMgSelGroup) >= 0;
     var tag = grps.map(function(g){
       var cur = (g === window._spMgSelGroup);
-      return '<span style="font-size:10px;color:'+(cur?'#c7d2fe':'#a5b4fc')+';background:'+(cur?'#4338ca':'#312e81')+';padding:1px 6px;border-radius:8px;margin-left:4px">'+_esc(g)+'</span>';
+      return '<span style="font-size:10px;color:'+(cur?'#c7d2fe':'#a5b4fc')+';background:'+(cur?'#4338ca':'#312e81')+';padding:1px 6px;border-radius:8px;margin-left:4px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom">'+_esc(g)+'</span>';
     }).join('');
     return '<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid #1e293b;cursor:pointer;font-size:12px;color:#e2e8f0">'
       + '<input type="checkbox" class="sp-mg-mchk" value="'+_esc(it.model)+'"'+(inSel?' checked':'')+' onchange="spMgToggleModel(this)" style="cursor:pointer">'
-      + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(it.model)+' <span style="color:#64748b;font-size:10px">('+_esc(it.brand)+')</span></span>'
+      + '<span style="flex:1 1 auto;min-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(it.model)+' <span style="color:#64748b;font-size:10px">('+_esc(it.brand)+')</span></span>'
       + tag
       + '</label>';
   }).join('');
@@ -3606,11 +3664,12 @@ function spMgStatus(t) {
 }
 
 window.spSaveModelGroupCfg = function() {
-  var map = {};
-  Object.keys(window._spMgWork||{}).forEach(function(m){
-    var g = String(window._spMgWork[m]||'').trim();
-    if (m && g) map[m] = g;
-  });
+    var map = {};
+    /* [V599] เขียน array ตรงๆ — เดิม String(array) ยุบเป็น "A,B" ทำให้จัดกลุ่มซ้ำไม่ได้ */
+    Object.keys(window._spMgWork||{}).forEach(function(m){
+      var gs = window._mgArr(window._spMgWork[m]);
+      if (m && gs.length) map[m] = gs;
+    });
   spMgStatus('⏳ กำลังบันทึก...');
   function onDone(res){
     var d = typeof res === 'string' ? JSON.parse(res) : res;
