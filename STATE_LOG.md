@@ -28,3 +28,12 @@ DATA (probe จากเครื่องจริง 25 ก.ค. 69):
 
 ทดสอบ: node --check ผ่าน · logic test 19/19 ผ่าน (เกณฑ์เคลม, การ์ด=ตาราง, p25/median, โหมด A, กันหลุดขอบ)
 ค้าง: perf (sheets 4.7s + etl 3.9s) · 6 mobile menus · Renewal.html · M3 SR (blocked) · M8 mobile black screen
+
+## V595.0 - 25 ก.ค. 2569
+- C8 popup รายละเอียดเครื่องใหญ่ขึ้น (default เดิมเล็กไป)
+    กล่องนอก max-width 1200 -> 1500px · width 96% -> 97% · max-height 90vh -> 92vh
+    body 60vh -> 74vh (คงรูปแบบ height+min-height+max-height เท่ากันทั้ง 3 ค่า = ล็อกนิ่ง)
+    headroom: header+tabs ~94px ; 74vh+94px < 92vh ทุกความสูงจอตั้งแต่ 700px ขึ้นไป (เผื่อ tab ขึ้น 2 แถว)
+- ยืนยัน V594 ขึ้น repo จริงแล้ว (_BUILD_VER=V594.0 · min-height:60vh · _ibWarrOf x4 · STATE_LOG.md 200)
+  หมวด 4 ใหม่ทำงานถูก: ฐาน Proactive US 10 รุ่น 72 เครื่อง 92 งานเบิก · เครื่องอายุ 6.0 ปี
+  -> ถึงคิว 21 / ใกล้ถึง 6 / ยังไม่ถึง 28 · ป้ายตรงกับ p25-median ทุกแถวที่ตรวจ

@@ -1804,7 +1804,7 @@ window.spShowInstallDetail = function(idx) {
   // [V594] ล็อกความสูง body คงที่ — สลับแท็บแล้ว popup ไม่เด้งขึ้นลง
   //   flex:1 = flex-basis:0% ซึ่งมีศักดิ์เหนือ height ใน flex column → height:60vh ถูกเมิน
   //   ต้องใช้ min-height บังคับพื้น (flexbox ห้ามบีบต่ำกว่า min-height) คู่กับ max-height
-  html += '<div id="sp-ibd-body" style="flex:1;height:60vh;min-height:60vh;max-height:60vh;overflow:auto;padding:14px 16px">';
+  html += '<div id="sp-ibd-body" style="flex:1;height:74vh;min-height:74vh;max-height:74vh;overflow:auto;padding:14px 16px">';
 
   // ── [V586] หมวด 1: ข้อมูลเครื่อง ────────────────────────────
   (function(){
@@ -2332,7 +2332,7 @@ html += '</div>';
     modal.onclick = function(e){ if(e.target===modal) modal.style.display='none'; };
     document.body.appendChild(modal);
   }
-  modal.innerHTML = '<div style="background:var(--sur,#0f172a);border:1px solid var(--bd2,#334155);border-radius:10px;max-width:1200px;width:96%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,0.5);overflow:hidden">'+html+'</div>';
+  modal.innerHTML = '<div style="background:var(--sur,#0f172a);border:1px solid var(--bd2,#334155);border-radius:10px;max-width:1500px;width:97%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,0.5);overflow:hidden">'+html+'</div>';
   modal.style.display = 'flex';
 
   // ── [V586] จัดลำดับหมวด 1-6 + แท็บกระโดด (ทำหลัง render ไม่รื้อโค้ดสร้าง html) ──
