@@ -5,7 +5,8 @@ Google Apps Script (HtmlService) web app สำหรับทีมขาย/�
 
 **ตอบเป็นภาษาไทย กระชับ**
 
-> 📖 อ่าน `STATE_V559.md` ทุกครั้งที่เริ่ม session เพื่อรู้สถานะล่าสุด + CASE LIST
+> 📖 เริ่ม session: อ่าน `STATE_LOG.md` (log ต่อท้าย — รอบล่าสุดอยู่ล่างสุด) + `STATE_V*.md` เลขสูงสุด
+> ⚠ Claude clone repo → อ่านเองได้ · curl raw.githubusercontent ต้องต่อ `?t=<timestamp>` เสมอ (CDN cache 404/ของเก่า)
 > 📝 จบงานทุกรอบ: อัปเดต STATE แล้ว commit
 
 ---
@@ -28,6 +29,12 @@ Google Apps Script (HtmlService) web app สำหรับทีมขาย/�
 - แก้สี / ข้อความ / spacing / label
 - แก้ไฟล์เดียว ไม่แตะ logic
 - fix typo
+
+### 🆕 รวมเคสก่อนยิง — อย่างน้อย 3 เรื่องต่อ 1 patch  `[25 ก.ค. 69]`
+- **ห้ามยิงทีละเรื่อง** — 1 patch = clasp push + create-deployment + git push เสมอ ยิงถี่เปลือง
+- ระหว่างสะสมเคส: สืบต้นเหตุ + เตรียม anchor ไว้ก่อน **แต่ยังไม่เขียนไฟล์**
+- เคสที่**ไม่ต้อง confirm** (สี/ข้อความ/label/spacing/ไฟล์เดียวไม่แตะ logic) → **แก้เลย ไม่ต้องถามซ้ำ**
+- ครบ 3 เรื่องเมื่อไหร่ (หรือ Eak สั่ง) → ยิงรอบเดียว
 
 ### งานใหญ่ → ต้องสรุปแผน + รอ confirm ก่อน
 - แตะ **2 ไฟล์ขึ้นไป**
