@@ -1635,6 +1635,27 @@ window.spShowInstallDetail = function(idx) {
   var scHistory = history.filter(function(h){ return h.isSC; });
 
   // ── Q4: ประวัติเปลี่ยนอะไหล่ของ SN นี้ ─────
+  /* [V594] เกณฑ์เดียวสำหรับ เคลมสัญญาประกัน / เสนอขายอะไหล่
+     เดิม: การ์ดสรุปใช้ "qn ว่าง" อย่างเดียว แต่คอลัมน์ใช้ qn ว่าง OR สัญญารวมอะไหล่
+     -> การ์ดกับตารางขัดกัน (V586 ตกเกณฑ์สัญญาไป) ยึดเกณฑ์ [v436] เป็นตัวจริง */
+  function _ibWarrOf(p){
+    var cn   = String((p && p.contractName) || '');
+    var noQn = !String((p && p.qn) || '').trim();
+    var inW  = noQn || (/รวมอะไหล่/.test(cn) && !/ไม่รวมอะไหล่/.test(cn));
+    return { known: !!(cn || noQn), warr: inW };
+  }
+  /* [V594] ปุ่มในหมวด 4 — ไฟล์นี้เป็น IIFE ต้อง assign window ถึงเรียกจาก onclick ได้ */
+  window._ibLogicToggle = function(){
+    var el = document.getElementById('ibd-logic');
+    if(el) el.style.display = (el.style.display === 'none' ? '' : 'none');
+  };
+  window._ibRiskToggleAll = function(btn){
+    var rows = document.querySelectorAll('.ibd-r4x');
+    if(!rows.length) return;
+    var show = (rows[0].style.display === 'none');
+    for(var i=0;i<rows.length;i++) rows[i].style.display = show ? '' : 'none';
+    if(btn) btn.innerHTML = show ? '▲ ย่อกลับ (Top 5)' : '📋 ดูทั้งหมด (อีก '+rows.length+' รายการ)';
+  };
   var partsList = [];
   try {
     if(sn && snFirst.length>=3){
@@ -1676,6 +1697,23 @@ window.spShowInstallDetail = function(idx) {
   // ── Q5: โอกาสอะไหล่เสียของรุ่นนี้ — group by parts_name ของรุ่นเดียวกัน ─────
   var partsFreq = {}; // partsName → {count, totalQty, totalPrice}
   var modelMachines = {}; // unique qn for this brand+model
+  var modelSNs = {};      // [V594] SN ไม่ซ้ำในฐาน = จำนวนเครื่องจริง
+  /* [V594] map SN -> วันติดตั้ง (ใช้คำนวณ "อายุตอนเปลี่ยน")
+     ฐานเต็มไม่ผ่านตัวกรอง UI: _spInstallAll > _spData.installBase > _spInstallRows
+     ผลสำรวจจริง 25 ก.ค. 69: วันติดตั้งเติม 95% · จับคู่ SN ได้ 77% ของงานเบิก */
+  var _snNorm = function(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); };
+  var _instBySn = {};
+  try {
+    var _ibSrc = [ window._spInstallAll, (window._spData||{}).installBase, window._spInstallRows ]
+                 .filter(function(a){ return a && a.length; })
+                 .sort(function(a,b){ return b.length - a.length; })[0] || [];
+    _ibSrc.forEach(function(r){
+      var k = _snNorm(r['S/N'] || r.SN || r.SERAIL_NUMBER || r.sn);
+      if(k.length < 4 || _instBySn[k]) return;
+      var d = new Date(r['วันที่ติดตั้ง'] || r.INSTALL_DATE || r.installDate || '');
+      if(!isNaN(+d)) _instBySn[k] = +d;
+    });
+  } catch(e){}
   try {
     // [V590] ฐานข้อมูล 2 ชั้น: ถ้ารุ่นนี้อยู่ในกลุ่ม (G.Model) ใช้ทั้งกลุ่ม -> ฐานใหญ่ แม่นกว่า
     //   ถ้าไม่อยู่ในกลุ่ม -> ใช้รุ่นเดียวเหมือนเดิม (G.Model ครอบคลุมแค่ 23% ของเครื่อง)
@@ -1709,7 +1747,21 @@ window.spShowInstallDetail = function(idx) {
       if(!pName) return;
       /* key ของ "งาน" — ใช้ QN ถ้ามี ไม่งั้นใช้เลข SR (นับทั้งเบิกซื้อและเบิกในประกัน) */
       var jobKey = String(p.QH_DOC_NUMBER || p.JOB_SR || p.SERVICE_JOB_SR || '').trim();
-      if(!partsFreq[pName]) partsFreq[pName]={count:0,qty:0,price:0,uniqueQn:{},amts:[]};
+      if(!partsFreq[pName]) partsFreq[pName]={count:0,qty:0,price:0,uniqueQn:{},amts:[],sns:{},ages:[]};
+      /* [V594] เก็บ SN + อายุตอนเปลี่ยน (วันเบิก - วันติดตั้ง) */
+      var _pSn = _snNorm(p.SN);
+      if(_pSn.length >= 4){
+        modelSNs[_pSn] = 1;
+        partsFreq[pName].sns[_pSn] = 1;
+        var _inst = _instBySn[_pSn];
+        if(_inst){
+          var _dReq = new Date(p.ENG_REQ_DATETIME || p.QH_SEND_TO_DATE || '');
+          if(!isNaN(+_dReq)){
+            var _yr = (+_dReq - _inst) / 31557600000;
+            if(_yr >= 0 && _yr < 40) partsFreq[pName].ages.push(_yr);
+          }
+        }
+      }
       partsFreq[pName].count++;
       partsFreq[pName].qty += Number(p.PARTS_QTY||0)||0;
       var _amt = Number(p.QH_TOTAL_AMT||p.PARTS_PRICE||p.BILL_JOB_PRICE||0)||0;
@@ -1723,11 +1775,22 @@ window.spShowInstallDetail = function(idx) {
     var m = Math.floor(s.length/2);
     return s.length % 2 ? s[m] : Math.round((s[m-1]+s[m])/2);
   }
+  /* [V594] percentile (0-1) — ใช้กับอายุตอนเปลี่ยน */
+  function _pctl(a, f){
+    if(!a || !a.length) return 0;
+    var s = a.slice().sort(function(x,y){ return x-y; });
+    return s[Math.min(s.length-1, Math.floor(s.length*f))];
+  }
   var freqArr = Object.keys(partsFreq).map(function(k){
-    return {name:k, count:partsFreq[k].count, qty:partsFreq[k].qty,
-            price:partsFreq[k].price, med:_median(partsFreq[k].amts),
-            uniqueQns:Object.keys(partsFreq[k].uniqueQn).length};
-  }).sort(function(a,b){ return b.uniqueQns - a.uniqueQns || b.count - a.count; }).slice(0,10);
+    var o = partsFreq[k];
+    var ag = o.ages || [];
+    return {name:k, count:o.count, qty:o.qty,
+            price:o.price, med:_median(o.amts),
+            uniqueQns:Object.keys(o.uniqueQn).length,
+            snCount:Object.keys(o.sns||{}).length,        /* [V594] เครื่องที่เคยเปลี่ยนตัวนี้ */
+            ageN:ag.length,                               /* [V594] จำนวนตัวอย่างอายุ */
+            age25:_pctl(ag,0.25), age50:_pctl(ag,0.50), age75:_pctl(ag,0.75)};
+  }).sort(function(a,b){ return b.snCount - a.snCount || b.uniqueQns - a.uniqueQns || b.count - a.count; });
 
   // ── Build HTML ─────────────────────────────────────────────────
   var html = '';
@@ -1738,8 +1801,10 @@ window.spShowInstallDetail = function(idx) {
   html += '</div>';
 
   // Body container
-  // [V592] ลังความสูงem body คงที่ -> สลัະงໂานໂลໂมลະวໂถະง
-  html += '<div id="sp-ibd-body" style="flex:1;height:60vh;max-height:60vh;overflow:auto;padding:14px 16px">';
+  // [V594] ล็อกความสูง body คงที่ — สลับแท็บแล้ว popup ไม่เด้งขึ้นลง
+  //   flex:1 = flex-basis:0% ซึ่งมีศักดิ์เหนือ height ใน flex column → height:60vh ถูกเมิน
+  //   ต้องใช้ min-height บังคับพื้น (flexbox ห้ามบีบต่ำกว่า min-height) คู่กับ max-height
+  html += '<div id="sp-ibd-body" style="flex:1;height:60vh;min-height:60vh;max-height:60vh;overflow:auto;padding:14px 16px">';
 
   // ── [V586] หมวด 1: ข้อมูลเครื่อง ────────────────────────────
   (function(){
@@ -2034,21 +2099,21 @@ html += '</div>';
   if(!partsList.length){
     html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบประวัติอะไหล่ของ SN นี้ —</div>';
   } else {
-    // [V586] การ์ดสรุป เบิกในประกัน vs เบิกซื้อ (เกณฑ์ [v436]: qn ว่าง = ในประกัน)
+    // [V594] การ์ดสรุป — ใช้ _ibWarrOf() เกณฑ์เดียวกับคอลัมน์ (เดิมนับไม่ตรงกัน)
     (function(){
       var wN=0, wB=0, pN=0, pB=0;
       partsList.forEach(function(p){
         var amt = Number(p.price)||0;
-        if(!String(p.qn||'').trim()){ wN++; wB+=amt; } else { pN++; pB+=amt; }
+        if(_ibWarrOf(p).warr){ wN++; wB+=amt; } else { pN++; pB+=amt; }
       });
       html += '<div style="display:flex;gap:7px;margin-bottom:9px">'
         + '<div style="flex:1;padding:8px 10px;background:rgba(74,222,128,.07);border:1px solid #15803d;border-radius:6px">'
-        +   '<div style="font-size:9.5px;color:#4ade80;font-weight:700">\u2713 เบิกในประกัน</div>'
+        +   '<div style="font-size:9.5px;color:#4ade80;font-weight:700">\u2713 เคลมสัญญาประกัน</div>'
         +   '<div style="font-size:17px;font-weight:800;font-family:var(--mono,monospace);color:#4ade80;margin-top:2px">'+wN+' <span style="font-size:10px;color:var(--mu,#64748b)">รายการ</span></div>'
         +   '<div style="font-size:10px;color:var(--mu,#64748b);font-family:var(--mono,monospace)">'+_fmtB(wB)+'</div>'
         + '</div>'
         + '<div style="flex:1;padding:8px 10px;background:rgba(248,113,113,.07);border:1px solid #b91c1c;border-radius:6px">'
-        +   '<div style="font-size:9.5px;color:#f87171;font-weight:700">\u2717 เบิกซื้อ (เสียเงิน)</div>'
+        +   '<div style="font-size:9.5px;color:#f87171;font-weight:700">\u2717 เสนอขายอะไหล่</div>'
         +   '<div style="font-size:17px;font-weight:800;font-family:var(--mono,monospace);color:#f87171;margin-top:2px">'+pN+' <span style="font-size:10px;color:var(--mu,#64748b)">รายการ</span></div>'
         +   '<div style="font-size:10px;color:var(--mu,#64748b);font-family:var(--mono,monospace)">'+_fmtB(pB)+'</div>'
         + '</div></div>';
@@ -2062,18 +2127,16 @@ html += '</div>';
       +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">Qty</th>'
       +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ราคา</th>' /* [v436] เพิ่มคอลัมน์ราคา */
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">Status</th>'
-      +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">ในประกัน/เสียเงิน</th>' /* [v434] */
+      +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">เคลม/เสนอขาย</th>' /* [V594] */
       +'</tr></thead><tbody>';
     partsList.forEach(function(p){
       // [v436] แยกในประกัน/เสียเงิน — ไม่มีเลขใบเสนอราคา (qn ว่าง) = ถือว่าเบิกในประกัน
       //   [v434 เดิม] ถ้ามี QN ใช้ CONTRACT_NAME เช็คคำว่า "รวมอะไหล่" (ไม่ใช่ "ไม่รวมอะไหล่") ตามเดิม
-      var _cn = String(p.contractName||'');
-      var _noQn = !String(p.qn||'').trim();
-      var _inWarranty = _noQn || (/รวมอะไหล่/.test(_cn) && !/ไม่รวมอะไหล่/.test(_cn));
-      var _wBadge = (_cn || _noQn)
-        ? (_inWarranty
-            ? '<span style="color:#4ade80;font-size:10px">✓ ในประกัน</span>'
-            : '<span style="color:#f87171;font-size:10px">✗ เสียเงิน</span>')
+      var _w = _ibWarrOf(p);                                  /* [V594] เกณฑ์กลาง */
+      var _wBadge = _w.known
+        ? (_w.warr
+            ? '<span style="color:#4ade80;font-size:10px">✓ เคลมสัญญาประกัน</span>'
+            : '<span style="color:#f87171;font-size:10px">✗ เสนอขายอะไหล่</span>')
         : '<span style="color:var(--mu,#94a3b8);font-size:10px">—</span>';
       html += '<tr style="border-bottom:1px solid var(--bd,#1e293b)">'
         +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px">'+_fmtDate(p.date)+'</td>'
@@ -2091,81 +2154,150 @@ html += '</div>';
   }
   html += '</div>';
 
-  // Q4: รายการอะไหล่ที่มีความเสี่ยงสูง (filter ความถี่ ≥ 20%)
+  // [V594] Q4: Predict ความเสี่ยงอะไหล่ — ฐาน G.Model + อายุตอนเปลี่ยน (เลิกตัดที่ 20%)
   var totalMachines = Object.keys(modelMachines).length;
-  // [V590] Predict ความเสี่ยง — เกณฑ์ 20% · สรุป 5 ชิ้น + ราคาประมาณ (median)
-  var _rb = window._ibRiskBase || {group:'', models:1};
-  var riskArr = freqArr.filter(function(f){
-    var pct = totalMachines>0 ? (f.uniqueQns/totalMachines*100) : 0;
-    return pct >= 20;
-  });
+  // [V594] Predict ความเสี่ยงอะไหล่ — ฐาน G.Model · อายุตอนเปลี่ยน · โหมด A/B · สิทธิ์ตาม role
+  var _rb   = window._ibRiskBase || {group:'', models:1};
+  var _totSN = Object.keys(modelSNs).length;                 /* เครื่องในฐาน (SN ไม่ซ้ำ) */
+  var thin   = _totSN > 0 && _totSN < 5;                     /* ฐานน้อยเกินจะเชื่อ */
+  var riskArr = freqArr.filter(function(f){ return f.snCount > 0 || f.uniqueQns > 0; });
   var top5    = riskArr.slice(0,5);
-  var sumEst  = top5.reduce(function(s,f){ return s + (f.med||0); }, 0);
-  var thin    = totalMachines < 5;                       /* ฐานน้อยเกินจะเชื่อ */
-  var baseTxt = _rb.group
-      ? ('\ud83d\udce6 กลุ่มรุ่น: <b style="color:#facc15">'+_esc(_rb.group)+'</b> <span style="color:var(--mu,#94a3b8)">('+_rb.models+' รุ่น)</span>')
-      : ('\ud83d\udd27 รุ่น: <b style="color:var(--tx,#e2e8f0)">'+_esc(brand)+' '+_esc(model)+'</b> <span style="color:var(--mu,#94a3b8)">(ยังไม่ได้จัดกลุ่ม)</span>');
+  /* อายุเครื่องนี้ (ปี) — ไม่มีวันติดตั้ง = null → ไม่ตีป้ายถึงคิว */
+  var _ageNow = (x.ageMs !== null && x.ageMs !== undefined && x.ageMs >= 0) ? (x.ageMs/31557600000) : null;
+  /* โหมด A = เครื่องอยู่ในสัญญารวมอะไหล่ที่ยังไม่หมด → ตัวเลขเงินคือ "ต้นทุน" ไม่ใช่ยอดขาย */
+  var _ctS   = String((x && x.ctype) || '');
+  var _modeA = !!(x.hasCon && (x.daysLeft === null || x.daysLeft >= 0)
+                  && /รวมอะไหล่/.test(_ctS) && !/ไม่รวมอะไหล่/.test(_ctS));
+  var _isSales   = !!window._spIsSales;
+  var _hideMoney = _modeA && _isSales;                       /* sales ไม่เห็นต้นทุนของสัญญา */
+
+  /* ป้ายสถานะ: อายุ ≥ median = ถึงคิว · p25–median = ใกล้ถึง · < p25 = ยังไม่ถึง */
+  function _dueOf(f){
+    if(_ageNow === null || !f.ageN) return {k:'na',  t:'—',            c:'var(--mu,#64748b)'};
+    if(_ageNow >= f.age50)          return {k:'due', t:(_modeA?'🔧 ควรจัดเข้ารอบ':'🔴 ถึงคิวแล้ว'), c:'#f87171'};
+    if(_ageNow >= f.age25)          return {k:'soon',t:'🟡 ใกล้ถึง',    c:'#facc15'};
+    return {k:'no', t:'🟢 ยังไม่ถึง', c:'#4ade80'};
+  }
+  function _yrTxt(f){ return f.ageN ? (f.age25.toFixed(1)+'–'+f.age50.toFixed(1)+' ปี') : '—'; }
+  /* แถบช่วงอายุ 0–15 ปี : แถบฟ้า = p25–p75 · เส้นฟ้า = median · เส้นแดง = อายุเครื่องนี้ */
+  function _barOf(f){
+    if(!f.ageN) return '<span style="color:var(--mu,#475569);font-size:10px">ไม่มีข้อมูลอายุ</span>';
+    var MX = 15, L = function(v){ return Math.max(0, Math.min(100, v/MX*100)); };
+    var s = '<div style="position:relative;height:16px;min-width:130px;background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:3px">'
+      + '<div style="position:absolute;top:3px;height:10px;border-radius:2px;background:rgba(125,211,252,.28);left:'+L(f.age25)+'%;width:'+Math.max(1,(L(f.age75)-L(f.age25)))+'%"></div>'
+      + '<div style="position:absolute;top:1px;width:2px;height:14px;background:#7dd3fc;left:'+L(f.age50)+'%"></div>';
+    if(_ageNow !== null) s += '<div style="position:absolute;top:-2px;width:2px;height:20px;background:#f87171;left:'+L(_ageNow)+'%"></div>';
+    return s + '</div>';
+  }
 
   html += '<div class="ibd-sec" id="ibd-s4" style="margin-bottom:14px">';
-  html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:6px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px">4\u20e3 Predict ความเสี่ยงอะไหล่</div>';
-  html += '<div style="font-size:11px;color:var(--mu2,#cbd5e1);padding:2px 10px 9px;line-height:1.8">'
-        + baseTxt
-        + ' <span style="color:var(--mu2,#475569)">\u00b7</span> ฐานข้อมูล <b style="color:var(--tx,#e2e8f0)">'+totalMachines+'</b> งาน'
-        + (thin ? ' <span style="color:#fb923c">\u26a0 ข้อมูลน้อย \u2014 ตัวเลขอาจไม่แม่น</span>' : '')
-        + '</div>';
+  html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:6px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    +   '<span style="flex:1;min-width:0">4\u20e3 '+(_modeA ? 'ความเสี่ยงอะไหล่ (เครื่องอยู่ในสัญญารวมอะไหล่)' : 'Predict ความเสี่ยงอะไหล่')+'</span>'
+    +   '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid rgba(148,163,184,.3)">ใช้ภายใน</span>'
+    +   '<button onclick="window._ibLogicToggle&&window._ibLogicToggle()" style="background:rgba(125,211,252,.14);border:1px solid rgba(125,211,252,.4);color:#7dd3fc;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600">\u2139 วิธีคิด</button>'
+    + '</div>';
+
+  /* [V594] กล่องอธิบายวิธีคิด — สำหรับผู้บริหาร ซ่อนไว้ก่อน */
+  html += '<div id="ibd-logic" style="display:none;margin-bottom:9px;padding:10px 13px;background:rgba(125,211,252,.05);border:1px solid rgba(125,211,252,.3);border-radius:6px;font-size:11px;color:var(--mu2,#cbd5e1);line-height:1.95">'
+    + '<b style="color:#7dd3fc">คำนวณจากอะไร</b><br>'
+    + '<b>1.</b> เลือกฐานเทียบ — รุ่นนี้อยู่ในกลุ่ม G.Model → ใช้ทุกรุ่นในกลุ่ม · ไม่อยู่ → ใช้รุ่นเดียวกันเป๊ะ<br>'
+    + '<b>2.</b> ดึงประวัติเบิกอะไหล่จริงของฐานนั้นทั้งหมด (ตัดรายการ Canceled)<br>'
+    + '<b>3.</b> อายุตอนเปลี่ยน = วันเบิกอะไหล่ \u2212 วันติดตั้งเครื่อง (จับคู่ด้วย S/N)<br>'
+    + '<b>4.</b> แต่ละอะไหล่หา p25 / median ของอายุ แล้วเทียบกับอายุเครื่องนี้<br>'
+    + '&nbsp;&nbsp;&nbsp;&nbsp;อายุ \u2265 median = <span style="color:#f87171">ถึงคิว</span> · p25\u2013median = <span style="color:#facc15">ใกล้ถึง</span> · &lt; p25 = <span style="color:#4ade80">ยังไม่ถึง</span><br>'
+    + '<b>5.</b> ราคา = median จากใบเสนอราคาที่ผ่านมา (ไม่รวมค่าแรง / VAT)<br>'
+    + '<span style="color:var(--mu,#94a3b8)">ข้อจำกัด: จับคู่ S/N ได้ราว 77% ของงานเบิก · เครื่องที่ไม่มีวันติดตั้งจะไม่ถูกนำมาคิดอายุ แต่ยังนับความถี่ตามปกติ</span>'
+    + '</div>';
+
+  /* แถบฐานข้อมูล */
+  html += '<div style="font-size:11px;color:var(--mu2,#cbd5e1);background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:6px;padding:8px 11px;margin-bottom:9px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">'
+    + (_rb.group
+        ? '<span>\ud83d\udce6 ฐาน: <b style="color:#facc15">'+_esc(_rb.group)+'</b> <span style="color:var(--mu,#94a3b8)">('+_rb.models+' รุ่น)</span></span>'
+        : '<span>\ud83d\udd27 ฐาน: <b style="color:var(--tx,#e2e8f0)">'+_esc(brand)+' '+_esc(model)+'</b> <span style="color:var(--mu,#94a3b8)">(รุ่นเดียว)</span></span>')
+    + '<span><b style="color:var(--tx,#e2e8f0)">'+_totSN+'</b> เครื่อง \u00b7 <b style="color:var(--tx,#e2e8f0)">'+totalMachines+'</b> งานเบิก</span>'
+    + (thin ? '<span style="color:#fb923c">\u26a0 ข้อมูลน้อย \u2014 ตัวเลขอาจไม่แม่น</span>' : '')
+    + '<span style="flex:1"></span>'
+    + '<span style="font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(125,211,252,.12);color:#7dd3fc;border:1px solid rgba(125,211,252,.35)">เครื่องนี้อายุ '+(_ageNow===null?'\u2014':_ageNow.toFixed(1)+' ปี')+'</span>'
+    + '</div>';
 
   if(!riskArr.length){
-    html += '<div style="padding:14px;text-align:center;color:var(--mu,#94a3b8);font-size:11px">— ไม่พบอะไหล่ที่มีความเสี่ยงสูง (ความถี่ \u2265 20%) —</div>';
+    /* [V594] ฐาน 0 — บอกตรงๆ ว่าทำนายไม่ได้ + บอกวิธีแก้ (เดิมขึ้น "ไม่พบอะไหล่เสี่ยง" อ่านแล้วเข้าใจผิดว่าปลอดภัย) */
+    html += '<div style="padding:14px 16px;background:rgba(251,146,60,.06);border:1px solid rgba(251,146,60,.35);border-radius:6px;font-size:11px;color:var(--mu2,#cbd5e1);line-height:1.9">'
+      + '<b style="color:#fb923c">\u26a0 ยังทำนายไม่ได้</b> \u2014 รุ่นนี้ไม่ได้อยู่ในกลุ่ม G.Model และไม่มีประวัติเบิกอะไหล่ของรุ่นเดียวกัน<br>'
+      + '<span style="color:var(--mu,#94a3b8)">จัดกลุ่มรุ่นนี้ที่ Config \u203a กลุ่มรุ่น (G.Model) แล้วระบบจะคำนวณให้อัตโนมัติ</span>'
+      + '</div>';
   } else {
+    /* การ์ด 3 ใบ — ถึงคิว / ใกล้ถึง / ยังไม่ถึง */
+    (function(){
+      var g = {due:{n:0,b:0}, soon:{n:0,b:0}, no:{n:0,b:0}, na:{n:0,b:0}};
+      riskArr.forEach(function(f){ var d=_dueOf(f); g[d.k].n++; g[d.k].b += (f.med||0); });
+      function card(lbl, col, bg, bd, o){
+        return '<div style="flex:1;padding:8px 10px;background:'+bg+';border:1px solid '+bd+';border-radius:6px">'
+          + '<div style="font-size:9.5px;color:'+col+';font-weight:700">'+lbl+'</div>'
+          + '<div style="font-size:17px;font-weight:800;font-family:var(--mono,monospace);color:'+col+';margin-top:2px">'+o.n+' <span style="font-size:10px;color:var(--mu,#64748b)">รายการ</span></div>'
+          + '<div style="font-size:10px;color:var(--mu,#64748b);font-family:var(--mono,monospace)">'+(_hideMoney ? '\u2014' : (o.b ? _fmtB(o.b) : '\u2014'))+'</div>'
+          + '</div>';
+      }
+      html += '<div style="display:flex;gap:7px;margin-bottom:10px">'
+        + card((_modeA?'\ud83d\udd27 ควรจัดเข้ารอบ':'\ud83d\udd34 ถึงคิวเปลี่ยนแล้ว'), '#f87171', 'rgba(248,113,113,.07)', '#b91c1c', g.due)
+        + card('\ud83d\udfe1 ใกล้ถึง', '#facc15', 'rgba(250,204,21,.07)', '#a16207', g.soon)
+        + card('\ud83d\udfe2 ยังไม่ถึง', '#4ade80', 'rgba(74,222,128,.07)', '#15803d', g.no)
+        + '</div>';
+      if(_modeA){
+        html += '<div style="font-size:10px;color:#fb923c;margin:-4px 0 9px;padding:5px 10px;background:rgba(251,146,60,.06);border-radius:4px">'
+          + '\u26a0 เครื่องอยู่ในสัญญารวมอะไหล่ \u2014 ตัวเลขนี้คือ<b>ต้นทุนคาดการณ์ของ BJH</b> ไม่ใช่ยอดขาย ใช้ประกอบการตั้งราคาตอนต่อสัญญา'
+          + '</div>';
+      }
+    })();
+
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="border-bottom:1px solid var(--bd2,#334155)">'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">#</th>'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">ชื่ออะไหล่</th>'
-      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ครั้งที่เปลี่ยน</th>'
-      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">จำนวนงาน</th>'
-      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ความถี่</th>'
-      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ราคาประมาณ</th>'
-      +'<th style="text-align:center;padding:6px;color:var(--mu,#94a3b8)">เครื่องนี้</th>'
+      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">เครื่องที่เคยเปลี่ยน</th>'
+      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ครั้ง</th>'
+      +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">อายุตอนเปลี่ยน</th>'
+      +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">ช่วงอายุ (0\u201315 ปี)</th>'
+      + (_hideMoney ? '' : '<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ราคากลาง</th>')
+      +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">สถานะ</th>'
       +'</tr></thead><tbody>';
     riskArr.forEach(function(f,i){
-      var freqPct   = totalMachines>0 ? (f.uniqueQns/totalMachines*100) : 0;
-      var freqColor = freqPct>=40?'#ef4444':freqPct>=30?'#fb923c':'#f59e0b';
-      var isTop5    = i < 5;
-      /* เครื่องนี้เคยเปลี่ยนอะไหล่ตัวนี้แล้วหรือยัง */
-      var done = false;
-      try{ done = partsList.some(function(p){ return String(p.partName||'').trim() === f.name; }); }catch(e){}
-      html += '<tr style="border-bottom:1px solid var(--bd,#1e293b)'+(isTop5?';background:rgba(239,68,68,.035)':'')+'">'
+      var d      = _dueOf(f);
+      var isTop5 = i < 5;
+      var pct    = _totSN>0 ? (f.snCount/_totSN*100) : 0;
+      var pctCol = pct>=40?'#ef4444':pct>=25?'#fb923c':'var(--tx,#e2e8f0)';
+      html += '<tr class="'+(isTop5?'':'ibd-r4x')+'" style="border-bottom:1px solid var(--bd,#1e293b)'+(isTop5?';background:rgba(239,68,68,.035)':'')+(isTop5?'':';display:none')+'">'
         +'<td style="padding:5px;color:'+(isTop5?'#f87171':'var(--mu,#94a3b8)')+';font-weight:'+(isTop5?'700':'400')+'">'+(i+1)+'</td>'
         +'<td style="padding:5px;font-size:11px">'+_esc(f.name)+'</td>'
+        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+pctCol+';font-weight:600">'+pct.toFixed(0)+'% <span style="color:var(--mu,#64748b);font-size:10px;font-weight:400">('+f.snCount+'/'+_totSN+')</span></td>'
         +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace)">'+f.count+'</td>'
-        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace)">'+f.uniqueQns+'</td>'
-        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+freqColor+';font-weight:600">'+freqPct.toFixed(0)+'%</td>'
-        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(f.med?'var(--tx,#e2e8f0)':'var(--mu,#94a3b8)')+'">'+(f.med?_fmtB(f.med):'\u2014')+'</td>'
-        +'<td style="padding:5px;text-align:center;font-size:9.5px">'+(done?'<span style="color:#f87171">เปลี่ยนแล้ว</span>':'<span style="color:var(--mu,#64748b)">ยัง</span>')+'</td>'
+        +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(f.ageN?'#7dd3fc':'var(--mu,#64748b)')+'">'+_yrTxt(f)+'</td>'
+        +'<td style="padding:5px">'+_barOf(f)+'</td>'
+        + (_hideMoney ? '' : '<td style="padding:5px;text-align:right;font-family:var(--mono,monospace);color:'+(f.med?'var(--tx,#e2e8f0)':'var(--mu,#94a3b8)')+'">'+(f.med?_fmtB(f.med):'\u2014')+'</td>')
+        +'<td style="padding:5px"><span style="font-size:9.5px;font-weight:700;color:'+d.c+';white-space:nowrap">'+d.t+'</span></td>'
         +'</tr>';
     });
     html += '</tbody></table>';
 
-    /* สรุป 5 ชิ้นเสี่ยงสุด + ราคารวมประมาณ */
-    if(top5.length){
-      html += '<div style="margin-top:9px;padding:9px 12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.35);border-radius:6px;'
-            + 'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
-            + '<div style="font-size:11px;color:var(--mu2,#cbd5e1)">'
-            +   '\ud83d\udcb0 ประมาณการอะไหล่เสี่ยงสูงสุด <b style="color:var(--tx,#e2e8f0)">'+top5.length+'</b> ชิ้น'
-            +   '<div style="font-size:9.5px;color:var(--mu,#94a3b8);margin-top:2px">ราคากลาง (median) จากใบเสนอราคาที่ผ่านมา \u00b7 ไม่รวมค่าแรง/VAT</div>'
-            + '</div>'
-            + '<div style="font-size:19px;font-weight:800;font-family:var(--mono,monospace);color:'+(sumEst?'#f87171':'var(--mu,#94a3b8)')+';white-space:nowrap">'
-            +   (sumEst ? '~'+_fmtB(sumEst) : '\u2014 ไม่มีข้อมูลราคา')
-            + '</div></div>';
+    if(riskArr.length > 5){
+      html += '<div style="margin-top:10px;text-align:center">'
+        + '<button onclick="window._ibRiskToggleAll&&window._ibRiskToggleAll(this)" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#a78bfa;padding:6px 16px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600">\ud83d\udccb ดูทั้งหมด (อีก '+(riskArr.length-5)+' รายการ)</button>'
+        + '</div>';
     }
+
+    html += '<div style="margin-top:10px;font-size:10px;color:var(--mu,#64748b);border-top:1px dashed var(--bd,#1e293b);padding-top:8px;line-height:1.75">'
+      + '\u24d8 <b>อายุตอนเปลี่ยน</b> = วันเบิกอะไหล่ \u2212 วันติดตั้งเครื่อง แสดงเป็น p25\u2013median ของฐาน<br>'
+      + '\u24d8 แถบช่วงอายุ: แถบฟ้า = p25\u2013p75 \u00b7 เส้นฟ้า = median \u00b7 <span style="color:#f87171">เส้นแดง = อายุเครื่องนี้</span>'
+      + '</div>';
   }
   html += '</div>';
+
 
   html += '</div>'; // close body
 
   // ── Store data + Export CSV function ─────
   window._spExportPartsCSV = function(){
     if(!partsList.length) return;
-    var rows = [['Date Request','Quotation','Mat No','Parts Name','Qty','Price','Status','ในประกัน/เสียเงิน']]; // [v436] เพิ่ม 2 คอลัมน์ให้ตรงกับตาราง
+    var rows = [['Date Request','Quotation','Mat No','Parts Name','Qty','Price','Status','เคลม/เสนอขาย']]; // [v436] เพิ่ม 2 คอลัมน์ให้ตรงกับตาราง
     partsList.forEach(function(p){
       var _cn=String(p.contractName||''); var _noQn=!String(p.qn||'').trim();
       var _inW=_noQn||(/รวมอะไหล่/.test(_cn)&&!/ไม่รวมอะไหล่/.test(_cn));
