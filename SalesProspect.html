@@ -156,7 +156,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   <button class="sp-tab"    id="sp-tab-srcom"    onclick="spTab('srcom')">🛠 SR Commercial</button>
   <button class="sp-tab on" id="sp-tab-alert"    onclick="spTab('alert')">🚨 Alert</button>
   <button class="sp-tab"    id="sp-tab-install"   onclick="spTab('install')">🏥 Install Base</button>
-  <button class="sp-tab"    id="sp-tab-renewal"   onclick="spTab('renewal')">📑 Contract Pipeline</button>
+  <button class="sp-tab"    id="sp-tab-renewal"   onclick="spTab('renewal')">🔄 Renewal</button>
   <button class="sp-tab"    id="sp-tab-scquote"   onclick="spTab('scquote')">📋 SC Quotation</button>
   <button class="sp-tab"    id="sp-tab-spquote"   onclick="spTab('spquote')">🔧 SP Quotation</button>
   <button class="sp-tab"    id="sp-tab-contract"  onclick="spTab('contract')">📄 Contract &amp; PO</button>
@@ -1508,9 +1508,12 @@ window.spRenderInstall = function() {
           return '<td style="font-size:10px;color:var(--mu2);font-family:var(--mono);white-space:nowrap" title="'+snFull.replace(/"/g,'&quot;')+'">'+_esc(snFirst)+(hasMore?'<span style="color:var(--mu3);font-size:9px"> +</span>':'')+'</td>';
         })()
         +'<td>'+(x.hasCon
-          ? '<span class="sp-badge" style="background:#0f3320;color:#22c55e">มีสัญญา</span>'
-            +(x.endDate && x.daysLeft !== null && x.daysLeft < 0 ? '<div style="font-size:9px;color:#e8344a;margin-top:2px">หมดแล้ว</div>' : '')
-          : '<span class="sp-badge sp-bM">ไม่มีสัญญา</span>')+'</td>'
+      /* [V598] หมดอายุแล้วต้องไม่ขึ้นป้ายเขียว "มีสัญญา" — เกณฑ์เดียวกับ _ibGroupOf() === 'exp' */
+      ? (x.daysLeft !== null && x.daysLeft < 0
+          ? '<span class="sp-badge" style="background:#3a1114;color:#f87171">หมดอายุแล้ว</span>'
+            +'<div style="font-size:9px;color:var(--mu,#94a3b8);margin-top:2px">'+Math.abs(x.daysLeft)+' วัน</div>'
+          : '<span class="sp-badge" style="background:#0f3320;color:#22c55e">มีสัญญา</span>')
+      : '<span class="sp-badge sp-bM">ไม่มีสัญญา</span>')+'</td>'
         +'<td style="font-size:11px;color:var(--mu)">'+_esc(_short(x.ctype,20)||'—')+'</td>'
         +'</tr>';   // [V585] ตัด 3 คอลัมน์ท้าย
     }).join('');
@@ -1810,10 +1813,18 @@ window.spShowInstallDetail = function(idx) {
 
   // ── [V586] หมวด 1: ข้อมูลเครื่อง ────────────────────────────
   (function(){
-    function _f(lbl, val, col){
-      return '<div style="padding:7px 9px;background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:5px">'
-        + '<div style="font-size:9px;color:var(--mu,#64748b)">'+_esc(lbl)+'</div>'
-        + '<div style="font-size:11.5px;color:'+(col||'var(--tx,#e5e7eb)')+';margin-top:1px;word-break:break-word">'+(val||'—')+'</div></div>';
+    /* [V598] label ซ้าย ค่าขวา — font เท่ากับ cell ตารางที่อื่น (label 10px / ค่า 11px)
+     เดิม 9px/11.5px เป็นกล่องเรียงกัน 13 ใบ ความกว้างไม่เท่ากัน กวาดตาหายาก */
+  function _f(lbl, val, col){
+      return '<div style="display:flex;gap:10px;padding:4px 0;align-items:baseline">'
+        + '<div style="flex:0 0 82px;font-size:10px;color:var(--mu,#64748b)">'+_esc(lbl)+'</div>'
+        + '<div style="flex:1;min-width:0;font-size:11px;color:'+(col||'var(--tx,#e5e7eb)')+';word-break:break-word">'+(val||'—')+'</div></div>';
+    }
+    /* [V598] การ์ดจัดกลุ่ม */
+    function _fCard(title, rows){
+      return '<div style="background:var(--sur2,#111c2e);border:1px solid var(--bd,#1e293b);border-radius:7px;padding:10px 12px">'
+        + '<div style="margin-bottom:8px;font-size:10px;font-weight:700;color:var(--mu,#94a3b8);letter-spacing:.4px;padding-bottom:6px;border-bottom:1px solid var(--bd,#1e293b)">'+title+'</div>'
+        + rows + '</div>';
     }
     var _gm = '';
     try{ _gm = (window._mgOf ? window._mgOf(model) : []).join(', '); }catch(e){}   /* [V593] */
@@ -1822,26 +1833,38 @@ window.spShowInstallDetail = function(idx) {
       var d=Math.floor(ms/86400000), y=Math.floor(d/365), m=Math.floor((d%365)/30);
       if(y>0&&m>0) return y+' ปี '+m+' ด.'; if(y>0) return y+' ปี'; if(m>0) return m+' เดือน'; return d+' วัน';
     })(x.ageMs);
+    /* [V598] เดิมขึ้น "มีสัญญา" เขียว แล้วต่อท้าย "(หมดแล้ว 56 วัน)" — ขัดกันเอง
+       เกณฑ์เดียวกับ _ibGroupOf() === 'exp' */
+    var _expired = !!(x.hasCon && x.daysLeft !== null && x.daysLeft < 0);
     var _conTxt = x.hasCon
-      ? ('<span style="color:#4ade80">มีสัญญา</span>' + (x.daysLeft!==null ? ' <span style="color:var(--mu,#64748b);font-size:10px">('+(x.daysLeft<0?('หมดแล้ว '+Math.abs(x.daysLeft)+' วัน'):('เหลือ '+x.daysLeft+' วัน'))+')</span>' : ''))
+      ? (_expired
+          ? '<span style="color:#f87171;font-weight:600">หมดอายุแล้ว</span> <span style="color:var(--mu,#64748b);font-size:10px">('+Math.abs(x.daysLeft)+' วัน)</span>'
+          : ('<span style="color:#4ade80">มีสัญญา</span>' + (x.daysLeft!==null ? ' <span style="color:var(--mu,#64748b);font-size:10px">(เหลือ '+x.daysLeft+' วัน)</span>' : '')))
       : '<span style="color:#fbbf24">ไม่มีสัญญา</span>';
     var _conNo = String((x.r && x.r.CON_NO) || '').trim();
     html += '<div class="ibd-sec" id="ibd-s1" style="margin-bottom:14px">';
-    html += '<div style="font-size:12px;font-weight:700;color:#7dd3fc;margin-bottom:6px;padding:6px 10px;background:rgba(125,211,252,0.06);border-left:3px solid #7dd3fc;border-radius:4px">1\u20e3 ข้อมูลเครื่อง</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px">'
-      + _f('ลูกค้า', _esc(cu))
-      + _f('จังหวัด', _esc((x.r&&x.r['จังหวัด'])||''))
-      + _f('ผู้แทน SC', _esc(x.sales||''))
-      + _f('ยี่ห้อ', _esc(brand))
-      + _f('รุ่น', _esc(model))
-      + (_gm ? _f('กลุ่มรุ่น', _esc(_gm), '#facc15') : '')
-      + _f('SN', '<span style="font-family:var(--mono,monospace);font-size:11px">'+_esc(sn||'')+'</span>')
-      + _f('วันติดตั้ง', _fmtDate(x.installDate))
-      + _f('อายุเครื่อง', _esc(_ageTxt))
-      + _f('สถานะสัญญา', _conTxt)
-      + (_conNo ? _f('เลขที่สัญญา', '<span style="font-family:var(--mono,monospace);font-size:11px;color:#7dd3fc">'+_esc(_conNo)+'</span>') : '')
-      + (x.ctype ? _f('ประเภทสัญญา', _esc(x.ctype)) : '')
-      + (x.endDate ? _f('วันหมดสัญญา', _fmtDate(x.endDate)) : '')
+    html += '<div style="font-size:12px;font-weight:700;color:#7dd3fc;margin-bottom:9px;padding:6px 10px;background:rgba(125,211,252,0.06);border-left:3px solid #7dd3fc;border-radius:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      + '<span style="flex:1;min-width:0">1\u20e3 ข้อมูลเครื่อง</span>'
+      + (_expired ? '<span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:rgba(248,113,113,.14);color:#f87171;border:1px solid rgba(248,113,113,.4)">สัญญาหมดอายุแล้ว '+Math.abs(x.daysLeft)+' วัน</span>' : '')
+      + '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px">'
+      + _fCard('ลูกค้า / พื้นที่',
+            _f('ลูกค้า', _esc(cu))
+          + _f('จังหวัด', _esc((x.r&&x.r['จังหวัด'])||''))
+          + _f('ผู้แทน SC', _esc(x.sales||'')))
+      + _fCard('เครื่อง',
+            _f('ยี่ห้อ', _esc(brand))
+          + _f('รุ่น', _esc(model))
+          + (_gm ? _f('กลุ่มรุ่น', _esc(_gm), '#facc15') : '')
+          + _f('SN', '<span style="font-family:var(--mono,monospace)">'+_esc(sn||'')+'</span>')
+          + _f('วันติดตั้ง', '<span style="font-family:var(--mono,monospace)">'+_fmtDate(x.installDate)+'</span>')
+          + _f('อายุเครื่อง', _esc(_ageTxt)))
+      + _fCard('สัญญา',
+            _f('สถานะ', _conTxt)
+          + (_conNo ? _f('เลขที่', '<span style="font-family:var(--mono,monospace);color:#7dd3fc">'+_esc(_conNo)+'</span>') : '')
+          + (x.ctype ? _f('ประเภท', _esc(x.ctype)) : '')
+          + (x.endDate ? _f('วันหมด', '<span style="font-family:var(--mono,monospace)">'+_fmtDate(x.endDate)+'</span>') : '')
+          + (_expired ? '<div style="margin-top:8px;padding:6px 9px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.35);border-radius:5px;font-size:10.5px;color:#f87171;line-height:1.6">\u26a0 หมดอายุแล้ว \u2014 ควรตามต่อสัญญา หรือเสนอ SC ใหม่</div>' : ''))
       + '</div></div>';
   })();
 
@@ -3683,7 +3706,7 @@ window.spExportCSV = function() {
         x.brand||'',
         x.model||'',
         x.sn||'',
-        x.hasCon ? 'มีสัญญา' : 'ไม่มีสัญญา',
+        x.hasCon ? ((x.daysLeft!==null && x.daysLeft<0) ? 'หมดอายุแล้ว' : 'มีสัญญา') : 'ไม่มีสัญญา',
         x.ctype||'',
         tg,
         x.endDate ? x.endDate.toISOString().slice(0,10) : '',
