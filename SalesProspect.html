@@ -2169,16 +2169,22 @@ html += '</div>';
   var _modeA = !!(x.hasCon && (x.daysLeft === null || x.daysLeft >= 0)
                   && /รวมอะไหล่/.test(_ctS) && !/ไม่รวมอะไหล่/.test(_ctS));
   var _isSales   = !!window._spIsSales;
-  var _hideMoney = _modeA && _isSales;                       /* sales ไม่เห็นต้นทุนของสัญญา */
+  /* [V596] ทุก role เห็นเหมือนกัน — แก้ที่ "คำ" ให้ทนสายตาลูกค้า แทนการซ่อนตัวเลข */
+  var _hideMoney = false;
 
   /* ป้ายสถานะ: อายุ ≥ median = ถึงคิว · p25–median = ใกล้ถึง · < p25 = ยังไม่ถึง */
   function _dueOf(f){
     if(_ageNow === null || !f.ageN) return {k:'na',  t:'—',            c:'var(--mu,#64748b)'};
-    if(_ageNow >= f.age50)          return {k:'due', t:(_modeA?'🔧 ควรจัดเข้ารอบ':'🔴 ถึงคิวแล้ว'), c:'#f87171'};
-    if(_ageNow >= f.age25)          return {k:'soon',t:'🟡 ใกล้ถึง',    c:'#facc15'};
-    return {k:'no', t:'🟢 ยังไม่ถึง', c:'#4ade80'};
+    if(_ageNow >= f.age50)          return {k:'due', t:'🔴 ถึงรอบแล้ว',   c:'#f87171'};
+    if(_ageNow >= f.age25)          return {k:'soon',t:'🟡 ใกล้ถึงรอบ',  c:'#facc15'};
+    return {k:'no', t:'🟢 ยังไม่ถึงรอบ', c:'#4ade80'};
   }
-  function _yrTxt(f){ return f.ageN ? (f.age25.toFixed(1)+'–'+f.age50.toFixed(1)+' ปี') : '—'; }
+  /* [V596] ปัดเศษทิ้ง — ช่วงกว้างพออยู่แล้ว ทศนิยมทำให้ดูเป๊ะเกินจริง */
+  function _yrTxt(f){
+    if(!f.ageN) return '—';
+    var a=Math.round(f.age25), b=Math.round(f.age50);
+    return (a===b ? String(a) : (a+'–'+b)) + ' ปี';
+  }
   /* แถบช่วงอายุ 0–15 ปี : แถบฟ้า = p25–p75 · เส้นฟ้า = median · เส้นแดง = อายุเครื่องนี้ */
   function _barOf(f){
     if(!f.ageN) return '<span style="color:var(--mu,#475569);font-size:10px">ไม่มีข้อมูลอายุ</span>';
@@ -2192,8 +2198,8 @@ html += '</div>';
 
   html += '<div class="ibd-sec" id="ibd-s4" style="margin-bottom:14px">';
   html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:6px;padding:6px 10px;background:rgba(239,68,68,0.06);border-left:3px solid #ef4444;border-radius:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
-    +   '<span style="flex:1;min-width:0">4\u20e3 '+(_modeA ? 'ความเสี่ยงอะไหล่ (เครื่องอยู่ในสัญญารวมอะไหล่)' : 'Predict ความเสี่ยงอะไหล่')+'</span>'
-    +   '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(148,163,184,.12);color:#94a3b8;border:1px solid rgba(148,163,184,.3)">ใช้ภายใน</span>'
+    +   '<span style="flex:1;min-width:0">4\u20e3  แผนดูแลอะไหล่ตามอายุการใช้งาน</span>'
+    +   (_modeA ? '<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(74,222,128,.12);color:#4ade80;border:1px solid rgba(74,222,128,.3)">อยู่ในสัญญารวมอะไหล่</span>' : '')
     +   '<button onclick="window._ibLogicToggle&&window._ibLogicToggle()" style="background:rgba(125,211,252,.14);border:1px solid rgba(125,211,252,.4);color:#7dd3fc;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600">\u2139 วิธีคิด</button>'
     + '</div>';
 
@@ -2204,7 +2210,7 @@ html += '</div>';
     + '<b>2.</b> ดึงประวัติเบิกอะไหล่จริงของฐานนั้นทั้งหมด (ตัดรายการ Canceled)<br>'
     + '<b>3.</b> อายุตอนเปลี่ยน = วันเบิกอะไหล่ \u2212 วันติดตั้งเครื่อง (จับคู่ด้วย S/N)<br>'
     + '<b>4.</b> แต่ละอะไหล่หา p25 / median ของอายุ แล้วเทียบกับอายุเครื่องนี้<br>'
-    + '&nbsp;&nbsp;&nbsp;&nbsp;อายุ \u2265 median = <span style="color:#f87171">ถึงคิว</span> · p25\u2013median = <span style="color:#facc15">ใกล้ถึง</span> · &lt; p25 = <span style="color:#4ade80">ยังไม่ถึง</span><br>'
+    + '&nbsp;&nbsp;&nbsp;&nbsp;อายุ \u2265 median = <span style="color:#f87171">ถึงรอบ</span> · p25\u2013median = <span style="color:#facc15">ใกล้ถึงรอบ</span> · &lt; p25 = <span style="color:#4ade80">ยังไม่ถึงรอบ</span><br>'
     + '<b>5.</b> ราคา = median จากใบเสนอราคาที่ผ่านมา (ไม่รวมค่าแรง / VAT)<br>'
     + '<span style="color:var(--mu,#94a3b8)">ข้อจำกัด: จับคู่ S/N ได้ราว 77% ของงานเบิก · เครื่องที่ไม่มีวันติดตั้งจะไม่ถูกนำมาคิดอายุ แต่ยังนับความถี่ตามปกติ</span>'
     + '</div>';
@@ -2217,7 +2223,7 @@ html += '</div>';
     + '<span><b style="color:var(--tx,#e2e8f0)">'+_totSN+'</b> เครื่อง \u00b7 <b style="color:var(--tx,#e2e8f0)">'+totalMachines+'</b> งานเบิก</span>'
     + (thin ? '<span style="color:#fb923c">\u26a0 ข้อมูลน้อย \u2014 ตัวเลขอาจไม่แม่น</span>' : '')
     + '<span style="flex:1"></span>'
-    + '<span style="font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(125,211,252,.12);color:#7dd3fc;border:1px solid rgba(125,211,252,.35)">เครื่องนี้อายุ '+(_ageNow===null?'\u2014':_ageNow.toFixed(1)+' ปี')+'</span>'
+    + '<span style="font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(125,211,252,.12);color:#7dd3fc;border:1px solid rgba(125,211,252,.35)">เครื่องนี้อายุ '+(_ageNow===null?'\u2014':Math.round(_ageNow)+' ปี')+'</span>'
     + '</div>';
 
   if(!riskArr.length){
@@ -2239,13 +2245,13 @@ html += '</div>';
           + '</div>';
       }
       html += '<div style="display:flex;gap:7px;margin-bottom:10px">'
-        + card((_modeA?'\ud83d\udd27 ควรจัดเข้ารอบ':'\ud83d\udd34 ถึงคิวเปลี่ยนแล้ว'), '#f87171', 'rgba(248,113,113,.07)', '#b91c1c', g.due)
-        + card('\ud83d\udfe1 ใกล้ถึง', '#facc15', 'rgba(250,204,21,.07)', '#a16207', g.soon)
-        + card('\ud83d\udfe2 ยังไม่ถึง', '#4ade80', 'rgba(74,222,128,.07)', '#15803d', g.no)
+        + card('\ud83d\udd34 ถึงรอบพิจารณาเปลี่ยน', '#f87171', 'rgba(248,113,113,.07)', '#b91c1c', g.due)
+        + card('\ud83d\udfe1 ใกล้ถึงรอบ', '#facc15', 'rgba(250,204,21,.07)', '#a16207', g.soon)
+        + card('\ud83d\udfe2 ยังอยู่ในช่วงปกติ', '#4ade80', 'rgba(74,222,128,.07)', '#15803d', g.no)
         + '</div>';
       if(_modeA){
-        html += '<div style="font-size:10px;color:#fb923c;margin:-4px 0 9px;padding:5px 10px;background:rgba(251,146,60,.06);border-radius:4px">'
-          + '\u26a0 เครื่องอยู่ในสัญญารวมอะไหล่ \u2014 ตัวเลขนี้คือ<b>ต้นทุนคาดการณ์ของ BJH</b> ไม่ใช่ยอดขาย ใช้ประกอบการตั้งราคาตอนต่อสัญญา'
+        html += '<div style="font-size:10px;color:#4ade80;margin:-4px 0 9px;padding:5px 10px;background:rgba(74,222,128,.06);border-radius:4px">'
+          + '\u2713 เครื่องอยู่ในสัญญารวมอะไหล่ \u2014 รายการที่ถึงรอบจะถูกวางแผนดูแลภายใต้สัญญา'
           + '</div>';
       }
     })();
@@ -2257,7 +2263,7 @@ html += '</div>';
       +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ครั้ง</th>'
       +'<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">อายุตอนเปลี่ยน</th>'
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8);white-space:nowrap">ช่วงอายุ (0\u201315 ปี)</th>'
-      + (_hideMoney ? '' : '<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">ราคากลาง</th>')
+      + (_hideMoney ? '' : '<th style="text-align:right;padding:6px;color:var(--mu,#94a3b8)">มูลค่าโดยประมาณ</th>')
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">สถานะ</th>'
       +'</tr></thead><tbody>';
     riskArr.forEach(function(f,i){
