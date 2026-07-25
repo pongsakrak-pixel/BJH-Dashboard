@@ -2223,9 +2223,9 @@ html += '</div>';
   function _dueOf(f){
     if(f.mine)                     return {k:'done', t:'\u2705 เปลี่ยนไปแล้ว', c:'#4ade80', o:0};
     if(_ageR === null || !f.ageN)  return {k:'na',   t:'\u2014',                c:'var(--mu,#64748b)', o:4};
-    if(_ageR >= _p50(f))           return {k:'due',  t:'\U0001f534 ถึงรอบแล้ว',  c:'#f87171', o:1};
-    if(_ageR >= _p25(f))           return {k:'soon', t:'\U0001f7e1 ใกล้ถึงรอบ', c:'#facc15', o:2};
-    return {k:'no', t:'\U0001f7e2 ยังไม่ถึงรอบ', c:'#4ade80', o:3};
+    if(_ageR >= _p50(f))           return {k:'due',  t:'\ud83d\udd34 ถึงรอบแล้ว',  c:'#f87171', o:1};
+    if(_ageR >= _p25(f))           return {k:'soon', t:'\ud83d\udfe1 ใกล้ถึงรอบ', c:'#facc15', o:2};
+    return {k:'no', t:'\ud83d\udfe2 ยังไม่ถึงรอบ', c:'#4ade80', o:3};
   }
   function _yrTxt(f){
     if(!f.ageN) return '\u2014';
@@ -2329,12 +2329,17 @@ html += '</div>';
       +'<th style="text-align:left;padding:6px;color:var(--mu,#94a3b8)">สถานะ</th>'
       +'</tr></thead><tbody>';
 
-    var _n = 0;
+    /* [V600] โชว์ 10 แถวแรกพอ — ที่เหลือซ่อนหลังปุ่ม (เดิมโชว์ 31+17+8 = 56 แถวรวด ไม่มีใครอ่านจบ)
+       หัวกลุ่มซ่อนตามแถวของตัวเอง ถ้าไม่มีแถวไหนโผล่ในโควตา 10 */
+    var _n = 0, _shown = 0, _MAXROW = 10;
     function _grpRow(txt){
-      return '<tr><td colspan="7" style="background:rgba(148,163,184,.05);font-size:10px;font-weight:700;color:var(--mu,#94a3b8);padding:5px 6px">'+txt+'</td></tr>';
+      var h = (_shown >= _MAXROW);
+      return '<tr class="'+(h?'ibd-r4x':'')+'" style="'+(h?'display:none':'')+'"><td colspan="7" style="background:rgba(148,163,184,.05);font-size:10px;font-weight:700;color:var(--mu,#94a3b8);padding:5px 6px">'+txt+'</td></tr>';
     }
-    function _row(f, hidden){
+    function _row(f, forceHide){
       _n++;
+      var hidden = forceHide || (_shown >= _MAXROW);
+      if(!hidden) _shown++;
       var d = _dueOf(f);
       return '<tr class="'+(hidden?'ibd-r4x':'')+'" style="border-bottom:1px solid var(--bd,#1e293b)'+(hidden?';display:none':'')+'">'
         +'<td style="padding:5px;color:var(--mu,#94a3b8)">'+_n+'</td>'
@@ -2349,15 +2354,16 @@ html += '</div>';
         +'<td style="padding:5px"><span style="font-size:9.5px;font-weight:700;color:'+d.c+';white-space:nowrap">'+d.t+'</span></td>'
         +'</tr>';
     }
-    if(_g.due.length){  html += _grpRow('\U0001f534 ถึงรอบพิจารณาเปลี่ยน \u2014 ควรคุยกับลูกค้าตอนนี้'); _g.due.forEach(function(f){ html += _row(f,false); }); }
-    if(_g.soon.length){ html += _grpRow('\U0001f7e1 ใกล้ถึงรอบ \u2014 เตรียมงบไว้');                  _g.soon.forEach(function(f){ html += _row(f,false); }); }
+    if(_g.due.length){  html += _grpRow('\ud83d\udd34 ถึงรอบพิจารณาเปลี่ยน \u2014 ควรคุยกับลูกค้าตอนนี้'); _g.due.forEach(function(f){ html += _row(f,false); }); }
+    if(_g.soon.length){ html += _grpRow('\ud83d\udfe1 ใกล้ถึงรอบ \u2014 เตรียมงบไว้');                  _g.soon.forEach(function(f){ html += _row(f,false); }); }
     if(_g.done.length){ html += _grpRow('\u2705 เปลี่ยนไปแล้ว \u2014 เครื่องนี้เคยเบิกตัวนี้');        _g.done.forEach(function(f){ html += _row(f,false); }); }
-    if(_g.rest.length){ html += _grpRow('\U0001f7e2 ยังอยู่ในช่วงปกติ ('+_g.rest.length+' รายการ)');   _g.rest.forEach(function(f){ html += _row(f,true); }); }
+    if(_g.rest.length){ html += _grpRow('\ud83d\udfe2 ยังอยู่ในช่วงปกติ ('+_g.rest.length+' รายการ)');   _g.rest.forEach(function(f){ html += _row(f,true); }); }
     html += '</tbody></table>';
 
-    if(_g.rest.length){
+    var _hid = riskArr.length - _shown;
+    if(_hid > 0){
       html += '<div style="margin-top:10px;text-align:center">'
-        + '<button onclick="window._ibRiskToggleAll&&window._ibRiskToggleAll(this)" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#a78bfa;padding:6px 16px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600">\ud83d\udccb ดูรายการที่ยังไม่ถึงรอบ ('+_g.rest.length+' รายการ)</button>'
+        + '<button onclick="window._ibRiskToggleAll&&window._ibRiskToggleAll(this)" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);color:#a78bfa;padding:6px 16px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600">\ud83d\udccb ดูทั้งหมด (อีก '+_hid+' รายการ)</button>'
         + '</div>';
     }
 
