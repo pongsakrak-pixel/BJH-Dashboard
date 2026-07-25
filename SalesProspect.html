@@ -1581,7 +1581,13 @@ window.spShowInstallDetail = function(idx) {
          หมายเหตุ: ยัง match ด้วย SN เท่านั้น (ไม่มี BM fallback) — ตาม [v443] */
       var snHayC = [
         c.SERAIL_NUMBER, c.PRODUCT_NAME, c.QH_SUBJECT_EMAIL, c.PROJECT_NAME,
-        c.CONTRACT_NO, c.Model, c.MODEL, c.NOTE_LOG
+        /* [V601] ตัด c.CONTRACT_NO ออก — ห้ามใส่กลับ
+           เลขที่สัญญาเป็นเลขที่ระบบออกให้ ไม่ใช่ที่ที่ SN จะไปอยู่
+           เคสจริง: SN 00806 (Lisa Laser เชียงคำ) ดึงสัญญา 6.9M ของ LEICA จุฬารัตน์แม่สอดมาด้วย
+             เพราะ CONTRACT_NO = "LAW-C0545/2568 PO2025_000806" -> normalize แล้วมี 00806 ซ้อนอยู่
+             ทั้งที่ SERAIL_NUMBER ของใบนั้นคือ 160225091 คนละเครื่องคนละยี่ห้อ
+           กระทบทุกหมวดที่ใช้ _hasSN: ประวัติสัญญา/อะไหล่/เสนอราคา + ฐานคำนวณหมวด 4 */
+        c.Model, c.MODEL, c.NOTE_LOG
       ].map(function(v){ return String(v||''); }).join(' ');
       var matchSN = sn && _hasSN(snHayC, snFirst);
       if(!matchSN) return;
@@ -1781,6 +1787,30 @@ window.spShowInstallDetail = function(idx) {
       var _amt = Number(p.QH_TOTAL_AMT||p.PARTS_PRICE||p.BILL_JOB_PRICE||0)||0;
       if(_amt > 0) partsFreq[pName].amts.push(_amt);
       if(jobKey){ partsFreq[pName].uniqueQn[jobKey]=1; modelMachines[jobKey]=1; }
+    });
+  } catch(e){}
+  /* [V601] รวมอะไหล่ที่ชื่อหนึ่งเป็น "คำขึ้นต้น" ของอีกชื่อ = ของเดียวกัน
+       BATTERY12V9AH  <subset>  BATTERY12V9AHYUASANPW5312   -> รวม
+       APDCAN94014078CM...LB4A vs APDCAN94014056CM...LB1A    -> ต่างที่ตัวที่ 12 ไม่รวม
+     บังคับตัวที่เป็นคำขึ้นต้นยาว >= 10 ตัวอักษร กัน "BATTERY" เฉยๆ กลืนทุกอย่าง
+     ไม่ใช่ fuzzy เดาสุ่ม — อธิบายได้ว่าทำไมรวม/ไม่รวม และหน้าจอติดป้าย "รวม N ชื่อ" ให้เห็น
+     (Config กลุ่มอะไหล่ตัดทิ้ง — ไม่มีใครมาดูแลจริง เอาแค่จับตามชื่อพอ) */
+  try {
+    var _pfKeys = Object.keys(partsFreq).sort(function(a,b){ return a.length - b.length; });
+    _pfKeys.forEach(function(k){
+      if(k.length < 10 || !partsFreq[k]) return;
+      _pfKeys.forEach(function(k2){
+        if(k2 === k || !partsFreq[k2]) return;
+        if(k2.indexOf(k) !== 0) return;                    /* ต้องขึ้นต้นด้วย k เท่านั้น */
+        var A = partsFreq[k], B = partsFreq[k2];
+        A.count += B.count; A.qty += B.qty;
+        B.amts.forEach(function(v){ A.amts.push(v); });
+        B.ages.forEach(function(v){ A.ages.push(v); });
+        Object.keys(B.sns).forEach(function(s){ A.sns[s]=1; });
+        Object.keys(B.uniqueQn).forEach(function(s){ A.uniqueQn[s]=1; });
+        Object.keys(B.names).forEach(function(s){ A.names[s]=(A.names[s]||0)+B.names[s]; });
+        delete partsFreq[k2];
+      });
     });
   } catch(e){}
   function _median(a){
@@ -5500,6 +5530,10 @@ window.spRenderAlert = function(){
   var rows=rowsAll.filter(function(m){
     if(window._cdSales && m.sa!==window._cdSales) return false;
     var kf=window._cdKpiF;
+    /* [V601] รายการที่ Clear แล้วหายจากทุกชิป — เห็นได้เฉพาะตอนกดชิป Clear */
+    var _cl = window._cdIsCleared && window._cdIsCleared(m.sr);
+    if(kf==='cleared') return !!_cl;
+    if(_cl) return false;
     if((kf==='dead'||kf==='check'||kf==='eol'||kf==='watch') && m.mcGroup!==kf) return false;
     return true;
   });
@@ -5516,22 +5550,23 @@ window.spRenderAlert = function(){
 
   if(tab==='active'){
     // [v319] นับ 3 กลุ่ม: ใช้ไม่ได้(dead)/ต้องตรวจสอบ(check)/EOL(eol)
-    var nDead=0,nCheck=0,nEol=0,nWatch=0;
+    var nDead=0,nCheck=0,nEol=0,nWatch=0,nClear=0;
     rowsAll.forEach(function(m){
+      if(window._cdIsCleared && window._cdIsCleared(m.sr)){ nClear++; return; }   /* [V601] นับแยก ไม่ปนชิปสี */
       if(m.mcGroup==='dead')nDead++; else if(m.mcGroup==='check')nCheck++; else if(m.mcGroup==='eol')nEol++; else if(m.mcGroup==='watch')nWatch++;
     });
-    if(kpiEl)kpiEl.innerHTML=_k(rows.length,'เครื่องผิดปกติทั้งหมด','#ef4444')+_k(nDead,'🔴 ใช้ไม่ได้','#ef4444','dead')+_k(nCheck,'🟡 ต้องตรวจสอบ','#facc15','check')+_k(nEol,'⚫ End of Life','#9ca3af','eol')+_k(nWatch,'🟣 เฝ้าระวัง','#a78bfa','watch');
+    if(kpiEl)kpiEl.innerHTML=_k(rows.length,'เครื่องผิดปกติทั้งหมด','#ef4444')+_k(nDead,'🔴 ใช้ไม่ได้','#ef4444','dead')+_k(nCheck,'🟡 ต้องตรวจสอบ','#facc15','check')+_k(nEol,'⚫ End of Life','#9ca3af','eol')+_k(nWatch,'🟣 เฝ้าระวัง','#a78bfa','watch')+_k(nClear,'\u2705 Clear','#4ade80','cleared');
     if(fltEl){
       var saSet={},warSet={}; rowsAll.forEach(function(m){if(m.sa)saSet[m.sa]=1;if(m.war.label)warSet[m.war.cls]=m.war.label;});
       var saOpts='<option value="">ทุกผู้แทน</option>'+Object.keys(saSet).sort().map(function(s){return '<option value="'+_spEsc(s)+'"'+(window._cdSales===s?' selected':'')+'>'+_spEsc(s)+'</option>';}).join('');
       var warOpts='<option value="">ทุกประเภทสัญญา</option>'+Object.keys(warSet).sort().map(function(c){return '<option value="'+c+'"'+(window._cdKpiF===c?' selected':'')+'>'+_spEsc(warSet[c])+'</option>';}).join('');
       var clearBtn=(window._cdKpiF||window._cdSales)?'<button onclick="window._cdKpiF=\'\';window._cdSales=\'\';window.spRenderAlert()" style="padding:5px 12px;border-radius:15px;border:1px solid #ef4444;background:rgba(239,68,68,.1);color:#ef4444;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">✕ ล้างตัวกรอง</button>':'';
       var selStyle='background:var(--bg2,#111722);border:1px solid var(--bd2,#374151);border-radius:8px;padding:6px 11px;color:var(--tx);font-size:12.5px;font-family:inherit';
-      var kpiPills=_k(rows.length,'เครื่อง','#ef4444')+_k(nDead,'🔴 ใช้ไม่ได้','#ef4444','dead')+_k(nCheck,'🟡 ตรวจสอบ','#facc15','check')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nWatch,'🟣 เฝ้าระวัง','#a78bfa','watch'); // [v383] เพิ่มเฝ้าระวัง
+      var kpiPills=_k(rows.length,'เครื่อง','#ef4444')+_k(nDead,'🔴 ใช้ไม่ได้','#ef4444','dead')+_k(nCheck,'🟡 ตรวจสอบ','#facc15','check')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nWatch,'🟣 เฝ้าระวัง','#a78bfa','watch')+_k(nClear,'\u2705 Clear','#4ade80','cleared'); // [v383] เพิ่มเฝ้าระวัง
       fltEl.innerHTML=kpiPills+'<span style="width:1px;height:20px;background:var(--bd2,#374151);flex-shrink:0"></span><select onchange="window.cdSetSales(this.value)" style="'+selStyle+'">'+saOpts+'</select><select onchange="window.cdKpi(this.value)" style="'+selStyle+'">'+warOpts+'</select>'+clearBtn+'<span style="font-size:11px;color:var(--mu);margin-left:auto">SR ค้าง: '+rows.length+' เครื่อง</span>';
     }
     if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">✅ ไม่พบเครื่องที่อยู่ระหว่างการซ่อมค้าง</div>';return;}
-    var cols=['สถานะ','เครื่อง / SN','ลูกค้า','ประกัน','เลขที่แจ้งซ่อม / อาการ','สถานะงาน','ใบเสนอราคา','Sales','Note','ประวัติ'];
+    var cols=['สถานะ','เครื่อง / SN','ลูกค้า','ประกัน','เลขที่แจ้งซ่อม / อาการ','สถานะงาน','ใบเสนอราคา','Sales','Note','ประวัติ','Clear'];
     var body=rows.map(function(m){
       var w=m.war;
       var quoCell;
@@ -5562,6 +5597,7 @@ window.spRenderAlert = function(){
         +'<td style="padding:11px;color:var(--mu);font-size:12px">'+_spEsc(m.sa||'—')+'</td>'
         +'<td style="padding:11px">'+_cdNoteCell(m.sn)+'</td>'
         +'<td style="padding:11px">'+histBtn+'</td>'
+        +'<td style="padding:11px;text-align:center">'+(window._cdClearCell?window._cdClearCell(m):'')+'</td>'   /* [V601] */
         +'</tr>';
     }).join('');
     el.innerHTML=_spTbl?_spTbl(cols,body):('<table style="width:100%"><thead><tr>'+cols.map(function(c){return '<th style="text-align:left;padding:10px;font-size:11px;color:var(--mu);border-bottom:1px solid var(--bd2)">'+c+'</th>';}).join('')+'</tr></thead><tbody>'+body+'</tbody></table>');
@@ -6045,6 +6081,7 @@ function _qnLoadNotes(){
   try{
     var c=window._LAST_CONFIG||{};
     if(c.quote_notes) window._QUOTE_NOTES=c.quote_notes;
+    if(c.cd_cleared) window._CD_CLEARED = c.cd_cleared;   /* [V601] Clear รายการ Critical Down */
   }catch(e){}
 }
 function _qnEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -6085,6 +6122,64 @@ window.qnOpenNote = function(qn){
     +'</div></div>';
   document.body.appendChild(ov);
   try{ document.getElementById('qn-note-text').focus(); }catch(e){}
+};
+
+/* ══ [V601] Clear รายการ Critical Down ══
+   เก็บที่ _config_kv section 'cd_cleared' รูปแบบ { "SR": "2026-07-25 ชื่อคนกด" }
+   ใช้ saveConfigSection ตัวเดิมที่ระบบโน้ตใช้ — ไม่ต้องแตะ Code.gs ไม่ต้อง Deploy New Version
+   ผูกกับเลข SR ไม่ใช่ SN: เครื่องเดิมพังซ้ำแล้วเปิด SR ใหม่ จะโผล่ปกติ ไม่โดนซ่อนตามของเก่า */
+window._CD_CLEARED = window._CD_CLEARED || {};
+window._cdIsCleared = function(sr){
+  var k = String(sr||'').trim();
+  return !!(k && k !== '\u2014' && window._CD_CLEARED && window._CD_CLEARED[k]);
+};
+function _cdSaveCleared(){
+  try{
+    if(typeof google!=='undefined' && google.script && google.script.run){
+      google.script.run.saveConfigSection(JSON.stringify({section:'cd_cleared', data:window._CD_CLEARED}));
+    }
+  }catch(e){}
+}
+window._cdClearCell = function(m){
+  var sr = String((m&&m.sr)||'').trim();
+  if(!sr || sr === '\u2014') return '<span style="color:var(--mu)">\u2014</span>';
+  var esc = sr.replace(/'/g,"&#39;");
+  var st  = 'background:transparent;border:1px solid var(--bd2,#374151);color:var(--mu);border-radius:6px;padding:3px 9px;font-size:13px;cursor:pointer;font-family:inherit';
+  if(window._cdIsCleared(sr)){
+    return '<button onclick="window.cdClearUndo(\''+esc+'\')" title="เอากลับมาตาม" style="'+st+';border-color:#a78bfa;color:#a78bfa">\u21a9</button>'
+      + '<div style="font-size:9.5px;color:var(--mu);margin-top:3px;white-space:nowrap">'+_spEsc(String(window._CD_CLEARED[sr]||''))+'</div>';
+  }
+  return '<button onclick="window.cdClearAsk(\''+esc+'\')" title="Clear รายการนี้" style="'+st+'">\u2713</button>';
+};
+window.cdClearAsk = function(sr){
+  var ov = document.createElement('div');
+  ov.id = 'cd-clear-ov';
+  ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483646;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML = '<div style="background:#0f172a;border:1px solid #374151;border-radius:10px;padding:16px 18px;max-width:430px;width:100%">'
+    + '<div style="font-size:13px;font-weight:700;color:#e2e8f0;margin-bottom:8px">Clear รายการนี้?</div>'
+    + '<div style="font-size:12px;color:#94a3b8;line-height:1.7;margin-bottom:14px">'
+    +   '<span style="font-family:monospace;color:#38bdf8">'+_spEsc(sr)+'</span><br><br>'
+    +   'รายการจะหายจากทุกชิป ดูย้อนหลังและเอากลับได้ที่ชิป \u2705 Clear</div>'
+    + '<div style="text-align:right">'
+    +   '<button id="cd-clear-no" style="background:#334155;color:#e2e8f0;border:0;border-radius:6px;padding:6px 16px;font-size:12px;cursor:pointer;font-family:inherit">ยกเลิก</button>'
+    +   '<button id="cd-clear-ok" style="background:#15803d;color:#dcfce7;border:0;border-radius:6px;padding:6px 16px;font-size:12px;cursor:pointer;font-family:inherit;margin-left:8px">Clear</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  function close(){ try{ document.body.removeChild(ov); }catch(e){} }
+  ov.querySelector('#cd-clear-no').onclick = close;
+  ov.querySelector('#cd-clear-ok').onclick = function(){ close(); window.cdClearDo(sr); };
+};
+window.cdClearDo = function(sr){
+  var who = (window._currentUser && window._currentUser.name) || '';
+  var d = new Date(), p = function(n){ return (n<10?'0':'')+n; };
+  window._CD_CLEARED[String(sr).trim()] = d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+(who?(' '+who):'');
+  _cdSaveCleared();
+  try{ window.spRenderAlert(); }catch(e){}
+};
+window.cdClearUndo = function(sr){
+  delete window._CD_CLEARED[String(sr).trim()];
+  _cdSaveCleared();
+  try{ window.spRenderAlert(); }catch(e){}
 };
 
 function _qnSaveConfig(map, onOk){
