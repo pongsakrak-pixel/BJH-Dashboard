@@ -1075,9 +1075,10 @@ function dpFmtDate(v){
 
   // [v233] เบิกอะไหล่ทั้งใบ → ส่งเมลถึง Admin (ย้ายมาจาก Daily Sales)
   window._dpCurReq = null;
-  window.dpReqEmail = function(mode){
+  /* [V597] แยกส่วนประกอบข้อความออกมา ให้ปุ่ม copy ใช้ตัวเดียวกับปุ่มส่งเมล (ตรรกะเดิมไม่แตะ) */
+  window._dpReqBuild = function(mode){
     var d = window._dpCurReq;
-    if(!d || !d.parts || !d.parts.length){ alert('ไม่มีรายการอะไหล่ในใบนี้'); return; }
+    if(!d || !d.parts || !d.parts.length){ alert('ไม่มีรายการอะไหล่ในใบนี้'); return null; }
     // [v242] อ่านจาก config (section email_req) — fallback = default เดิม
     var DEF = (window.EMAIL_REQ_DEFAULT) || {
       to:'MDGroupAdminServiceSupport@bjc.co.th',
@@ -1121,11 +1122,54 @@ function dpFmtDate(v){
     L.push('Service Commercial');
     if(uphone) L.push('โทร. ' + uphone);
     var body = L.join('\n');
-    var url = 'mailto:' + encodeURIComponent(MAIL_TO)
-            + '?cc=' + encodeURIComponent(MAIL_CC)
-            + '&subject=' + encodeURIComponent(subj)
-            + '&body=' + encodeURIComponent(body);
-    window.location.href = url;
+    return { to:MAIL_TO, cc:MAIL_CC, subj:subj, body:body };
+  };
+
+  window.dpReqEmail = function(mode){
+    var o = window._dpReqBuild(mode); if(!o) return;
+    window.location.href = 'mailto:' + encodeURIComponent(o.to)
+            + '?cc=' + encodeURIComponent(o.cc)
+            + '&subject=' + encodeURIComponent(o.subj)
+            + '&body=' + encodeURIComponent(o.body);
+  };
+
+  /* [V597] คัดลอกข้อความ — เผื่อเครื่องไม่มีโปรแกรมเมล เอาไปวางใน Outlook Web / มือถือได้
+     มีหัว ถึง/สำเนา/เรื่อง นำหน้า เพราะคนวางเองต้องรู้ปลายทางกับหัวข้อ
+     3 ชั้น: clipboard API -> execCommand -> กล่อง textarea ให้ Ctrl+C เอง (GAS iframe บล็อกได้) */
+  window.dpReqCopy = function(mode, btn){
+    var o = window._dpReqBuild(mode); if(!o) return;
+    var txt = 'ถึง : ' + o.to + '\nสำเนา : ' + o.cc + '\nเรื่อง : ' + o.subj + '\n\n' + o.body;
+    function done(){
+      if(!btn) return;
+      var old = btn.getAttribute('data-lbl') || btn.innerHTML;
+      btn.setAttribute('data-lbl', old);
+      btn.innerHTML = '\u2713'; btn.style.color = '#4ade80';
+      setTimeout(function(){ btn.innerHTML = old; btn.style.color = ''; }, 1600);
+    }
+    function manual(){
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483646;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:20px';
+      ov.innerHTML = '<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;max-width:660px;width:100%">'
+        + '<div style="font-size:12px;color:#cbd5e1;margin-bottom:8px">กด Ctrl+C เพื่อคัดลอก แล้วกดปิด</div>'
+        + '<textarea readonly style="width:100%;height:340px;background:#111c2e;color:#e2e8f0;border:1px solid #1e293b;border-radius:6px;padding:10px;font-size:12px;font-family:monospace;box-sizing:border-box"></textarea>'
+        + '<div style="text-align:right;margin-top:8px"><button style="background:#334155;color:#e2e8f0;border:0;border-radius:5px;padding:6px 18px;cursor:pointer;font-family:inherit">ปิด</button></div></div>';
+      document.body.appendChild(ov);
+      var ta = ov.querySelector('textarea'); ta.value = txt; ta.focus(); ta.select();
+      ov.querySelector('button').onclick = function(){ document.body.removeChild(ov); };
+    }
+    function legacy(){
+      var ta = document.createElement('textarea');
+      ta.value = txt; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var okc = false; try { okc = document.execCommand('copy'); } catch(e){}
+      document.body.removeChild(ta);
+      if(okc) done(); else manual();
+    }
+    try {
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(done, legacy);
+      } else legacy();
+    } catch(e){ legacy(); }
   };
 
   renderSPDetail = function(r){
@@ -1695,8 +1739,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V596.0';
-    var _BUILD_TIME='25 ก.ค. 2569 (V596 แผนดูแลอะไหล่ - คำที่ลูกค้าเห็นได้)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
+    var _BUILD_VER='V597.0';
+    var _BUILD_TIME='25 ก.ค. 2569 (V597 ปุ่ม copy + ปิด 2 แท็บที่ไม่ใช้)'; // เวลา deploy (hardcode — เปลี่ยนทุกรอบที่แก้)
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน

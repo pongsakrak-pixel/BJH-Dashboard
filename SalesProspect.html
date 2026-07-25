@@ -164,9 +164,9 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   <button class="sp-tab"    id="sp-tab-ordsc"     onclick="spTab('ordsc')">📥 เข้า SC</button>
   <button class="sp-tab"    id="sp-tab-billing"   onclick="spTab('billing')">🧾 เปิดบิล</button>
   <button class="sp-tab"    id="sp-tab-ar"        onclick="spTab('ar')">💰 AR Monitor</button>
-  <button class="sp-tab"    id="sp-tab-forecast"  onclick="spTab('forecast')" style="display:none">Revenue Forecast</button>
+<!-- [V597] ปิดใช้ Revenue Forecast — แยกเป็น SC/SP Quotation แล้ว · เปิดคืน: เอาคอมเมนต์ออก + คืน permission + คืน map/loop -->
   <button class="sp-tab"    id="sp-tab-bg"         onclick="spTab('bg')">📊 BG Monitor</button>
-  <button class="sp-tab"    id="sp-tab-pipeline"  onclick="spTab('pipeline')" style="display:none">Quotation Pipeline</button>
+<!-- [V597] ปิดใช้ Quotation Pipeline — แยกเป็น SC/SP Quotation แล้ว · เปิดคืน: เอาคอมเมนต์ออก + คืน permission + คืน map/loop -->
   <div style="flex:1"></div><!-- [V585] ตัดปุ่ม Export CSV (ฟังก์ชัน spExportCSV ยังอยู่) -->
 </div>
 
@@ -529,7 +529,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   </div>
 
   <!-- ── REVENUE FORECAST ── -->
-  <div id="sp-pane-forecast" style="display:block">
+  <div id="sp-pane-forecast" style="display:none">
     <div id="sp-fc-summary" style="margin:8px 16px;"></div>
     <div class="filterbar">
       <span class="flbl">Sales:</span>
@@ -862,7 +862,8 @@ window.spLoadInstallBase = function(rows, customerData) {
 window.spTab = function(t) {
   _spTab = t;
   window._spCurrentTab = t;
-  ['srcom','alert','install','renewal','scquote','spquote','contract','ordsp','ordsc','billing','ar','forecast','pipeline','bg'].forEach(function(n){
+  /* [V597] ตัด forecast, pipeline ออก — ปิดใช้แล้ว */
+  ['srcom','alert','install','renewal','scquote','spquote','contract','ordsp','ordsc','billing','ar','bg'].forEach(function(n){
     var p=document.getElementById('sp-pane-'+n);
     if(p) p.style.display=n===t?'block':'none';
     var b=document.getElementById('sp-tab-'+n);
@@ -878,8 +879,7 @@ window.spTab = function(t) {
   if(t==='ordsc')    spRenderOrdSC();
   if(t==='billing')  spRenderBilling();
   if(t==='ar')       spRenderAR();
-  if(t==='forecast') spRenderForecast();
-  if(t==='pipeline') spRenderPipeline();
+  /* [V597] forecast, pipeline ปิดใช้แล้ว */
 };
 
 // ── Tab Permissions (ซ่อน sub-tab ตาม role) ──
@@ -900,8 +900,8 @@ window.spApplyTabPermissions = function(){
     sp_ordsc:{admin:true,manager:true,sales:true},
     sp_billing:{admin:true,manager:true,sales:true},
     sp_ar:{admin:true,manager:true,sales:true},
-    sp_forecast:{admin:true,manager:false,sales:false},
-    sp_pipeline:{admin:true,manager:true,sales:true}
+    sp_forecast:{admin:false,manager:false,sales:false},   /* [V597] ปิดใช้ */
+    sp_pipeline:{admin:false,manager:false,sales:false}   /* [V597] ปิดใช้ */
   };
   var perms = window._TAB_PERMISSIONS || DEF;
   function can(key){
@@ -918,7 +918,7 @@ window.spApplyTabPermissions = function(){
     sp_alert:'alert', sp_install:'install', sp_renewal:'renewal',
     sp_scquote:'scquote', sp_spquote:'spquote', sp_contract:'contract',
     sp_ordsp:'ordsp', sp_ordsc:'ordsc', sp_billing:'billing',
-    sp_ar:'ar', sp_forecast:'forecast', sp_pipeline:'pipeline'
+    sp_ar:'ar'   /* [V597] ตัด sp_forecast, sp_pipeline — ปิดใช้แล้ว */
   };
   var visible = [];
   Object.keys(map).forEach(function(permKey){
@@ -1163,7 +1163,9 @@ function _spFillSel(id, opts, placeholder) {
 }
 
 // ── Sort ──────────────────────────────────────────────────
+window._SP_PIPELINE_OFF = true;   /* [V597] ปิดใช้ Quotation Pipeline — ตั้ง false เพื่อเปิดคืน */
 window.spRenderPipeline = function() {
+  if(window._SP_PIPELINE_OFF) return;   /* [V597] ตัดงานทิ้ง ไม่ต้องแก้ทุกจุดที่เรียก */
   var fSales  = (document.getElementById('sp-p-sales')  ||{}).value || '';
   var fType   = (document.getElementById('sp-p-type')   ||{}).value || '';
   var fBrand  = (document.getElementById('sp-p-brand')  ||{}).value || '';
@@ -4058,7 +4060,9 @@ window.spPopulateFcFilters = function spPopulateFcFilters() {
   if(authBtn) authBtn.style.display=_fcGToken?'none':'';
 }
 
+window._SP_FORECAST_OFF = true;   /* [V597] ปิดใช้ Revenue Forecast — ตั้ง false เพื่อเปิดคืน */
 window.spRenderForecast = function() {
+  if(window._SP_FORECAST_OFF) return;   /* [V597] ตัดงานทิ้ง ไม่ต้องแก้ทุกจุดที่เรียก */
   var selYrs = (typeof _fcSelYears!=='undefined'&&_fcSelYears.length) ? _fcSelYears.slice().sort() : [2026];
   // ── "ทุกปี" mode: ถ้า 0 อยู่ใน selYrs → รวมทุกปีที่มีใน data
   var _allYearsMode = (selYrs.indexOf(0)>=0);
@@ -7105,10 +7109,20 @@ window.spOpenSPDetail = function(idxOrQn){
   if(isSP && info.parts.length){
     var _mappedParts=info.parts.map(function(p){ return { parts_name:(p.PARTS_NAME||''), mat_no:(p.PARTS_MAT_NO||''), qty:(p.PARTS_QTY||''), status:(p.STATUS_DT_NAME||'') }; });
     window._dpCurReq = { qn:qn, cu:(rec.cu||(info.parts[0]&&info.parts[0].CUSTOMER_NAME)||''), brand:(rec.br||''), parts:_mappedParts };
-    btnHtml='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">เบิกทั้งใบ ('+info.parts.length+' รายการ) → ส่งเมลถึง Admin</div>'
-      +'<button onclick="dpReqEmail(\'do\')" style="display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--tx);font-family:inherit;margin-bottom:8px"><span style="font-size:16px">📦</span><span><div style="font-size:13px;font-weight:700">DO เบิกสินค้า</div><div style="font-size:11px;color:var(--mu)">เบิกของออกตามปกติ</div></span></button>'
-      +'<button onclick="dpReqEmail(\'bill\')" style="display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--tx);font-family:inherit;margin-bottom:8px"><span style="font-size:16px">🧾</span><span><div style="font-size:13px;font-weight:700">เบิกของพร้อมเปิดบิล</div><div style="font-size:11px;color:var(--mu)">แนบหมายเหตุให้ Operation Service</div></span></button>'
-      +'<button onclick="dpReqEmail(\'billonly\')" style="display:flex;align-items:flex-start;gap:8px;width:100%;text-align:left;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--tx);font-family:inherit"><span style="font-size:16px">📄</span><span><div style="font-size:13px;font-weight:700">เปิดบิล</div><div style="font-size:11px;color:var(--mu)">ขอเปิดบิลอย่างเดียว</div></span></button>';
+    /* [V597] เพิ่มปุ่มคัดลอกข้อความข้างปุ่มส่งเมล — เผื่อเครื่องไม่มีโปรแกรมเมล */
+    btnHtml='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">เบิกทั้งใบ ('+info.parts.length+' รายการ) \u2192 ส่งเมล หรือ \ud83d\udccb คัดลอกข้อความ</div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:8px">'
+      +'<button onclick="dpReqEmail(\'do\')" style="display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;text-align:left;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--tx);font-family:inherit"><span style="font-size:16px">📦</span><span><div style="font-size:13px;font-weight:700">DO เบิกสินค้า</div><div style="font-size:11px;color:var(--mu)">เบิกของออกตามปกติ</div></span></button>'
+      +'<button onclick="dpReqCopy(\'do\',this)" title="คัดลอกข้อความ" style="flex:0 0 auto;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 11px;cursor:pointer;color:var(--mu);font-family:inherit;font-size:15px;line-height:1">\ud83d\udccb</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:8px">'
+      +'<button onclick="dpReqEmail(\'bill\')" style="display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;text-align:left;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--tx);font-family:inherit"><span style="font-size:16px">🧾</span><span><div style="font-size:13px;font-weight:700">เบิกของพร้อมเปิดบิล</div><div style="font-size:11px;color:var(--mu)">แนบหมายเหตุให้ Operation Service</div></span></button>'
+      +'<button onclick="dpReqCopy(\'bill\',this)" title="คัดลอกข้อความ" style="flex:0 0 auto;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 11px;cursor:pointer;color:var(--mu);font-family:inherit;font-size:15px;line-height:1">\ud83d\udccb</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:8px">'
+      +'<button onclick="dpReqEmail(\'billonly\')" style="display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0;text-align:left;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 12px;cursor:pointer;color:var(--tx);font-family:inherit"><span style="font-size:16px">📄</span><span><div style="font-size:13px;font-weight:700">เปิดบิล</div><div style="font-size:11px;color:var(--mu)">ขอเปิดบิลอย่างเดียว</div></span></button>'
+      +'<button onclick="dpReqCopy(\'billonly\',this)" title="คัดลอกข้อความ" style="flex:0 0 auto;background:var(--sur,#1a2332);border:1px solid var(--bd2,#374151);border-radius:8px;padding:10px 11px;cursor:pointer;color:var(--mu);font-family:inherit;font-size:15px;line-height:1">\ud83d\udccb</button>'
+      +'</div>';
   }
   // layout 2 คอลัมน์ (ข้อมูลซ้าย / ปุ่มขวา)
   var html='<div style="display:flex;gap:18px;flex-wrap:wrap">'

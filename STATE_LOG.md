@@ -64,3 +64,26 @@ BUG ที่เจอรอบนี้ (2 ตัว - ทั้งคู่ AB
    แก้: base64 หุ้ม find/replace/note/guard ทีละ item แล้ว UTF8.GetString ฝั่ง PS
 2) ตัวสร้างคำสั่งใส่ backslash เกิน -> "_BUILD_VER='V595\\.0'" (PS double-quote ไม่ escape ด้วย backslash)
    -> regex ไม่ match -> ABORT: base is not V595.0  แก้เป็น backslash เดียว
+
+## V597.0 - 25 ก.ค. 2569  (3 เคส)
+- C12 ปุ่มคัดลอกข้อความ ข้างปุ่มส่งเมล 3 อัน (สั่ง SP > รายละเอียด)
+      overrides.html: แยก dpReqEmail -> _dpReqBuild(mode) คืน {to,cc,subj,body} ตรรกะเดิมไม่แตะ
+        dpReqCopy(mode,btn) คัดลอกพร้อมหัว "ถึง / สำเนา / เรื่อง" นำหน้าเนื้อความ
+        3 ชั้น: navigator.clipboard -> execCommand -> กล่อง textarea ให้ Ctrl+C เอง (GAS iframe บล็อกได้)
+      SalesProspect.html: ปุ่มหลัก + ปุ่ม copy จัดเป็น flex row 3 แถว
+- C13 ปิด Quotation Pipeline / C14 ปิด Revenue Forecast (แยก SC/SP Quotation แล้ว) - ไม่ลบโค้ด
+      บั๊ก: ปุ่ม hardcode display:none แต่ spApplyTabPermissions:927 เขียนทับ display เสมอ
+        + permission ตั้ง admin:true -> พอ config โหลดเสร็จปุ่มจะโผล่กลับมา (ระเบิดเวลา)
+      แก้ 8 จุด: ลบปุ่มแท็บ 2 อัน / pane forecast display:block -> none (ไม่งั้นค้างโชว์)
+        / ตัดจากลูป spTab + dispatch + permission map / permission false ทั้ง 2 ไฟล์
+        / ซ่อนจาก Config สิทธิ์แท็บ / ยาม _SP_PIPELINE_OFF, _SP_FORECAST_OFF หัวฟังก์ชัน render
+      ตรวจก่อนตัด: spRenderForecast ไม่เขียน global ไม่เรียก server
+        _FC_SUMMARY_DATA (script_main:3304) อ่านอย่างเดียว ไม่มีใครเขียนทั้ง repo = dead code
+
+BUG ของสคริปต์ patch เอง (รอบแรก ABORT after write):
+  เปลี่ยนจาก scalar เป็น hashtable $C[$t] -> lookup คืน null ใน console PowerShell
+  [regex]::Matches โยน exception -> $c ไม่ถูก assign ค้างค่า 1 จากรอบก่อน -> guard แรกไม่จับ
+  หลุดไปถึงขั้นเขียนไฟล์ (เนื้อหาเดิม เปลี่ยนแค่ CRLF->LF) guard ที่สองจับได้ก่อน push
+  แก้: 1) $c=-1 รีเซ็ตทุกรอบ 2) กลับไปใช้ scalar แยกไฟล์ 3) ErrorActionPreference Stop + try/catch
+       4) ย้าย guard มาตรวจในหน่วยความจำ "ก่อน" เขียนไฟล์
+  บทเรียน: ตัวแปรนับผลต้องรีเซ็ตก่อนใช้เสมอ ไม่งั้น exception ถูกกลบด้วยค่าค้าง

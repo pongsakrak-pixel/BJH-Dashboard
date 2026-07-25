@@ -1087,8 +1087,8 @@ function cfgTabPermInit(){
     {key:'analysis',     label:'└ 📈 Analysis', group:'sub'},
     {key:'nav_service',  label:'🔧 Service Commercial Orders', group:'nav'},
     {key:'nav_prospect', label:'🎯 Sales Prospect', group:'nav'},
-    {key:'sp_forecast',  label:'└ 📈 Revenue Forecast', group:'sub'},
-    {key:'sp_pipeline',  label:'└ 📋 Quotation Pipeline', group:'sub'},
+    /* [V597] ซ่อนจาก Config สิทธิ์แท็บ — Revenue Forecast ปิดใช้แล้ว */
+    /* [V597] ซ่อนจาก Config สิทธิ์แท็บ — Quotation Pipeline ปิดใช้แล้ว */
     {key:'sp_install',   label:'└ 🏥 Installation Base', group:'sub'},
     {key:'sp_alert',     label:'└ 🚨 Alert', group:'sub'},
     {key:'sp_renewal',   label:'└ 🔄 Renewal Pipeline', group:'sub'},
@@ -6015,8 +6015,8 @@ window._TAB_PERM_DEFAULT = {
   sp_ordsc:    {admin:true, manager:true, sales:true},
   sp_billing:  {admin:true, manager:true, sales:true},
   sp_ar:       {admin:true, manager:true, sales:true},
-  sp_forecast: {admin:true, manager:false, sales:false},
-  sp_pipeline: {admin:true, manager:true, sales:true},
+  sp_forecast: {admin:false, manager:false, sales:false},   /* [V597] ปิดใช้ */
+  sp_pipeline: {admin:false, manager:false, sales:false},   /* [V597] ปิดใช้ */
   sp_install:  {admin:true, manager:true, sales:true},
   // MD Collection (Tools menu)
   nav_mdcol:   {admin:true, manager:false, sales:false},
