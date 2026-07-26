@@ -6863,52 +6863,27 @@ function _wkHighValue(m, who){
 /* ═══ ร่างข้อความ ═══ */
 /* [V609] ทุกบุลเล็ตต้องบอก "รพ.ไหน" — หัวหน้าอ่านตัวเลขล้วนแล้วสั่งงานต่อไม่ได้
    รูปแบบ: <สรุปตัวเลข> — <ป้าย>: <รพ. + ยอด/จำนวนวัน> · ... (สูงสุด 3 ราย) */
-function _wkNames(arr, n, fmt){
-  var a=(arr||[]).filter(function(x){ return x && String(x.cu||'').trim(); }).slice(0, n||3);
-  if(!a.length) return '';
-  return a.map(function(x){ return String(x.cu).slice(0,18)+(fmt?(' '+fmt(x)):''); }).join(' \u00b7 ');
-}
-function _wkTail(label, arr, n, fmt){
-  var t=_wkNames(arr, n, fmt);
-  if(!t) return '';
-  return ' \u00b7 '+(label?(label+': '):'')+t;   /* [V609] ใช้ · กันชน — ที่มีอยู่แล้วในบรรทัด */
-}
-function _fAmt(x){ return '\u0e3f'+_wkM(x.amt); }
-function _fDayLeft(x){ return '(\u0e2d\u0e35\u0e01 '+x.days+' \u0e27\u0e31\u0e19)'; }
-function _fDayOld(x){ return '(\u0e2b\u0e21\u0e14 '+x.days+' \u0e27\u0e31\u0e19)'; }
-function _fAmtDay(x){ return '\u0e3f'+_wkM(x.amt)+(x.days?(' ('+x.days+' \u0e27\u0e31\u0e19)'):''); }
-
 function _wkGenPast(m){
   var L=[];
   var tq=m.SC.neu+m.SP.neu, ta=m.SC.amt+m.SP.amt;
   if(tq) L.push('ออกใบเสนอราคา '+tq+' ใบ (SC '+m.SC.neu+' · SP '+m.SP.neu+') ฿'+_wkM(ta)
-    +' · ส่งลูกค้าแล้ว '+(m.SC.sent+m.SP.sent)+' ใบ'
-    + _wkTail('รายใหญ่', (m.SC.neuTop||[]).concat(m.SP.neuTop||[]).sort(function(a,b){ return b.amt-a.amt; }), 3, _fAmt));
-  if(m.bill.n) L.push('เปิดบิล '+m.bill.n+' ใบ ฿'+_wkM(m.bill.amt) + _wkTail('รายใหญ่', m.bill.top, 3, _fAmt));
-  if(m.con.n)  L.push('สัญญาใหม่เริ่ม '+m.con.n+' ฉบับ ฿'+_wkM(m.con.amt) + _wkTail('', m.con.top, 3, _fAmt));
-  if(m.alert.neu||m.alert.cleared){
-    var _nw=(m.alert.list||[]).filter(function(a){ return a.days!==null && a.days<=7; });
-    L.push('เครื่องเสีย: ใหม่ '+m.alert.neu+' · เคลียร์ '+m.alert.cleared+' · ค้างอยู่ '+m.alert.down+' เครื่อง'
-      + _wkTail('เสียใหม่', _nw, 3, function(x){ return '(SN '+String(x.sn||'—').slice(0,14)+')'; }));
-  }
+    +' · ส่งลูกค้าแล้ว '+(m.SC.sent+m.SP.sent)+' ใบ');
+  if(m.bill.n) L.push('เปิดบิล '+m.bill.n+' ใบ ฿'+_wkM(m.bill.amt));
+  if(m.con.n)  L.push('สัญญาใหม่เริ่ม '+m.con.n+' ฉบับ ฿'+_wkM(m.con.amt));
+  if(m.alert.neu||m.alert.cleared)
+    L.push('เครื่องเสีย: ใหม่ '+m.alert.neu+' · เคลียร์ '+m.alert.cleared+' · ค้างอยู่ '+m.alert.down+' เครื่อง');
   if(m.sp.neu) L.push('สั่งอะไหล่ใหม่ '+m.sp.neu+' รายการ');
   if(!L.length) L.push('สัปดาห์นี้ไม่มีความเคลื่อนไหวที่ระบบจับได้');
   return L.map(function(x){ return '- '+x; }).join('\n');
 }
 function _wkGenNext(m){
   var L=[];
-  if(m.inst.exp60)  L.push('สัญญาหมดอายุใน 60 วัน '+m.inst.exp60+' เครื่อง — ออกใบเสนอราคาต่อสัญญาล่วงหน้า'
-    + _wkTail('ใกล้สุด', m.inst.exp60Top, 3, _fDayLeft));
-  if(m.inst.expOld) L.push('สัญญาหมดแล้วยังไม่ต่อ '+m.inst.expOld+' เครื่อง — ติดตามกลับ'
-    + _wkTail('เพิ่งหมด', m.inst.expOldTop, 3, _fDayOld));
+  if(m.inst.exp60)  L.push('สัญญาหมดอายุใน 60 วัน '+m.inst.exp60+' เครื่อง — ออกใบเสนอราคาต่อสัญญาล่วงหน้า');
+  if(m.inst.expOld) L.push('สัญญาหมดแล้วยังไม่ต่อ '+m.inst.expOld+' เครื่อง — ติดตามกลับ');
   if(m.SC.stuck+m.SP.stuck)
-    L.push('ใบค้าง Send to Customer เกิน 30 วัน '+(m.SC.stuck+m.SP.stuck)+' ใบ — ตามลูกค้าให้ตอบกลับ'
-      + _wkTail('รายใหญ่', (m.SC.stuckTop||[]).concat(m.SP.stuckTop||[]).sort(function(a,b){ return b.amt-a.amt; }), 3, _fAmtDay));
-  if(m.sp.late)     L.push('SP เกินกำหนดส่งมอบ '+m.sp.late+' รายการ — เร่งกับผู้จัดหา'
-    + _wkTail('ค้างนานสุด', (m.sp.list||[]).slice().sort(function(a,b){ return (b.days||0)-(a.days||0); }), 3,
-        function(x){ return '(เกิน '+(x.days||0)+' วัน)'; }));
-  if(m.sc.n)        L.push('งานรอออกบิล '+m.sc.n+' รายการ ฿'+_wkM(m.sc.amt)+' — ติดตามให้ปิดบิล'
-    + _wkTail('รายใหญ่', m.sc.top, 3, _fAmt));
+    L.push('ใบค้าง Send to Customer เกิน 30 วัน '+(m.SC.stuck+m.SP.stuck)+' ใบ — ตามลูกค้าให้ตอบกลับ');
+  if(m.sp.late)     L.push('SP เกินกำหนดส่งมอบ '+m.sp.late+' รายการ — เร่งกับผู้จัดหา');
+  if(m.sc.n)        L.push('งานรอออกบิล '+m.sc.n+' รายการ ฿'+_wkM(m.sc.amt)+' — ติดตามให้ปิดบิล');
   if(!L.length)     L.push('ไม่มีงานค้างที่ระบบจับได้');
   return L.map(function(x){ return '- '+x; }).join('\n');
 }
