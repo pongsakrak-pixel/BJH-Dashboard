@@ -1586,7 +1586,11 @@ window.spShowInstallDetail = function(idx) {
            กระทบทุกหมวดที่ใช้ _hasSN: ประวัติสัญญา/อะไหล่/เสนอราคา + ฐานคำนวณหมวด 4 */
         c.Model, c.MODEL, c.NOTE_LOG
       ].map(function(v){ return String(v||''); }).join(' ');
-      var matchSN = sn && _hasSN(snHayC, snFirst);
+      /* [V607] 2 ชั้น: SERAIL_NUMBER เป็นหลัก (เติม 91.2%) — ข้อความเป็นแค่ทางสำรอง
+         เคสจริง: QSC230501-5719 (SN จริง 18011106588) โดนลากเข้ามาเพราะคนพิมพ์
+         "SN: SDM181800418" ผิดไว้ใน QH_SUBJECT_EMAIL → ต้นทางผิด ไม่ใช่ตรรกะผิด */
+      var _snFld = sn && _hasSN(String(c.SERAIL_NUMBER||''), snFirst);
+      var matchSN = _snFld || (sn && _hasSN(snHayC, snFirst));
       if(!matchSN) return;
       // [V479.75] conNo อาจว่าง (สัญญายังไม่ออกเลข) -> ยังแสดง ใช้ QUOTATION_NO/CON_ID เป็น key แทน
       if(!conNo && !c.QUOTATION_NO && !c.CON_ID) return;
@@ -1598,9 +1602,13 @@ window.spShowInstallDetail = function(idx) {
         price:parseFloat(c.CONTRACT_PRICE||0)||0, status:String(c.CONTRACT_PROCESS_STATUS_NAME||''),
         startDate:c.CONTRACT_START_DATE||null, endDate:c.CONTRACT_END_DATE||null,
         subject:'',
-        isSC:true, matchSN:matchSN
+        isSC:true, matchSN:matchSN, snWeak:!_snFld   // [V607]
       });
     });
+    /* [V607] ถ้ามีใบที่ match จาก field SN จริงแม้ใบเดียว → ทิ้งใบที่จับได้จากข้อความทั้งหมด
+       ไม่มีเลยค่อยใช้ของอ่อน (กันเคส V479.75 ที่ SERAIL_NUMBER ว่าง แล้วประวัติกลายเป็น 0) */
+    var _hasStrong = Object.keys(_histMap).some(function(k){ return !_histMap[k].snWeak; });
+    if(_hasStrong){ Object.keys(_histMap).forEach(function(k){ if(_histMap[k].snWeak) delete _histMap[k]; }); }
   } catch(e){ console.error('history build error',e); }
 
   // [v446] ประวัติเสนอราคา — ตารางแยกจากประวัติสัญญา ใช้ RAW_Quotation match ด้วย SN เท่านั้น (เหมือนกับประวัติสัญญา กันปัญหาเครื่องรุ่นเดียวกันปนกัน)
@@ -1615,7 +1623,10 @@ window.spShowInstallDetail = function(idx) {
         q.INSTALL_BASE_NO, q.MACHINE_SN, q.MACHINE_NO, q.SN, q.SERIAL_NO,
         q.PRODUCT_SN, q.SERAIL_NUMBER, q.QH_SUBJECT, q.SUBJECT
       ].map(function(v){return String(v||'');}).join(' ');
-      var matchSN = sn && _hasSN(snHay, snFirst);
+      /* [V607] 2 ชั้นเหมือนประวัติสัญญา — field SN ก่อน ข้อความเป็นทางสำรอง */
+      var _snFldQ = sn && _hasSN([q.MACHINE_SN,q.SN,q.SERIAL_NO,q.PRODUCT_SN,q.SERAIL_NUMBER,q.INSTALL_BASE_NO,q.MACHINE_NO]
+                                  .map(function(v){return String(v||'');}).join(' '), snFirst);
+      var matchSN = _snFldQ || (sn && _hasSN(snHay, snFirst));
       if(!matchSN) return; // SN เท่านั้น ไม่มี BM fallback (เหมือนประวัติสัญญา)
       if(_quoMap[qn]) return;
       var px = (parseFloat(q.QH_TOTAL_AMT||0)-parseFloat(q.QH_TOTAL_DISCOUNT||0));
@@ -1624,9 +1635,13 @@ window.spShowInstallDetail = function(idx) {
         ctype:String(q.CONTRACT_TYPE_NAME||''),
         price:px, status:String(q.STATUS_NAME||''),
         startDate:q.QH_CONTRACT_START_DATE||null, endDate:q.QH_CONTRACT_END_DATE||null,
-        date:q.QH_DOC_DATE_TIME||q.REQ_DATETIME||''
+        date:q.QH_DOC_DATE_TIME||q.REQ_DATETIME||'',
+        snWeak:!_snFldQ   // [V607]
       };
     });
+    // [V607] เจอจาก field SN แม้ใบเดียว → ทิ้งใบที่จับจากข้อความ
+    var _hasStrongQ = Object.keys(_quoMap).some(function(k){ return !_quoMap[k].snWeak; });
+    if(_hasStrongQ){ Object.keys(_quoMap).forEach(function(k){ if(_quoMap[k].snWeak) delete _quoMap[k]; }); }
     quoHistory = Object.keys(_quoMap).map(function(k){ return _quoMap[k]; });
     quoHistory.sort(function(a,b){
       var ad=String(a.startDate||a.date||''), bd=String(b.startDate||b.date||'');
@@ -1674,7 +1689,9 @@ window.spShowInstallDetail = function(idx) {
         if(pSN && _hasSN(pSN, snFirst)) foundSN = true;
         // FALLBACK: ถ้า p.SN ว่าง → ค้น Quotation subject (เผื่อ records ที่ ETL ไม่มี p.SN)
         var pQn = String(p.QH_DOC_NUMBER||'').trim();
-        if(!foundSN && pQn){
+        /* [V607] เดิมถึง p.SN จะมีค่า (แต่คนละเครื่อง) ก็ยังไหลไปค้น subject ต่อ → ดึงผิดเครื่อง
+           แก้ให้ตรงกับคอมเมนต์เดิม: สำรองเฉพาะตอน p.SN ว่างจริงเท่านั้น */
+        if(!foundSN && !pSN && pQn){
           (window._jsupQuo||[]).forEach(function(q){
             if(foundSN) return;
             if(String(q.DOC_NUMBER||q.QH_DOC_NUMBER||'').trim()===pQn){
@@ -2077,7 +2094,7 @@ if(!scHistory.length){
            + (_act ? 'ล่าสุด \u00b7 Active' : 'ล่าสุด \u00b7 หมดแล้ว') + '</span>';
     }
     html += '<tr style="'+_rowCss+'">'
-      +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:#7dd3fc;white-space:nowrap">'+_esc(h.qn)+_tag+'</td>'
+      +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:#7dd3fc;white-space:nowrap">'+_esc(h.qn)+_tag+(h.snWeak?'<span title="ไม่พบ SN ในช่อง SERAIL_NUMBER — จับจากข้อความ ควรตรวจสอบ" style="color:#fbbf24;margin-left:4px">⚠</span>':'')+'</td>'
       +'<td style="padding:5px;font-size:10px;max-width:220px" title="'+_esc(h.subject||'')+'">'+_esc((h.subject||'—').slice(0,40))+((h.subject||'').length>40?'…':'')+'</td>' /* [v441] */
       +'<td style="padding:5px;font-size:11px">'+_esc(h.ctype||'—')+'</td>'
       +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px">'+_fmtDate(h.startDate)+'</td>'
@@ -2126,7 +2143,7 @@ if(!quoHistory.length){
     +'</tr></thead><tbody>';
   quoHistory.forEach(function(h){
     html += '<tr style="border-bottom:1px solid var(--bd,#1e293b)">'
-      +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:#a78bfa">'+_esc(h.qn)+'</td>'
+      +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:#a78bfa">'+_esc(h.qn)+(h.snWeak?'<span title="ไม่พบ SN ในช่อง SN — จับจากข้อความ ควรตรวจสอบ" style="color:#fbbf24;margin-left:4px">⚠</span>':'')+'</td>'
       +'<td style="padding:5px;font-size:10px;max-width:220px" title="'+_esc(h.subject||'')+'">'+_esc((h.subject||'—').slice(0,40))+((h.subject||'').length>40?'…':'')+'</td>'
       +'<td style="padding:5px;font-size:11px">'+_esc(h.ctype||'—')+'</td>'
       +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px">'+_fmtDate(h.startDate)+'</td>'
@@ -6256,6 +6273,37 @@ window._qnFcChips = function(kind){
     + chip('out','⬜ Not sent to FC','#8a5a00');
 };
 
+/* [V607] ซ่อนใบเสนอราคาเก่าที่ค้างสถานะ Send to Customer
+   เลข QN ฝังปี ค.ศ. 2 หลักไว้แล้ว (QSC[23]0501-5719 = 1 พ.ค. 2023) → อ่านจากเลขใบ ไม่ต้องพึ่งวันที่
+   นับจากข้อมูลจริง 26 ก.ค. 2569: ปี22=1 · ปี23=9 · ปี24=1,419 · ปี25=1,140 · ปี26=1,265
+   ตัดปี ≤24 = ซ่อน 1,429 ใบ (37% ของตาราง) — ซ่อนเฉย ๆ ไม่แตะข้อมูล กดดูย้อนหลังได้
+   ยกเว้นใบที่ส่งเข้า FC แล้ว — ต้องเห็นตลอด ไม่งั้นถอนออกจาก FC ไม่ได้ */
+window._QN_OLD_YY   = (window._QN_OLD_YY   === undefined) ? 24    : window._QN_OLD_YY;
+window._spShowOldQN = (window._spShowOldQN === undefined) ? false : window._spShowOldQN;
+window._qnIsOld = function(r){
+  var m = String((r && r.DOC_NUMBER) || '').match(/^QS[CP](\d{2})/);
+  if(!m) return false;
+  if(Number(m[1]) > window._QN_OLD_YY) return false;
+  if(String((r && r.STATUS_NAME) || '') !== 'Send to Customer') return false;
+  try{ if(window._qnIsInFC(r.DOC_NUMBER || '')) return false; }catch(e){}
+  return true;
+};
+window.spToggleOldQN = function(){
+  window._spShowOldQN = !window._spShowOldQN;
+  try{ spRenderSCQuote(); }catch(e){}
+  try{ spRenderSPQuote(); }catch(e){}
+};
+window._qnOldNote = function(n){
+  if(!n && !window._spShowOldQN) return '';
+  var yr = '20' + window._QN_OLD_YY;
+  var on = window._spShowOldQN;
+  return '<div style="margin-top:8px;font-size:11px;color:var(--mu)">'
+    + (on ? ('กำลังแสดงใบเก่าด้วย (เลข QN ปี \u2264' + yr + ' ที่ค้าง Send to Customer)')
+          : ('\u0e0b\u0e48\u0e2d\u0e19\u0e43\u0e1a\u0e40\u0e01\u0e48\u0e32\u0e2d\u0e22\u0e39\u0e48 <b>' + n + '</b> \u0e43\u0e1a (\u0e40\u0e25\u0e02 QN \u0e1b\u0e35 \u2264' + yr + ' \u0e17\u0e35\u0e48\u0e04\u0e49\u0e32\u0e07 Send to Customer)'))
+    + ' <button onclick="spToggleOldQN()" style="font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid var(--bd2,#374151);background:transparent;color:#60a5fa;cursor:pointer;font-family:inherit">'
+    + (on ? '\u0e0b\u0e48\u0e2d\u0e19' : '\u0e41\u0e2a\u0e14\u0e07') + '</button></div>';
+};
+
 window.spRenderSCQuote = function(){
   var el=document.getElementById('sp-scquote-body'); if(!el) return;
   _qnLoadNotes(); // [V479.28] sync โน้ตจาก config
@@ -6297,9 +6345,11 @@ window.spRenderSCQuote = function(){
   });
 
   var seen={};
+  var _oldHid=0;   // [V607] นับใบเก่าที่ถูกซ่อน
   var rows=(_spData.quotations||[]).filter(function(r){
     if((r.DOC_NUMBER||'').slice(0,3)!=='QSC') return false;
     if(_SCQ_DONE[r.STATUS_NAME]) return false; // [v410]
+    if(!window._spShowOldQN && window._qnIsOld(r)){ _oldHid++; return false; } // [V607]
     var qn=r.DOC_NUMBER||'';
     if(qn&&seen[qn]) return false; if(qn) seen[qn]=1;
     if(window._spScqQnFilter){ var _grpQ=_SCQ_GROUP[r.STATUS_NAME]||''; if(_grpQ!==window._spScqQnFilter) return false; } // [v410]
@@ -6332,7 +6382,7 @@ window.spRenderSCQuote = function(){
     return sa-sb;
   });
 
-  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบข้อมูล</div>';return;}
+  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบข้อมูล</div>'+window._qnOldNote(_oldHid);return;} // [V607] ยังบอกจำนวนที่ซ่อน
 
   var today=new Date(); today.setHours(0,0,0,0);
   /* [V479.74] เซลล์วันที่ — RAW_CONTRACT เป็นหลัก ; ไม่มีสัญญาจริง → ใช้จากใบเสนอราคา + * ส้ม
@@ -6373,7 +6423,7 @@ window.spRenderSCQuote = function(){
       +'</tr>';
   }).join('');
   // [V479.74] legend * (เหมือน Contract & PO)
-  el.innerHTML=_spTbl(cols,body)+(_scqHasQuo?'<div style="margin-top:8px;font-size:11px;color:#fb923c">* วันที่จากใบเสนอราคา (ยังไม่มีสัญญาจริงใน RAW_CONTRACT)</div>':'');
+  el.innerHTML=_spTbl(cols,body)+(_scqHasQuo?'<div style="margin-top:8px;font-size:11px;color:#fb923c">* วันที่จากใบเสนอราคา (ยังไม่มีสัญญาจริงใน RAW_CONTRACT)</div>':'')+window._qnOldNote(_oldHid);
 };
 
 // ── 🔧 SP QUOTATION ─────────────────────────────────────────
@@ -6471,9 +6521,11 @@ window.spRenderSPQuote = function(){
   var _SPQ_DONE={'Canceled':1,'Customer Accept':1,'Rejected':1,'PO Completed':1,'Customer Rejected':1,'Contract Completed':1};
 
   var seen={};
+  var _oldHid=0;   // [V607] นับใบเก่าที่ถูกซ่อน
   var rows=(_spData.quotations||[]).filter(function(r){
     if((r.DOC_NUMBER||'').slice(0,3)!=='QSP') return false;
     if(_SPQ_DONE[r.STATUS_NAME]) return false; // [v396]
+    if(!window._spShowOldQN && window._qnIsOld(r)){ _oldHid++; return false; } // [V607]
     var qn=r.DOC_NUMBER||'';
     if(qn&&seen[qn]) return false; if(qn) seen[qn]=1;
     if(window._spSpqQnFilter){ var _grpQ=_SPQ_GROUP[r.STATUS_NAME]||''; if(_grpQ!==window._spSpqQnFilter) return false; }
@@ -6508,7 +6560,7 @@ window.spRenderSPQuote = function(){
     return sa-sb;
   });
 
-  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบข้อมูล</div>';return;}
+  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบข้อมูล</div>'+window._qnOldNote(_oldHid);return;} // [V607] ยังบอกจำนวนที่ซ่อน
 
   var today=new Date(); today.setHours(0,0,0,0);
   // [v383] SN (จาก parts) → สถานะเครื่องปัจจุบัน (RAW_INSTALLATION)
@@ -6531,7 +6583,7 @@ window.spRenderSPQuote = function(){
       +'<td style="padding:6px 10px;text-align:center">'+_qnCellHtml(r.DOC_NUMBER||'')+'</td>'
       +'</tr>';
   }).join('');
-  el.innerHTML=_spTbl(cols,body);
+  el.innerHTML=_spTbl(cols,body)+window._qnOldNote(_oldHid);
 };
 
 // ── 📄 CONTRACT & PO ────────────────────────────────────────
