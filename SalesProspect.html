@@ -194,11 +194,8 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   <div style="display:flex;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
     <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;flex-shrink:0">🔧 Medical Device Status<!-- [C5] เอา badge แดงออก — ซ้ำกับ chip "ทั้งหมด" ใน cd-filters (JS มี if(badge) guard อยู่แล้ว) --></div>
     <div id="cd-filters" style="display:flex;gap:7px;flex-wrap:nowrap;overflow-x:auto;align-items:center;flex:1;min-width:0"></div>
-    <div style="display:flex;gap:5px;background:var(--bg2,#111722);padding:4px;border-radius:10px;border:1px solid var(--bd,#222c3a);flex-shrink:0">
-      <button class="cd-tab" data-cdtab="active" onclick="cdTab(this)" style="padding:7px 13px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;background:var(--sur2,#1a2230);color:var(--tx,#e6edf3);font-family:inherit">🔴 ต้องติดตาม</button>
-      <!-- [v365] ลบ tab EOL — ซ้ำกับ chip "⚫ EOL" ในแถบซ้าย (ทำงานได้จริง) tab นี้เป็น placeholder เปล่า -->
-      <button class="cd-tab" data-cdtab="report" onclick="cdTab(this)" style="padding:7px 13px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--mu,#8b9bb0);font-family:inherit">📈 รายงานสรุป</button>
-    </div>
+    <!-- [V605] ตัดแถบ tab 🔴 ต้องติดตาม / 📈 รายงานสรุป — เหลือมุมมอง active อย่างเดียว
+         (cdTab / branch tab==='report' คงโค้ดไว้ ถ้าจะเอาคืนแค่ใส่ปุ่มกลับ) -->
   </div>
   <div id="cd-kpi" style="display:none"></div>
   <div id="sp-alert-body"></div>
@@ -4518,8 +4515,9 @@ function _fcCellHtml(r, netAmt, isSP){
   var _in = !!(window._FC_LOW_ITEMS && window._FC_LOW_ITEMS[qn]);
   var _q=function(x){ return String(x||'').replace(/'/g,"\\'"); };
   if(_in){
-    return '<span style="color:#22c55e;font-size:11px;font-weight:600">✅ ใน FC</span>'
-      +' <button onclick="spFcRemoveLow(\''+_q(qn)+'\')" style="font-size:10px;color:#f87171;background:none;border:1px solid #f8717155;border-radius:4px;padding:1px 6px;cursor:pointer;margin-left:4px">ยกเลิก</button>';
+    // [V605] คำอังกฤษให้เข้าชุดกับ chip กรอง + ปุ่ม Send to FC
+    return '<span style="color:#22c55e;font-size:11px;font-weight:600">✅ Sent to FC</span>'
+      +' <button onclick="spFcRemoveLow(\''+_q(qn)+'\')" style="font-size:10px;color:#f87171;background:none;border:1px solid #f8717155;border-radius:4px;padding:1px 6px;cursor:pointer;margin-left:4px">Undo</button>';
   }
   return '<button onclick="spFcSendLow(\''+_q(qn)+'\',\''+_q(cu)+'\',\''+_q(brand)+'\',\''+_q(sa)+'\','+Number(netAmt||0)+','+(isSP?'true':'false')+')" style="font-size:11px;color:#60a5fa;background:var(--sur2);border:1px solid #60a5fa55;border-radius:5px;padding:2px 8px;cursor:pointer;white-space:nowrap">📋 Send to FC</button>';
 }
@@ -5152,7 +5150,11 @@ window._spSortTable = function(tid, col){
     var dm=t.match(/(\d{4})-(\d{2})-(\d{2})/);
     if(dm) return {num:parseInt(dm[1]+dm[2]+dm[3])};
     // number (ตัด , ฿ เครื่องหมาย)
-    var n=parseFloat(t.replace(/[,฿\s]/g,'').replace(/[^\d.\-]/g,''));
+    var _c=t.replace(/[,฿\s]/g,'');
+    // [V605] หน่วยย่อจาก _spFmtB: '12.34M' / '987K' — คูณกลับก่อนเทียบ
+    var _mk=_c.match(/^(-?\d+(?:\.\d+)?)([MK])$/i);
+    if(_mk) return {num:parseFloat(_mk[1])*(_mk[2].toUpperCase()==='M'?1e6:1e3)};
+    var n=parseFloat(_c.replace(/[^\d.\-]/g,''));
     if(t!=='—'&&t!==''&&!isNaN(n)&&/[\d]/.test(t)&&!/[ก-๙a-zA-Z]{2,}/.test(t)) return {num:n};
     return {str:t.toLowerCase()};
   }
@@ -5555,14 +5557,15 @@ window.spRenderAlert = function(){
       if(window._cdIsCleared && window._cdIsCleared(m.sr)){ nClear++; return; }   /* [V601] นับแยก ไม่ปนชิปสี */
       if(m.mcGroup==='dead')nDead++; else if(m.mcGroup==='check')nCheck++; else if(m.mcGroup==='eol')nEol++; else if(m.mcGroup==='watch')nWatch++;
     });
-    if(kpiEl)kpiEl.innerHTML=_k(rows.length,'Units','#ef4444')+_k(nDead,'🔴 Critical Down','#ef4444','dead')+_k(nCheck,'🟡 Partial Down','#facc15','check')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nWatch,'🟣 Monitoring','#a78bfa','watch')+_k(nClear,'\u2705 Clear','#4ade80','cleared');
+    if(kpiEl)kpiEl.innerHTML=_k(rows.length,'Units','#ef4444')+_k(nDead,'🔴 Critical Down','#ef4444','dead')+_k(nCheck,'🟡 Partial Down','#facc15','check')+_k(nWatch,'🟣 Monitoring','#a78bfa','watch')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nClear,'\u2705 Clear','#4ade80','cleared');
     if(fltEl){
       var saSet={},warSet={}; rowsAll.forEach(function(m){if(m.sa)saSet[m.sa]=1;if(m.war.label)warSet[m.war.cls]=m.war.label;});
       var saOpts='<option value="">ทุกผู้แทน</option>'+Object.keys(saSet).sort().map(function(s){return '<option value="'+_spEsc(s)+'"'+(window._cdSales===s?' selected':'')+'>'+_spEsc(s)+'</option>';}).join('');
       var warOpts='<option value="">ทุกประเภทสัญญา</option>'+Object.keys(warSet).sort().map(function(c){return '<option value="'+c+'"'+(window._cdKpiF===c?' selected':'')+'>'+_spEsc(warSet[c])+'</option>';}).join('');
-      var clearBtn=(window._cdKpiF||window._cdSales)?'<button onclick="window._cdKpiF=\'\';window._cdSales=\'\';window.spRenderAlert()" style="padding:5px 12px;border-radius:15px;border:1px solid #ef4444;background:rgba(239,68,68,.1);color:#ef4444;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">✕ ล้างตัวกรอง</button>':'';
+      // [V605] ตัดปุ่ม ✕ ล้างตัวกรอง — ล้างได้จาก dropdown หรือกด KPI pill ซ้ำ
+      var clearBtn='';
       var selStyle='background:var(--bg2,#111722);border:1px solid var(--bd2,#374151);border-radius:8px;padding:6px 11px;color:var(--tx);font-size:12.5px;font-family:inherit';
-      var kpiPills=_k(rows.length,'Units','#ef4444')+_k(nDead,'🔴 Critical Down','#ef4444','dead')+_k(nCheck,'🟡 Partial Down','#facc15','check')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nWatch,'🟣 Monitoring','#a78bfa','watch')+_k(nClear,'\u2705 Clear','#4ade80','cleared'); // [v383] เพิ่มเฝ้าระวัง
+      var kpiPills=_k(rows.length,'Units','#ef4444')+_k(nDead,'🔴 Critical Down','#ef4444','dead')+_k(nCheck,'🟡 Partial Down','#facc15','check')+_k(nWatch,'🟣 Monitoring','#a78bfa','watch')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nClear,'\u2705 Clear','#4ade80','cleared'); // [v383] เพิ่มเฝ้าระวัง
       fltEl.innerHTML=kpiPills+'<span style="width:1px;height:20px;background:var(--bd2,#374151);flex-shrink:0"></span><select onchange="window.cdSetSales(this.value)" style="'+selStyle+'">'+saOpts+'</select><select onchange="window.cdKpi(this.value)" style="'+selStyle+'">'+warOpts+'</select>'+clearBtn+'<span style="font-size:11px;color:var(--mu);margin-left:auto">Open SR: '+rows.length+' เครื่อง</span>';
     }
     if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">✅ ไม่พบเครื่องที่อยู่ระหว่างการซ่อมค้าง</div>';return;}
@@ -6248,9 +6251,9 @@ window._qnFcChips = function(kind){
             : ('background:transparent;color:'+col+';border:1.5px solid '+col))
       + '">'+label+'</button>';
   }
-  return '<span style="font-size:11px;color:#333b44;font-weight:700;margin-left:8px">FC:</span>'
-    + chip('in','✅ ใน FC','#0b7a2e')
-    + chip('out','⬜ ยังไม่ส่ง','#8a5a00');
+  // [V605] ตัด 'FC:' นำหน้า — ป้ายบอกครบในตัวมันเองแล้ว
+  return chip('in','✅ Sent to FC','#0b7a2e')
+    + chip('out','⬜ Not sent to FC','#8a5a00');
 };
 
 window.spRenderSCQuote = function(){
@@ -6650,7 +6653,8 @@ window.spRenderContract = function(){
     var nNear=rows.filter(function(r){return r.stage==='near';}).length;
     var tot=rows.reduce(function(s,r){return s+r.px;},0);
     function _mini(l,v,c){ return '<span style="font-size:12px;color:var(--mu)">'+l+' <b style="color:'+(c||'var(--tx)')+';font-size:14px">'+v+'</b></span>'; }
-    kpiEl.innerHTML=_mini('QSC',rows.length)+_mini('Overdue',nLate,'#f87171')+_mini('Due Soon',nNear,'#fb923c')+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
+    // [V605] ตัด Overdue / Due Soon — ซ้ำกับ chip ล่าช้า / ใกล้ ด้านซ้าย
+    kpiEl.innerHTML=_mini('แสดง',rows.length+' ใบ')+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
   }
 
   if(!rows.length){ el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบใบเสนอ QSC (H/M)</div>'; return; }
