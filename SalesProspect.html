@@ -160,9 +160,9 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   <button class="sp-tab"    id="sp-tab-scquote"   onclick="spTab('scquote')">📋 SC Quotation</button>
   <button class="sp-tab"    id="sp-tab-spquote"   onclick="spTab('spquote')">🔧 SP Quotation</button>
   <button class="sp-tab"    id="sp-tab-contract"  onclick="spTab('contract')">📄 Contract &amp; PO</button>
-  <button class="sp-tab"    id="sp-tab-ordsp"     onclick="spTab('ordsp')">🛒 สั่ง SP</button>
-  <button class="sp-tab"    id="sp-tab-ordsc"     onclick="spTab('ordsc')">📥 เข้า SC</button>
-  <button class="sp-tab"    id="sp-tab-billing"   onclick="spTab('billing')">🧾 เปิดบิล</button>
+  <button class="sp-tab"    id="sp-tab-ordsp"     onclick="spTab('ordsp')">🛒 SP Monitor</button>
+  <button class="sp-tab"    id="sp-tab-ordsc"     onclick="spTab('ordsc')">📥 SC Monitor</button>
+  <button class="sp-tab"    id="sp-tab-billing"   onclick="spTab('billing')">🧾 Bill Monitor</button>
   <button class="sp-tab"    id="sp-tab-ar"        onclick="spTab('ar')">💰 AR Monitor</button>
 <!-- [V597] ปิดใช้ Revenue Forecast — แยกเป็น SC/SP Quotation แล้ว · เปิดคืน: เอาคอมเมนต์ออก + คืน permission + คืน map/loop -->
   <button class="sp-tab"    id="sp-tab-bg"         onclick="spTab('bg')">📊 BG Monitor</button>
@@ -192,7 +192,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
 
 <div id="sp-pane-alert" style="display:block;padding:12px 16px">
   <div style="display:flex;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
-    <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;flex-shrink:0">🔧 Critical Down<!-- [C5] เอา badge แดงออก — ซ้ำกับ chip "ทั้งหมด" ใน cd-filters (JS มี if(badge) guard อยู่แล้ว) --></div>
+    <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;flex-shrink:0">🔧 Medical Device Status<!-- [C5] เอา badge แดงออก — ซ้ำกับ chip "ทั้งหมด" ใน cd-filters (JS มี if(badge) guard อยู่แล้ว) --></div>
     <div id="cd-filters" style="display:flex;gap:7px;flex-wrap:nowrap;overflow-x:auto;align-items:center;flex:1;min-width:0"></div>
     <div style="display:flex;gap:5px;background:var(--bg2,#111722);padding:4px;border-radius:10px;border:1px solid var(--bd,#222c3a);flex-shrink:0">
       <button class="cd-tab" data-cdtab="active" onclick="cdTab(this)" style="padding:7px 13px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;background:var(--sur2,#1a2230);color:var(--tx,#e6edf3);font-family:inherit">🔴 ต้องติดตาม</button>
@@ -5555,15 +5555,15 @@ window.spRenderAlert = function(){
       if(window._cdIsCleared && window._cdIsCleared(m.sr)){ nClear++; return; }   /* [V601] นับแยก ไม่ปนชิปสี */
       if(m.mcGroup==='dead')nDead++; else if(m.mcGroup==='check')nCheck++; else if(m.mcGroup==='eol')nEol++; else if(m.mcGroup==='watch')nWatch++;
     });
-    if(kpiEl)kpiEl.innerHTML=_k(rows.length,'เครื่องผิดปกติทั้งหมด','#ef4444')+_k(nDead,'🔴 ใช้ไม่ได้','#ef4444','dead')+_k(nCheck,'🟡 ต้องตรวจสอบ','#facc15','check')+_k(nEol,'⚫ End of Life','#9ca3af','eol')+_k(nWatch,'🟣 เฝ้าระวัง','#a78bfa','watch')+_k(nClear,'\u2705 Clear','#4ade80','cleared');
+    if(kpiEl)kpiEl.innerHTML=_k(rows.length,'Units','#ef4444')+_k(nDead,'🔴 Critical Down','#ef4444','dead')+_k(nCheck,'🟡 Partial Down','#facc15','check')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nWatch,'🟣 Monitoring','#a78bfa','watch')+_k(nClear,'\u2705 Clear','#4ade80','cleared');
     if(fltEl){
       var saSet={},warSet={}; rowsAll.forEach(function(m){if(m.sa)saSet[m.sa]=1;if(m.war.label)warSet[m.war.cls]=m.war.label;});
       var saOpts='<option value="">ทุกผู้แทน</option>'+Object.keys(saSet).sort().map(function(s){return '<option value="'+_spEsc(s)+'"'+(window._cdSales===s?' selected':'')+'>'+_spEsc(s)+'</option>';}).join('');
       var warOpts='<option value="">ทุกประเภทสัญญา</option>'+Object.keys(warSet).sort().map(function(c){return '<option value="'+c+'"'+(window._cdKpiF===c?' selected':'')+'>'+_spEsc(warSet[c])+'</option>';}).join('');
       var clearBtn=(window._cdKpiF||window._cdSales)?'<button onclick="window._cdKpiF=\'\';window._cdSales=\'\';window.spRenderAlert()" style="padding:5px 12px;border-radius:15px;border:1px solid #ef4444;background:rgba(239,68,68,.1);color:#ef4444;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">✕ ล้างตัวกรอง</button>':'';
       var selStyle='background:var(--bg2,#111722);border:1px solid var(--bd2,#374151);border-radius:8px;padding:6px 11px;color:var(--tx);font-size:12.5px;font-family:inherit';
-      var kpiPills=_k(rows.length,'เครื่อง','#ef4444')+_k(nDead,'🔴 ใช้ไม่ได้','#ef4444','dead')+_k(nCheck,'🟡 ตรวจสอบ','#facc15','check')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nWatch,'🟣 เฝ้าระวัง','#a78bfa','watch')+_k(nClear,'\u2705 Clear','#4ade80','cleared'); // [v383] เพิ่มเฝ้าระวัง
-      fltEl.innerHTML=kpiPills+'<span style="width:1px;height:20px;background:var(--bd2,#374151);flex-shrink:0"></span><select onchange="window.cdSetSales(this.value)" style="'+selStyle+'">'+saOpts+'</select><select onchange="window.cdKpi(this.value)" style="'+selStyle+'">'+warOpts+'</select>'+clearBtn+'<span style="font-size:11px;color:var(--mu);margin-left:auto">SR ค้าง: '+rows.length+' เครื่อง</span>';
+      var kpiPills=_k(rows.length,'Units','#ef4444')+_k(nDead,'🔴 Critical Down','#ef4444','dead')+_k(nCheck,'🟡 Partial Down','#facc15','check')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nWatch,'🟣 Monitoring','#a78bfa','watch')+_k(nClear,'\u2705 Clear','#4ade80','cleared'); // [v383] เพิ่มเฝ้าระวัง
+      fltEl.innerHTML=kpiPills+'<span style="width:1px;height:20px;background:var(--bd2,#374151);flex-shrink:0"></span><select onchange="window.cdSetSales(this.value)" style="'+selStyle+'">'+saOpts+'</select><select onchange="window.cdKpi(this.value)" style="'+selStyle+'">'+warOpts+'</select>'+clearBtn+'<span style="font-size:11px;color:var(--mu);margin-left:auto">Open SR: '+rows.length+' เครื่อง</span>';
     }
     if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">✅ ไม่พบเครื่องที่อยู่ระหว่างการซ่อมค้าง</div>';return;}
     var cols=['สถานะ','เครื่อง / SN','ลูกค้า','ประกัน','เลขที่แจ้งซ่อม / อาการ','สถานะงาน','ใบเสนอราคา','Sales','Note','ประวัติ','Clear'];
@@ -5576,7 +5576,7 @@ window.spRenderAlert = function(){
       var tagsArr=(m.mcTags&&m.mcTags.length)?m.mcTags:[];
       var tagsHtml=tagsArr.slice(0,3).map(function(t){return '<span style="display:inline-block;background:rgba(148,163,184,.15);color:#cbd5e1;padding:1px 6px;border-radius:4px;font-size:10px;margin:1px 2px 1px 0">'+_spEsc(String(t).slice(0,18))+'</span>';}).join('');
       // [v319] badge สถานะ 4 กลุ่ม (+watch v367)
-      var GB={dead:{c:'#f87171',bg:'rgba(248,113,113,.15)',t:'🔴 ใช้ไม่ได้'},check:{c:'#fbbf24',bg:'rgba(251,191,36,.15)',t:'🟡 ต้องตรวจสอบ'},eol:{c:'#9ca3af',bg:'rgba(107,114,128,.2)',t:'⚫ End of Life'},watch:{c:'#a78bfa',bg:'rgba(167,139,250,.18)',t:'🟣 เฝ้าระวัง'}};
+      var GB={dead:{c:'#f87171',bg:'rgba(248,113,113,.15)',t:'🔴 Critical Down'},check:{c:'#fbbf24',bg:'rgba(251,191,36,.15)',t:'🟡 Partial Down'},eol:{c:'#9ca3af',bg:'rgba(107,114,128,.2)',t:'⚫ EOL'},watch:{c:'#a78bfa',bg:'rgba(167,139,250,.18)',t:'🟣 Monitoring'}};
       var gb=GB[m.mcGroup]||GB.check;
       var badge='<span style="font-size:11px;padding:3px 9px;border-radius:11px;font-weight:600;background:'+gb.bg+';color:'+gb.c+';white-space:nowrap">'+gb.t+'</span>';
       // [v367] สถานะงาน (SERVICE_JOB_STATUS ของ SR)
@@ -6650,7 +6650,7 @@ window.spRenderContract = function(){
     var nNear=rows.filter(function(r){return r.stage==='near';}).length;
     var tot=rows.reduce(function(s,r){return s+r.px;},0);
     function _mini(l,v,c){ return '<span style="font-size:12px;color:var(--mu)">'+l+' <b style="color:'+(c||'var(--tx)')+';font-size:14px">'+v+'</b></span>'; }
-    kpiEl.innerHTML=_mini('QSC',rows.length)+_mini('ล่าช้า',nLate,'#f87171')+_mini('ใกล้',nNear,'#fb923c')+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
+    kpiEl.innerHTML=_mini('QSC',rows.length)+_mini('Overdue',nLate,'#f87171')+_mini('Due Soon',nNear,'#fb923c')+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
   }
 
   if(!rows.length){ el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบใบเสนอ QSC (H/M)</div>'; return; }
@@ -6658,7 +6658,7 @@ window.spRenderContract = function(){
   var cols=['Stage','Sales','ลูกค้า','เลขที่ใบเสนอราคา','ยี่ห้อ','รุ่น','เริ่ม','สิ้นสุด','สถานะใบเสนอราคา','มูลค่า','ผู้รับผิดชอบ','Log','โน้ต']; // [V508] +โน้ต
   var body=rows.map(function(r){
     var sc=r.stage==='late'?'#f87171':r.stage==='near'?'#fb923c':'#94a3b8';
-    var sLabel=r.stage==='late'?'🔴 ล่าช้า':r.stage==='near'?'🟠 ใกล้':'⚪ ปกติ';
+    var sLabel=r.stage==='late'?'🔴 Overdue':r.stage==='near'?'🟠 Due Soon':'⚪ Normal';
     return '<tr style="border-bottom:1px solid var(--bd2,#374151)">'
       +'<td style="padding:6px 10px"><span style="color:'+sc+';font-weight:600;font-size:11px">'+sLabel+'</span></td>'
       +'<td style="padding:6px 10px">'+_esc(r.sa||'—')+'</td>'
