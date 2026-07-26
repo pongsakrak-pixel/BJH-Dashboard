@@ -2639,7 +2639,18 @@ function getWeeklyReports(payloadStr) {
     var weeks = Object.keys(wmap).sort().reverse().map(function(k){
       return { week:k, n:Object.keys(wmap[k].ids).length, sent:Object.keys(wmap[k].sent).length };
     });
-    return JSON.stringify({ ok:true, rows:pick(p.week), prev:pick(p.prev), weeks:weeks });
+    /* [V609] Support Needs ล่าสุดของคนนี้ (ไล่ย้อนจากท้ายชีต) — เอาไปตั้งต้นสัปดาห์ใหม่ */
+    var lastSupport = '';
+    if (p.empId) {
+      for (var z = dat.length - 1; z >= 1; z--) {
+        if (String(dat[z][1]) !== String(p.empId)) continue;
+        if (String(dat[z][0]) === String(p.week)) continue;   // ข้ามสัปดาห์ปัจจุบัน
+        var jz = {}; try { jz = JSON.parse(String(dat[z][6]||'{}')) || {}; } catch(e){}
+        var sup = (jz.data && jz.data.support) ? String(jz.data.support).trim() : '';
+        if (sup) { lastSupport = sup; break; }
+      }
+    }
+    return JSON.stringify({ ok:true, rows:pick(p.week), prev:pick(p.prev), weeks:weeks, lastSupport:lastSupport });
   } catch(e) { return JSON.stringify({ok:false, error:e.message, rows:[], prev:[]}); }
 }
 

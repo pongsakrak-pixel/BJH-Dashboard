@@ -6683,29 +6683,42 @@ function _wkCollect(range, who){
       if(String(q.STATUS_NAME||'')!=='Send to Customer') return false;
       var d=_wkDays(q.SEND_TO_CUSTOMER_DATETIME); return d!==null && d>30; });
     var amt=neu.reduce(function(a,q){ return a+(amtByQN[q.DOC_NUMBER]||0); },0);
-    m[kind]={ neu:neu.length, sent:snt.length, stuck:stk.length, amt:amt, list:list };
+    /* [V609] เก็บรายชื่อไว้เขียนบุลเล็ต — หัวหน้าต้องเห็นว่า "รพ.ไหน" ไม่ใช่แค่ตัวเลข */
+    var _nm=function(q){ return { cu:q.CUSTOMER_NAME||'', qn:q.DOC_NUMBER||'',
+      amt:amtByQN[q.DOC_NUMBER]||0, days:_wkDays(q.SEND_TO_CUSTOMER_DATETIME) }; };
+    m[kind]={ neu:neu.length, sent:snt.length, stuck:stk.length, amt:amt, list:list,
+              neuTop:neu.map(_nm).sort(function(a,b){return b.amt-a.amt;}),
+              stuckTop:stk.map(_nm).sort(function(a,b){return b.amt-a.amt;}) };
   });
 
   /* ── 🧾 Bill Monitor (D.bd) ── */
   var bills=D.filter(function(r){ return r.bd && mine(r.sa) && _wkIn(r.bd, range); });
-  m.bill={ n:bills.length, amt:bills.reduce(function(a,r){ return a+(Number(r.px)||0); },0) };
+  m.bill={ n:bills.length, amt:bills.reduce(function(a,r){ return a+(Number(r.px)||0); },0),
+           top:bills.map(function(r){ return { cu:r.cu||'', amt:Number(r.px)||0, qn:r.bn||r.qn||'' }; })
+                    .sort(function(a,b){ return b.amt-a.amt; }) };
 
   /* ── 📄 Contract & PO (CONTRACT_START_DATE) ── */
   var newCon=CON.filter(function(c){
     if(!_wkIn(c.CONTRACT_START_DATE, range)) return false;
     var qn=c.QUOTATION_NO||c.QH_DOC_NUMBER_CREATE||'';
     return mine(saByQN[qn]||''); });
-  m.con={ n:newCon.length, amt:newCon.reduce(function(a,c){ return a+(parseFloat(c.CONTRACT_PRICE||0)||0); },0) };
+  var cuByQN={}; Q.forEach(function(q){ if(q.DOC_NUMBER) cuByQN[q.DOC_NUMBER]=q.CUSTOMER_NAME||''; });
+  m.con={ n:newCon.length, amt:newCon.reduce(function(a,c){ return a+(parseFloat(c.CONTRACT_PRICE||0)||0); },0),
+          top:newCon.map(function(c){ var qn=c.QUOTATION_NO||c.QH_DOC_NUMBER_CREATE||'';
+                return { cu:cuByQN[qn]||'', amt:parseFloat(c.CONTRACT_PRICE||0)||0, qn:qn }; })
+              .sort(function(a,b){ return b.amt-a.amt; }) };
 
   /* ── 🏥 Install Base (CON_END_DATE — ไม่มีวันติดตั้งในข้อมูล) ── */
-  var exp60=0, expNoRenew=0, exp60amt=0;
+  var exp60=[], expNoRenew=[];
   INS.forEach(function(i){
     if(!mine(i.SALE_SERVICE_NAME)) return;
     var d=_wkDays(i.CON_END_DATE); if(d===null) return;
-    if(d<0 && d>=-60){ exp60++; }                       // อีก ≤60 วันหมด
-    if(d>0 && d<=180){ expNoRenew++; }                  // หมดแล้ว ≤180 วัน
+    if(d<0 && d>=-60) exp60.push({ cu:i.CUS_NAME||'', sn:i.SN||'', days:-d });      // อีกกี่วันหมด
+    if(d>0 && d<=180) expNoRenew.push({ cu:i.CUS_NAME||'', sn:i.SN||'', days:d });  // หมดมากี่วัน
   });
-  m.inst={ exp60:exp60, expOld:expNoRenew };
+  exp60.sort(function(a,b){ return a.days-b.days; });          // ใกล้หมดสุดก่อน
+  expNoRenew.sort(function(a,b){ return a.days-b.days; });     // เพิ่งหมด = ตามกลับง่ายสุด
+  m.inst={ exp60:exp60.length, expOld:expNoRenew.length, exp60Top:exp60, expOldTop:expNoRenew };
 
   /* ── 🚨 Alert (MC_STATUS_HISTORY.CHANGED_AT) ── */
   var down=0, newDown=0, cleared=0, downList=[];
@@ -6758,7 +6771,9 @@ function _wkCollect(range, who){
   /* ── 📥 SC Monitor (ไม่มีวันที่ → ใช้ยอดค้างปัจจุบัน) ── */
   var scPend=D.filter(function(r){
     return mine(r.sa) && ['SC Ordered','SC Carry','SC Carry (Pending)','Backlog'].indexOf(String(r.st||''))>=0; });
-  m.sc={ n:scPend.length, amt:scPend.reduce(function(a,r){ return a+(Number(r.px)||0); },0) };
+  m.sc={ n:scPend.length, amt:scPend.reduce(function(a,r){ return a+(Number(r.px)||0); },0),
+         top:scPend.map(function(r){ return { cu:r.cu||'', amt:Number(r.px)||0, qn:r.qn||'' }; })
+                   .sort(function(a,b){ return b.amt-a.amt; }) };
 
   return m;
 }
@@ -6816,28 +6831,67 @@ function _wkHighValue(m, who){
 }
 
 /* ═══ ร่างข้อความ ═══ */
+/* [V609] ทุกบุลเล็ตต้องบอก "รพ.ไหน" — หัวหน้าอ่านตัวเลขล้วนแล้วสั่งงานต่อไม่ได้
+   รูปแบบ: <สรุปตัวเลข> — <ป้าย>: <รพ. + ยอด/จำนวนวัน> · ... (สูงสุด 3 ราย) */
+function _wkNames(arr, n, fmt){
+  var a=(arr||[]).filter(function(x){ return x && String(x.cu||'').trim(); }).slice(0, n||3);
+  if(!a.length) return '';
+  return a.map(function(x){ return String(x.cu).slice(0,18)+(fmt?(' '+fmt(x)):''); }).join(' \u00b7 ');
+}
+function _wkTail(label, arr, n, fmt){
+  var t=_wkNames(arr, n, fmt);
+  if(!t) return '';
+  return ' \u00b7 '+(label?(label+': '):'')+t;   /* [V609] ใช้ · กันชน — ที่มีอยู่แล้วในบรรทัด */
+}
+function _fAmt(x){ return '\u0e3f'+_wkM(x.amt); }
+function _fDayLeft(x){ return '(\u0e2d\u0e35\u0e01 '+x.days+' \u0e27\u0e31\u0e19)'; }
+function _fDayOld(x){ return '(\u0e2b\u0e21\u0e14 '+x.days+' \u0e27\u0e31\u0e19)'; }
+function _fAmtDay(x){ return '\u0e3f'+_wkM(x.amt)+(x.days?(' ('+x.days+' \u0e27\u0e31\u0e19)'):''); }
+
 function _wkGenPast(m){
   var L=[];
   var tq=m.SC.neu+m.SP.neu, ta=m.SC.amt+m.SP.amt;
-  if(tq)               L.push('ออกใบเสนอราคา '+tq+' ใบ (SC '+m.SC.neu+' · SP '+m.SP.neu+') ฿'+_wkM(ta)+' · ส่งลูกค้าแล้ว '+(m.SC.sent+m.SP.sent)+' ใบ');
-  if(m.bill.n)         L.push('เปิดบิล '+m.bill.n+' ใบ ฿'+_wkM(m.bill.amt));
-  if(m.con.n)          L.push('สัญญาใหม่เริ่ม '+m.con.n+' ฉบับ ฿'+_wkM(m.con.amt));
-  if(m.alert.neu||m.alert.cleared)
-                       L.push('เครื่องเสีย: ใหม่ '+m.alert.neu+' · เคลียร์ '+m.alert.cleared+' · ค้างอยู่ '+m.alert.down+' เครื่อง');
-  if(m.sp.neu)         L.push('สั่งอะไหล่ใหม่ '+m.sp.neu+' รายการ');
-  if(!L.length)        L.push('สัปดาห์นี้ไม่มีความเคลื่อนไหวที่ระบบจับได้');
+  if(tq) L.push('ออกใบเสนอราคา '+tq+' ใบ (SC '+m.SC.neu+' · SP '+m.SP.neu+') ฿'+_wkM(ta)
+    +' · ส่งลูกค้าแล้ว '+(m.SC.sent+m.SP.sent)+' ใบ'
+    + _wkTail('รายใหญ่', (m.SC.neuTop||[]).concat(m.SP.neuTop||[]).sort(function(a,b){ return b.amt-a.amt; }), 3, _fAmt));
+  if(m.bill.n) L.push('เปิดบิล '+m.bill.n+' ใบ ฿'+_wkM(m.bill.amt) + _wkTail('รายใหญ่', m.bill.top, 3, _fAmt));
+  if(m.con.n)  L.push('สัญญาใหม่เริ่ม '+m.con.n+' ฉบับ ฿'+_wkM(m.con.amt) + _wkTail('', m.con.top, 3, _fAmt));
+  if(m.alert.neu||m.alert.cleared){
+    var _nw=(m.alert.list||[]).filter(function(a){ return a.days!==null && a.days<=7; });
+    L.push('เครื่องเสีย: ใหม่ '+m.alert.neu+' · เคลียร์ '+m.alert.cleared+' · ค้างอยู่ '+m.alert.down+' เครื่อง'
+      + _wkTail('เสียใหม่', _nw, 3, function(x){ return '(SN '+String(x.sn||'—').slice(0,14)+')'; }));
+  }
+  if(m.sp.neu) L.push('สั่งอะไหล่ใหม่ '+m.sp.neu+' รายการ');
+  if(!L.length) L.push('สัปดาห์นี้ไม่มีความเคลื่อนไหวที่ระบบจับได้');
   return L.map(function(x){ return '- '+x; }).join('\n');
 }
 function _wkGenNext(m){
   var L=[];
-  if(m.inst.exp60)     L.push('สัญญาหมดอายุใน 60 วัน '+m.inst.exp60+' เครื่อง — ออกใบเสนอราคาต่อสัญญาล่วงหน้า');
-  if(m.inst.expOld)    L.push('สัญญาหมดแล้วยังไม่ต่อ '+m.inst.expOld+' เครื่อง — ติดตามกลับ');
+  if(m.inst.exp60)  L.push('สัญญาหมดอายุใน 60 วัน '+m.inst.exp60+' เครื่อง — ออกใบเสนอราคาต่อสัญญาล่วงหน้า'
+    + _wkTail('ใกล้สุด', m.inst.exp60Top, 3, _fDayLeft));
+  if(m.inst.expOld) L.push('สัญญาหมดแล้วยังไม่ต่อ '+m.inst.expOld+' เครื่อง — ติดตามกลับ'
+    + _wkTail('เพิ่งหมด', m.inst.expOldTop, 3, _fDayOld));
   if(m.SC.stuck+m.SP.stuck)
-                       L.push('ใบค้าง Send to Customer เกิน 30 วัน '+(m.SC.stuck+m.SP.stuck)+' ใบ — ตามลูกค้าให้ตอบกลับ');
-  if(m.sp.late)        L.push('SP เกินกำหนดส่งมอบ '+m.sp.late+' รายการ — เร่งกับผู้จัดหา');
-  if(m.sc.n)           L.push('งานรอออกบิล '+m.sc.n+' รายการ ฿'+_wkM(m.sc.amt)+' — ติดตามให้ปิดบิล');
-  if(!L.length)        L.push('ไม่มีงานค้างที่ระบบจับได้');
+    L.push('ใบค้าง Send to Customer เกิน 30 วัน '+(m.SC.stuck+m.SP.stuck)+' ใบ — ตามลูกค้าให้ตอบกลับ'
+      + _wkTail('รายใหญ่', (m.SC.stuckTop||[]).concat(m.SP.stuckTop||[]).sort(function(a,b){ return b.amt-a.amt; }), 3, _fAmtDay));
+  if(m.sp.late)     L.push('SP เกินกำหนดส่งมอบ '+m.sp.late+' รายการ — เร่งกับผู้จัดหา'
+    + _wkTail('ค้างนานสุด', (m.sp.list||[]).slice().sort(function(a,b){ return (b.days||0)-(a.days||0); }), 3,
+        function(x){ return '(เกิน '+(x.days||0)+' วัน)'; }));
+  if(m.sc.n)        L.push('งานรอออกบิล '+m.sc.n+' รายการ ฿'+_wkM(m.sc.amt)+' — ติดตามให้ปิดบิล'
+    + _wkTail('รายใหญ่', m.sc.top, 3, _fAmt));
+  if(!L.length)     L.push('ไม่มีงานค้างที่ระบบจับได้');
   return L.map(function(x){ return '- '+x; }).join('\n');
+}
+/* [V609] ตัด list ออกก่อนบันทึก — snapshot เก็บแค่ตัวเลข ไม่งั้นเซลล์ชีตบวมเกินลิมิต */
+function _wkSlim(m){
+  if(!m) return null;
+  var o; try{ o=JSON.parse(JSON.stringify(m)); }catch(e){ return null; }
+  ['SC','SP'].forEach(function(k){ if(o[k]){ delete o[k].list; delete o[k].neuTop; delete o[k].stuckTop; } });
+  ['bill','con','sc'].forEach(function(k){ if(o[k]) delete o[k].top; });
+  if(o.inst){ delete o.inst.exp60Top; delete o.inst.expOldTop; }
+  if(o.alert) delete o.alert.list;
+  if(o.sp) delete o.sp.list;
+  return o;
 }
 
 /* ═══ กล่องข้อความ + ตัวนับโควตา 1 หน้า ═══ */
@@ -6947,7 +7001,7 @@ function _wkLoad(cb){
   google.script.run
     .withSuccessHandler(function(s){ var o={rows:[]}; try{ o=JSON.parse(s)||o; }catch(e){} window._wkStore=o; cb(o); })
     .withFailureHandler(function(){ cb({rows:[]}); })
-    .getWeeklyReports(JSON.stringify({ week:r.key, prev:_wkRange(window._wkOff-1).key }));
+    .getWeeklyReports(JSON.stringify({ week:r.key, prev:_wkRange(window._wkOff-1).key, empId:_wkMe().empId }));
 }
 window.wkSave=function(status){
   var me=_wkMe(), r=_wkRange(window._wkOff);
@@ -6957,7 +7011,7 @@ window.wkSave=function(status){
       next:(document.getElementById('wk-next')||{}).value||'',
       past:(document.getElementById('wk-past')||{}).value||'',
       support:(document.getElementById('wk-sup')||{}).value||'',
-      snap:window._wkMetrics||null
+      snap:_wkSlim(window._wkMetrics)
     }
   };
   var msg=document.getElementById('wk-save-msg');
@@ -7091,7 +7145,11 @@ window.spRenderWeekly = function(){
     window._wkIssueList=iss.slice(0,5); window._wkHighList=hv.slice(0,5);
 
     var saved=(mine&&mine.data)||{};
-    var vNext=saved.next||_wkGenNext(m), vPast=saved.past||_wkGenPast(m), vSup=saved.support||'';
+    var vNext=saved.next||_wkGenNext(m), vPast=saved.past||_wkGenPast(m);
+    /* [V609] Support Needs — สัปดาห์นี้ยังไม่พิมพ์ ให้ยกของครั้งล่าสุดมาตั้งไว้
+       (เรื่องขอ support มักค้างข้ามสัปดาห์ ไม่ต้องพิมพ์ใหม่ทุกอาทิตย์) */
+    var vSup=saved.support||'', _supCarry=false;
+    if(!vSup && store && store.lastSupport){ vSup=store.lastSupport; _supCarry=true; }
 
     var st=mine?String(mine.status||''):'';
     var stTxt=st==='sent'?('<span style="color:#4ade80">✅ ส่งแล้ว '+_wkEsc(String(mine.sentAt||'').slice(0,16))+'</span>')
@@ -7125,7 +7183,7 @@ window.spRenderWeekly = function(){
     el.innerHTML = head + who
       + _wkBox('wk-next','Next-Week Highlight Plan', vNext, 4)
       + _wkBox('wk-past','Past Week Challenges/Highlights', vPast, 4)
-      + _wkBox('wk-sup','Support Needs', vSup, 2, 'เช่น ต้องการ tool ใน SmartFlow สำหรับ Monitor งาน Commercial')
+      + _wkBox('wk-sup','Support Needs'+(_supCarry?' <span style="font-size:10px;color:#facc15;letter-spacing:0;text-transform:none">\u00b7 ยกมาจากสัปดาห์ก่อน แก้ได้</span>':''), vSup, 2, 'เช่น ต้องการ tool ใน SmartFlow สำหรับ Monitor งาน Commercial')
       + caseH
       + '<div class="wk-card"><div class="wk-lbl">📊 การเคลื่อนไหวรายหน้า</div>'+_wkTable(m, prevSnap)+'</div>'
       + foot;
