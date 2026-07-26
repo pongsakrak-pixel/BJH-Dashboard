@@ -1736,6 +1736,9 @@
       grandTotal += tmGrand;
 
       var isUnassigned = (tm==='Unassigned');
+      /* [V606] Unassigned = record ที่หาทีมเจ้าของไม่ได้ — ไม่มีของก็ไม่ต้องโชว์
+         มีเมื่อไหร่แถวโผล่เองพร้อม ⚠️ (ยังเป็นสัญญาณเตือนข้อมูลตกหล่นเหมือนเดิม) */
+      if(isUnassigned && tmGrand === 0) return;
       var clickAttr = isUnassigned ? ' onclick="dbShowUnassigned()" style="cursor:pointer" title="คลิกดูรายการ Unassigned"' : '';
       var unassignedStyle = isUnassigned ? 'color:#f87171;' : 'color:var(--mu2);';
 
@@ -4283,40 +4286,29 @@ window._SR_DATA = {"reps": [{"name": "ธนาวุฒิ", "nick": "อิฐ
     html += '<div style="'+_CARD+'padding:18px 20px;margin-top:12px">'
       +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;gap:12px;flex-wrap:wrap">'
         +'<div style="'+_LBL+'">Monthly</div>'
-        +'<div style="font-size:11.5px;color:var(--mu)">Bar = actual · '
-          +'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--org,#f97316);opacity:.8;margin:0 3px -1px 4px"></span>confirm · '
-          +'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--org,#f97316);opacity:.38;margin:0 3px -1px 4px"></span>order · '
-          +'dashed line = budget · '
-+'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--grn,#22c55e);margin:0 3px -1px 4px"></span>SC · '
-+'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--grn,#22c55e);opacity:.45;margin:0 3px -1px 4px"></span>SP</div>'
+        /* [V606] legend เดิมบอกว่า 🟩=SC ซึ่งผิด — สีแท่ง = % ของ budget (pctColor) ส่วน SC/SP แยกด้วยความเข้ม */
++'<div style="font-size:11.5px;color:var(--mu);line-height:1.9">Bar = actual (dark = SC · light = SP) · color = % of budget:'
++'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--grn,#22c55e);margin:0 3px -1px 6px"></span>≥100'
++'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--ac2,#3b82f6);margin:0 3px -1px 6px"></span>80–99'
++'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--ylw,#eab308);margin:0 3px -1px 6px"></span>50–79'
++'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--red,#ef4444);margin:0 3px -1px 6px"></span>&lt;50 · '
++'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--org,#f97316);opacity:.8;margin:0 3px -1px 6px"></span>confirm'
++'<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--org,#f97316);opacity:.38;margin:0 3px -1px 6px"></span>order · dashed line = budget</div>'
       +'</div>';
 
-/* [V602] ยอดจริงแยก SC/SP รายเดือน — รวมทุกทีมจาก cache ที่ตาราง By Team ใช้อยู่
-   _dbConfTeamsCache / _dbFadTeamStatsCache มี actualSC / actualSP เป็น array 12 เดือนรายทีม
-   [v310] ระบุว่าตรงกับการ์ด ACTUAL+BILLED — เป็นตัวเลขที่ reconcile แล้ว ไม่ได้คิดใหม่
-   หมายเหตุ: ชุดนี้ไม่เท่ากับ ACTUAL_FIXED (Config) ที่แท่งใช้ — ใช้เป็น "สัดส่วน" เท่านั้น
-             ความสูงแท่ง / YTD / Avg / %achievement คงเดิมทุกตัว */
-var _v602SC=null, _v602SP=null;
-function _v602Split(){
-  if(_v602SC) return true;
-  try{
-    var CT = window._dbConfTeamsCache || {}, TS = window._dbFadTeamStatsCache || {};
-    var sc = [0,0,0,0,0,0,0,0,0,0,0,0], sp = [0,0,0,0,0,0,0,0,0,0,0,0], got = false;
-    var keys = Object.keys(CT).length ? Object.keys(CT) : Object.keys(TS);
-    keys.forEach(function(tm){
-      var c = CT[tm], t = TS[tm];
-      var aSC = (c && c.SC) || (t && t.actualSC) || [];
-      var aSP = (c && c.SP) || (t && t.actualSP) || [];
-      for(var i=0;i<12;i++){
-        var v1 = Number(aSC[i]||0), v2 = Number(aSP[i]||0);
-        if(v1||v2) got = true;
-        sc[i] += v1; sp[i] += v2;
-      }
-    });
-    if(!got) return false;
-    _v602SC = sc; _v602SP = sp;
-    return true;
-  }catch(e){ return false; }
+/* [V606] เลิกไล่ขูด cache ตาราง By Team (_v602Split เดิม) — ใช้ stats.monthlyActualSC/SP ตรง ๆ
+   ต้นทางเดียวกับหน้า FC Submitted to FAD และ [V460] บังคับไว้แล้วว่าเดือนที่ปิดแล้ว
+   SC/SP ต้องมาจาก ACTUAL_FAD ให้ SC+SP = monthlyActual เป๊ะ → ไม่ต้องมีคำเตือนส่วนต่างอีก
+   _mSplit(i, totM) คืนสัดส่วน SC/SP ของเดือน i โดยล็อกผลรวม = totM (ล้านบาท) เสมอ */
+var _mSC = stats.monthlyActualSC || [], _mSP = stats.monthlyActualSP || [];
+function _mHasSplit(){
+  for(var i=0;i<12;i++){ if(Number(_mSC[i]||0)>0 || Number(_mSP[i]||0)>0) return true; }
+  return false;
+}
+function _mSplit(i, totM){
+  var a = Number(_mSC[i]||0), b = Number(_mSP[i]||0), t = a + b;
+  if(!(t > 0) || !(totM > 0)) return null;
+  return { sc: totM * (a/t), sp: totM * (b/t) };
 }
     (function(){
       var W=1400,H=300,PL=62,PR=14,PT=26,PB=32;   // [V552] PT เพิ่ม เผื่อที่ให้ตัวเลขบนหัวแท่ง
@@ -4340,13 +4332,10 @@ function _v602Split(){
         var bM=Number(bgtMonthly[b2]||0)/1000000;
         var pp=bM>0?(aM/bM*100):0;
         if(aM>0){
-/* [V602] แบ่งท่อน SC (ล่าง เข้ม) / SP (บน จาง) ตามสัดส่วนยอดจริงของเดือนนั้น
-   ความสูงรวมเท่าเดิมเป๊ะ — ถ้าไม่มีข้อมูลสัดส่วนก็วาดแท่งทึบแบบเดิม ไม่พัง */
-var _ok = _v602Split();
-var _s1 = _ok ? Number(_v602SC[b2]||0) : 0, _s2 = _ok ? Number(_v602SP[b2]||0) : 0;
-var _tt = _s1 + _s2;
-if(_ok && _tt > 0){
-  var _scM = aM * (_s1/_tt);
+/* [V606] แบ่งท่อน SC (ล่าง เข้ม) / SP (บน จาง) — ผลรวมล็อกเท่าความสูงแท่งเดิมเสมอ */
+var _sp0 = _mSplit(b2, aM);
+if(_sp0){
+  var _scM = _sp0.sc;
   g+='<rect x="'+(cx-bar/2)+'" y="'+yOf(_scM)+'" width="'+bar+'" height="'+(ih-(yOf(_scM)-PT))+'" rx="5" fill="'+pctColor(pp)+'"/>'
    + '<rect x="'+(cx-bar/2)+'" y="'+yOf(aM)+'" width="'+bar+'" height="'+Math.max(0,(yOf(_scM)-yOf(aM)))+'" rx="5" fill="'+pctColor(pp)+'" opacity=".45"/>';
 }else{
@@ -4373,6 +4362,15 @@ if(_ok && _tt > 0){
           g+='<text x="'+cx+'" y="'+(_topY-7)+'" text-anchor="middle" font-size="14.5" font-weight="700"'
             +' fill="'+_lblC+'">฿'+_lblV.toFixed(1)+'M</text>';
         }
+        /* [V606] tooltip รายเดือน — hit-rect โปร่งใสคลุมทั้งคอลัมน์ วาดทับท้ายสุดของเดือนนั้น
+           ใช้ <title> ของ SVG (ไม่ต้องเขียน JS / ไม่มี event listener ให้รั่ว) */
+        var _tp = MO_EN[b2]+' '+CUR_YR+'\nยอดจริง ฿'+aM.toFixed(1)+'M';
+        var _spl = _mSplit(b2, aM);
+        if(_spl) _tp += '  (SC ฿'+_spl.sc.toFixed(1)+'M · SP ฿'+_spl.sp.toFixed(1)+'M)';
+        _tp += '\nเป้า ฿'+bM.toFixed(1)+'M';
+        if(bM>0) _tp += ' · '+pp.toFixed(0)+'%';
+        if(oM>0) _tp += '\nOrdered ฿'+oM.toFixed(1)+'M';
+        g+='<rect x="'+(cx-bw/2)+'" y="'+PT+'" width="'+bw+'" height="'+ih+'" fill="transparent"><title>'+_tp+'</title></rect>';
       }
       var dPath='M';
       for(var l=0;l<12;l++) dPath+=(l?' L':'')+(PL+bw*l+bw/2)+' '+yOf(Number(bgtMonthly[l]||0)/1000000);
@@ -4393,19 +4391,22 @@ if(_ok && _tt > 0){
       + (_yrOrd>0 ? '<span style="font-size:12.5px;color:var(--mu)">Ordered <b style="font-size:19px;color:var(--org,#f97316);font-family:var(--mono)">'+fmtMK(_yrOrd)+'</b></span>' : '')
       +'<span style="font-size:12.5px;color:var(--mu)">Avg/month <b style="font-size:19px;color:var(--ylw,#eab308);font-family:var(--mono)">'+fmtMK(avgPerMonth)+'</b></span>'
     +'</div>';
-/* [V602] บรรทัดสรุปยอดจริงแยก SC/SP — เดือนที่ปิดแล้วเท่านั้น (ไม่รวมเดือนปัจจุบันที่ยังวิ่งอยู่)
-   ใช้เลขจริงจาก actualSC/actualSP ไม่ใช่สัดส่วน · โชว์คู่กับยอด Config ให้เห็นส่วนต่าง ไม่ซ่อน */
-if(_v602Split() && CUR_MO > 1){
+/* [V606] บรรทัดสรุป SC/SP — เดือนที่ปิดแล้วเท่านั้น
+   ยึด actMonthly (ตัวเดียวกับความสูงแท่ง) แล้วแบ่ง SC/SP ตาม ACTUAL_FAD
+   → รวม = Actual ของกราฟเป๊ะเสมอ ไม่ต้องมีหมายเหตุกำกับ */
+if(_mHasSplit() && CUR_MO > 1){
   var _cm = CUR_MO - 1;                       /* จำนวนเดือนที่ปิดแล้ว */
   var _aSC=0, _aSP=0;
-  for(var _i=0;_i<_cm;_i++){ _aSC += Number(_v602SC[_i]||0); _aSP += Number(_v602SP[_i]||0); }
+  for(var _i=0;_i<_cm;_i++){
+    var _sx = _mSplit(_i, Number(actMonthly[_i]||0));
+    if(_sx){ _aSC += _sx.sc; _aSP += _sx.sp; }
+  }
   var _mn = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
   html += '<div style="margin-top:7px;font-size:11.5px;color:var(--mu);display:flex;gap:14px;flex-wrap:wrap;align-items:baseline">'
     + '<span>ยอดจริง '+_mn[0]+'\u2013'+_mn[_cm-1]+' ('+_cm+' เดือน) เฉลี่ยต่อเดือน</span>'
     + '<span>SC <b style="font-size:14px;color:var(--grn,#22c55e);font-family:var(--mono)">'+fmtMK(_aSC/_cm)+'</b></span>'
     + '<span>SP <b style="font-size:14px;color:var(--grn,#22c55e);opacity:.75;font-family:var(--mono)">'+fmtMK(_aSP/_cm)+'</b></span>'
     + '<span style="color:var(--mu)">รวม <b style="font-family:var(--mono)">'+fmtMK((_aSC+_aSP)/_cm)+'</b></span>'
-    + '<span style="color:#64748b;font-size:10.5px">\u24d8 ยอดจริง (ACTUAL+BILLED) \u2014 ต่างจาก Actual ใน Config ที่แท่งใช้</span>'
     + '</div>';
 }
     html += '</div>';

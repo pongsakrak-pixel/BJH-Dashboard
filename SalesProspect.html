@@ -333,10 +333,10 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
     <select class="fsel" id="sp-con-sales" onchange="spRenderContract()"><option value="">All Sales</option></select>
     <select class="fsel" id="sp-con-brand" onchange="spRenderContract()"><option value="">ทุก Brand</option></select>
     <input class="fsel" type="text" id="sp-con-search" placeholder="ค้นหา QN / ลูกค้า..." oninput="spRenderContract()" style="min-width:140px">
-    <button class="con-hm-chip" data-hm="" onclick="spConHM(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid #4ade80;background:rgba(74,222,128,.12);color:#4ade80;cursor:pointer;font-family:inherit">ทั้งหมด</button>
-    <button class="con-hm-chip" data-hm="late" onclick="spConHM(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#f87171;cursor:pointer;font-family:inherit">🔴 ล่าช้า</button>
-    <button class="con-hm-chip" data-hm="near" onclick="spConHM(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#fb923c;cursor:pointer;font-family:inherit">🟠 ใกล้</button>
-    <button class="con-hm-chip" data-hm="normal" onclick="spConHM(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#94a3b8;cursor:pointer;font-family:inherit">⚪ ปกติ</button>
+    <button class="con-hm-chip" data-hm="" onclick="spConHM(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid #4ade80;background:rgba(74,222,128,.12);color:#4ade80;cursor:pointer;font-family:inherit">All</button>
+    <button class="con-hm-chip" data-hm="late" onclick="spConHM(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#f87171;cursor:pointer;font-family:inherit">🔴 Overdue</button>
+    <button class="con-hm-chip" data-hm="near" onclick="spConHM(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#fb923c;cursor:pointer;font-family:inherit">🟠 Due Soon</button>
+    <button class="con-hm-chip" data-hm="normal" onclick="spConHM(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#94a3b8;cursor:pointer;font-family:inherit">⚪ Normal</button>
     <span style="width:1px;height:24px;background:var(--bd2,#374151);margin:0 4px"></span>
     <span id="sp-con-kpi" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></span>
   </div>
@@ -6654,7 +6654,7 @@ window.spRenderContract = function(){
     var tot=rows.reduce(function(s,r){return s+r.px;},0);
     function _mini(l,v,c){ return '<span style="font-size:12px;color:var(--mu)">'+l+' <b style="color:'+(c||'var(--tx)')+';font-size:14px">'+v+'</b></span>'; }
     // [V605] ตัด Overdue / Due Soon — ซ้ำกับ chip ล่าช้า / ใกล้ ด้านซ้าย
-    kpiEl.innerHTML=_mini('แสดง',rows.length+' ใบ')+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
+    kpiEl.innerHTML=_mini('Contracts',rows.length)+_mini('Total',_spFmtB(tot)+'฿','#4ade80');
   }
 
   if(!rows.length){ el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบใบเสนอ QSC (H/M)</div>'; return; }
