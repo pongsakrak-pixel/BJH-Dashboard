@@ -166,11 +166,38 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   <button class="sp-tab"    id="sp-tab-ar"        onclick="spTab('ar')">💰 AR Monitor</button>
 <!-- [V597] ปิดใช้ Revenue Forecast — แยกเป็น SC/SP Quotation แล้ว · เปิดคืน: เอาคอมเมนต์ออก + คืน permission + คืน map/loop -->
   <button class="sp-tab"    id="sp-tab-bg"         onclick="spTab('bg')">📊 BG Monitor</button>
+  <button class="sp-tab"    id="sp-tab-weekly"     onclick="spTab('weekly')">📝 Weekly Report</button><!-- [V608] -->
 <!-- [V597] ปิดใช้ Quotation Pipeline — แยกเป็น SC/SP Quotation แล้ว · เปิดคืน: เอาคอมเมนต์ออก + คืน permission + คืน map/loop -->
   <div style="flex:1"></div><!-- [V585] ตัดปุ่ม Export CSV (ฟังก์ชัน spExportCSV ยังอยู่) -->
 </div>
 
 <div class="sp-body">
+
+<!-- ── [V608] WEEKLY REPORT PANE ── -->
+<div id="sp-pane-weekly" style="display:none;padding:12px 16px">
+  <style>
+    #sp-pane-weekly .wk-card{background:var(--sur,#111a2b);border:1px solid var(--bd,#1e293b);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+    #sp-pane-weekly .wk-hd{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+    #sp-pane-weekly .wk-lbl{font-size:11px;letter-spacing:.12em;color:var(--mu2,#6b7a9c);text-transform:uppercase;margin-bottom:8px}
+    #sp-pane-weekly .wk-hd .wk-lbl{margin:0}
+    #sp-pane-weekly textarea{width:100%;background:var(--sur2,#0f1729);border:1px solid var(--bd2,#334155);border-radius:8px;
+      color:var(--tx,#e6edf3);font-family:inherit;font-size:12.5px;line-height:1.8;padding:10px 12px;resize:vertical}
+    #sp-pane-weekly .wk-mini{font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid var(--bd2,#334155);
+      background:transparent;color:#60a5fa;cursor:pointer;font-family:inherit}
+    #sp-pane-weekly .wk-mini:hover{border-color:#60a5fa}
+    #sp-pane-weekly .wk-btn{padding:8px 16px;border-radius:8px;border:none;font-size:12.5px;font-weight:600;cursor:pointer;
+      font-family:inherit;background:var(--sur2,#0f1729);color:var(--tx,#e6edf3);border:1px solid var(--bd2,#334155)}
+    #sp-pane-weekly .wk-btn.go{background:#38bdf8;color:#04263a;border-color:#38bdf8}
+    #sp-pane-weekly .wk-btn.ghost{color:var(--mu,#94a3b8)}
+    #sp-pane-weekly .wk-case{display:flex;gap:9px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--bd,#1e293b);font-size:11.5px}
+    #sp-pane-weekly .wk-case:last-of-type{border-bottom:none}
+    #sp-pane-weekly .wk-tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+    #sp-pane-weekly .wk-tbl th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--bd2,#334155);color:var(--mu,#94a3b8);font-weight:500;font-size:10.5px}
+    #sp-pane-weekly .wk-tbl td{padding:5px 8px;border-bottom:1px solid var(--bd,#1e293b)}
+    #sp-pane-weekly .wk-tbl .r{text-align:right;font-family:var(--mono,ui-monospace,monospace)}
+  </style>
+  <div id="sp-weekly-body"></div>
+</div>
 
   <!-- ── ALERT PANE ── -->
 <!-- [V569] SR Commercial — รอ SmartFlow ส่งข้อมูล SR (Project เดียวกับ New SR) -->
@@ -860,7 +887,7 @@ window.spTab = function(t) {
   _spTab = t;
   window._spCurrentTab = t;
   /* [V597] ตัด forecast, pipeline ออก — ปิดใช้แล้ว */
-  ['srcom','alert','install','renewal','scquote','spquote','contract','ordsp','ordsc','billing','ar','bg'].forEach(function(n){
+  ['srcom','alert','install','renewal','scquote','spquote','contract','ordsp','ordsc','billing','ar','bg','weekly'].forEach(function(n){
     var p=document.getElementById('sp-pane-'+n);
     if(p) p.style.display=n===t?'block':'none';
     var b=document.getElementById('sp-tab-'+n);
@@ -876,6 +903,7 @@ window.spTab = function(t) {
   if(t==='ordsc')    spRenderOrdSC();
   if(t==='billing')  spRenderBilling();
   if(t==='ar')       spRenderAR();
+  if(t==='weekly')   spRenderWeekly();   // [V608]
   /* [V597] forecast, pipeline ปิดใช้แล้ว */
 };
 
@@ -6584,6 +6612,528 @@ window.spRenderSPQuote = function(){
       +'</tr>';
   }).join('');
   el.innerHTML=_spTbl(cols,body)+window._qnOldNote(_oldHid);
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   [V608] 📝 WEEKLY REPORT
+   - auto-gen 3 หัวข้อจากข้อมูลจริง → แก้ได้ → คัดลอก → ส่งเข้าระบบ (ไม่ส่งเมล)
+   - sales: เห็นของตัวเอง | manager/admin: หน้า Summary ทีม + กดดูรายคน
+   - ตัวเลข "แช่แข็ง" ตอนกดส่ง (เก็บ snapshot ลงชีต) — เปิดย้อนหลังแล้วเลขไม่เปลี่ยน
+   - ฟิลด์ที่ไม่มีในข้อมูล (วันติดตั้ง / วันเข้า SC) ใช้ snapshot สัปดาห์ก่อนเทียบแทน
+   ═══════════════════════════════════════════════════════════════════ */
+window._wkOff   = 0;      // 0 = สัปดาห์นี้ · -1 = สัปดาห์ก่อน
+window._wkView  = null;   // manager: empId ที่กำลังเปิดดู
+window._wkStore = null;   // cache รายงานที่โหลดจากชีต
+window._wkDirty = false;
+
+function _wkEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function _wkM(n){ var v=Number(n)||0; return (v/1e6).toFixed(2)+'M'; }
+function _wkD(d){ if(!d) return null; var x=new Date(d); return isNaN(x)?null:x; }
+function _wkDays(d){ var x=_wkD(d); if(!x) return null;
+  var t=new Date(); t.setHours(0,0,0,0); return Math.floor((t-x)/86400000); }
+
+/* ── ช่วงสัปดาห์: จันทร์ 00:00 → อาทิตย์ 23:59 · key = วันจันทร์ (YYYY-MM-DD) ── */
+function _wkRange(off){
+  var now=new Date(); now.setHours(0,0,0,0);
+  var dow=(now.getDay()+6)%7;                       // 0=จันทร์
+  var s=new Date(now); s.setDate(now.getDate()-dow+(off||0)*7);
+  var e=new Date(s);   e.setDate(s.getDate()+6); e.setHours(23,59,59,999);
+  var MO=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var lbl=s.getDate()+' '+MO[s.getMonth()]+' – '+e.getDate()+' '+MO[e.getMonth()]+' '+(e.getFullYear()+543);
+  var key=s.getFullYear()+'-'+String(s.getMonth()+1).padStart(2,'0')+'-'+String(s.getDate()).padStart(2,'0');
+  return { s:s, e:e, key:key, label:lbl };
+}
+function _wkIn(d, r){ var x=_wkD(d); return !!x && x.getTime()>=r.s.getTime() && x.getTime()<=r.e.getTime(); }
+
+/* ── ใครดูอยู่ / ดูของใคร ── */
+function _wkMe(){
+  var u=window._currentUser||{};
+  return { empId:String(u.empId||''), name:String(u.name||''), role:String(u.role||'') };
+}
+function _wkIsBoss(){ try{ return !(window.isSales && window.isSales()); }catch(e){ return false; } }
+function _wkTargetName(){ return window._wkView ? (window._wkView.name||'') : _wkMe().name; }
+
+/* ═══ เก็บตัวเลขจริง ═══ */
+function _wkCollect(range, who){
+  var mine=function(sa){ return !who || String(sa||'').trim()===who; };
+  var Q=(window._spData&&window._spData.quotations)||[];
+  var D=window.D||[];
+  var INS=window._spInstallRows||[];
+  var CON=window._jsupContract||[];
+  var PARTS=window._jsupParts||[];
+  var m={ warn:[] };
+
+  /* map QN → sales (สัญญา/อะไหล่ ไม่มีชื่อเซลล์ในตัวเอง) */
+  var saByQN={}, amtByQN={};
+  Q.forEach(function(q){ var n=q.DOC_NUMBER||''; if(!n) return;
+    saByQN[n]=q.SALES_SERVICE_NAME||'';
+    amtByQN[n]=(parseFloat(q.QH_TOTAL_AMT||0)-parseFloat(q.QH_TOTAL_DISCOUNT||0))||0; });
+
+  /* ── 📋 SC / 🔧 SP Quotation ── */
+  var DONE={'Canceled':1,'Cancelled':1,'Customer Accept':1,'Rejected':1,'PO Completed':1,
+            'Customer Rejected':1,'Contract Completed':1,'ยกเลิกสัญญา':1,'ยกเลิก':1};
+  ['SC','SP'].forEach(function(kind){
+    var pre=kind==='SC'?'QSC':'QSP';
+    var list=Q.filter(function(q){ return String(q.DOC_NUMBER||'').slice(0,3)===pre && mine(q.SALES_SERVICE_NAME); });
+    var neu=list.filter(function(q){ return _wkIn(q.QH_DOC_DATE_TIME||q.REQ_DATETIME, range); });
+    var snt=list.filter(function(q){ return _wkIn(q.SEND_TO_CUSTOMER_DATETIME, range); });
+    var stk=list.filter(function(q){
+      if(DONE[q.STATUS_NAME]) return false;
+      if(String(q.STATUS_NAME||'')!=='Send to Customer') return false;
+      var d=_wkDays(q.SEND_TO_CUSTOMER_DATETIME); return d!==null && d>30; });
+    var amt=neu.reduce(function(a,q){ return a+(amtByQN[q.DOC_NUMBER]||0); },0);
+    m[kind]={ neu:neu.length, sent:snt.length, stuck:stk.length, amt:amt, list:list };
+  });
+
+  /* ── 🧾 Bill Monitor (D.bd) ── */
+  var bills=D.filter(function(r){ return r.bd && mine(r.sa) && _wkIn(r.bd, range); });
+  m.bill={ n:bills.length, amt:bills.reduce(function(a,r){ return a+(Number(r.px)||0); },0) };
+
+  /* ── 📄 Contract & PO (CONTRACT_START_DATE) ── */
+  var newCon=CON.filter(function(c){
+    if(!_wkIn(c.CONTRACT_START_DATE, range)) return false;
+    var qn=c.QUOTATION_NO||c.QH_DOC_NUMBER_CREATE||'';
+    return mine(saByQN[qn]||''); });
+  m.con={ n:newCon.length, amt:newCon.reduce(function(a,c){ return a+(parseFloat(c.CONTRACT_PRICE||0)||0); },0) };
+
+  /* ── 🏥 Install Base (CON_END_DATE — ไม่มีวันติดตั้งในข้อมูล) ── */
+  var exp60=0, expNoRenew=0, exp60amt=0;
+  INS.forEach(function(i){
+    if(!mine(i.SALE_SERVICE_NAME)) return;
+    var d=_wkDays(i.CON_END_DATE); if(d===null) return;
+    if(d<0 && d>=-60){ exp60++; }                       // อีก ≤60 วันหมด
+    if(d>0 && d<=180){ expNoRenew++; }                  // หมดแล้ว ≤180 วัน
+  });
+  m.inst={ exp60:exp60, expOld:expNoRenew };
+
+  /* ── 🚨 Alert (MC_STATUS_HISTORY.CHANGED_AT) ── */
+  var down=0, newDown=0, cleared=0, downList=[];
+  try{
+    (window._cdBuildV2&&window._cdBuildV2()||[]).forEach(function(a){
+      if(!mine(a.sa)) return;
+      var bad=(a.mcGroup==='dead'||a.mcGroup==='check');
+      var hist=(a.mcHist||[]).slice().sort(function(x,y){
+        return String(y.CHANGED_AT||'').localeCompare(String(x.CHANGED_AT||'')); });
+      if(bad){
+        down++;
+        /* หาจุดเริ่มของการเสียรอบปัจจุบัน */
+        var since=null;
+        for(var i=0;i<hist.length;i++){
+          var st=String(hist[i].MC_STATUS||'');
+          if(st==='0'||st==='2'){ since=hist[i].CHANGED_AT||since; } else break;
+        }
+        if(_wkIn(since, range)) newDown++;
+        downList.push({ cu:a.cu, sn:a.sn, sr:a.sr, sa:a.sa, grp:a.mcGroup,
+                        days:_wkDays(since), since:since });
+      } else {
+        for(var j=0;j<hist.length;j++){
+          if(String(hist[j].MC_STATUS||'')==='1' && _wkIn(hist[j].CHANGED_AT, range)){ cleared++; break; }
+        }
+      }
+    });
+  }catch(e){ m.warn.push('Alert'); }
+  m.alert={ down:down, neu:newDown, cleared:cleared, list:downList };
+
+  /* ── 🛒 SP Monitor (ENG_REQ_DATETIME + _spPartsInfo) ── */
+  var newSP=0, seenQN={};
+  PARTS.forEach(function(p){
+    var qn=p.QH_DOC_NUMBER||''; if(!qn||seenQN[qn]) return;
+    if(!mine(saByQN[qn]||'')) return;
+    if(_wkIn(p.ENG_REQ_DATETIME, range)){ seenQN[qn]=1; newSP++; }
+  });
+  var lateSP=[], seen2={};
+  D.forEach(function(r){
+    if(!mine(r.sa)) return;
+    if(String(r.st||'').indexOf('SP Ordered')<0) return;
+    var qn=r.qn||''; if(!qn||seen2[qn]) return; seen2[qn]=1;
+    try{
+      var info=window._spPartsInfo?window._spPartsInfo(qn):null;
+      if(info&&(info.dlvLate||info.etaLate)) lateSP.push({ cu:r.cu, qn:qn, px:Number(r.px)||0,
+        days:_wkDays(info.dlv)||0, br:r.br||'' });
+    }catch(e){}
+  });
+  m.sp={ neu:newSP, late:lateSP.length, list:lateSP };
+
+  /* ── 📥 SC Monitor (ไม่มีวันที่ → ใช้ยอดค้างปัจจุบัน) ── */
+  var scPend=D.filter(function(r){
+    return mine(r.sa) && ['SC Ordered','SC Carry','SC Carry (Pending)','Backlog'].indexOf(String(r.st||''))>=0; });
+  m.sc={ n:scPend.length, amt:scPend.reduce(function(a,r){ return a+(Number(r.px)||0); },0) };
+
+  return m;
+}
+
+/* ═══ Issues (เรียงตามความร้ายแรง) ═══ */
+function _wkIssues(m, range, who){
+  var out=[];
+  (m.alert.list||[]).forEach(function(a){
+    if(a.days!==null && a.days>=7)
+      out.push({ sev:1, ic:'🔴', cu:a.cu, txt:(a.grp==='dead'?'Critical Down':'Partial Down')+' · SN '+(a.sn||'—'),
+                 day:'ค้าง '+a.days+' วัน', amt:0 });
+  });
+  (m.sp.list||[]).forEach(function(p){
+    out.push({ sev:2, ic:'🟠', cu:p.cu, txt:'SP เกินกำหนดส่งมอบ · '+(p.qn||''),
+               day:(p.days>0?('เกิน '+p.days+' วัน'):'เลยกำหนด'), amt:p.px });
+  });
+  var INS=window._spInstallRows||[];
+  INS.forEach(function(i){
+    if(who && String(i.SALE_SERVICE_NAME||'').trim()!==who) return;
+    var d=_wkDays(i.CON_END_DATE);
+    if(d!==null && d>0 && d<=180)
+      out.push({ sev:3, ic:'🟣', cu:i.CUS_NAME||'', txt:'สัญญาหมดแล้วยังไม่ต่อ · SN '+(i.SN||'—'),
+                 day:'หมด '+d+' วัน', amt:0 });
+  });
+  (m.SC.list||[]).concat(m.SP.list||[]).forEach(function(q){
+    if(String(q.STATUS_NAME||'')!=='Send to Customer') return;
+    var d=_wkDays(q.SEND_TO_CUSTOMER_DATETIME);
+    if(d!==null && d>=60)
+      out.push({ sev:4, ic:'⚪', cu:q.CUSTOMER_NAME||'', txt:'ส่งลูกค้าแล้วไม่ตอบกลับ · '+(q.DOC_NUMBER||''),
+                 day:d+' วัน', amt:(parseFloat(q.QH_TOTAL_AMT||0)-parseFloat(q.QH_TOTAL_DISCOUNT||0))||0 });
+  });
+  out.sort(function(a,b){ return (a.sev-b.sev)||(b.amt-a.amt); });
+  return out;
+}
+
+/* ═══ มูลค่าสูงที่ยังไม่ปิด ═══ */
+function _wkHighValue(m, who){
+  var MIN=300000, out=[];
+  (m.SC.list||[]).concat(m.SP.list||[]).forEach(function(q){
+    if(String(q.STATUS_NAME||'')!=='Send to Customer') return;
+    var v=(parseFloat(q.QH_TOTAL_AMT||0)-parseFloat(q.QH_TOTAL_DISCOUNT||0))||0;
+    if(v<MIN) return;
+    var d=_wkDays(q.SEND_TO_CUSTOMER_DATETIME);
+    out.push({ cu:q.CUSTOMER_NAME||'', txt:(q.DOC_NUMBER||'')+' · '+(q.BRAND_NAME||q.CONTRACT_TYPE_NAME||'')+' · รอลูกค้าตอบ',
+               day:(d===null?'':'ส่ง '+d+' วัน'), amt:v });
+  });
+  (window.D||[]).forEach(function(r){
+    if(who && String(r.sa||'').trim()!==who) return;
+    if(['SC Ordered','SC Carry','SC Carry (Pending)','Backlog'].indexOf(String(r.st||''))<0) return;
+    var v=Number(r.px)||0; if(v<MIN) return;
+    out.push({ cu:r.cu||'', txt:(r.qn||'')+' · '+String(r.st||'')+' · รอออกบิล', day:'', amt:v });
+  });
+  out.sort(function(a,b){ return b.amt-a.amt; });
+  return out;
+}
+
+/* ═══ ร่างข้อความ ═══ */
+function _wkGenPast(m){
+  var L=[];
+  var tq=m.SC.neu+m.SP.neu, ta=m.SC.amt+m.SP.amt;
+  if(tq)               L.push('ออกใบเสนอราคา '+tq+' ใบ (SC '+m.SC.neu+' · SP '+m.SP.neu+') ฿'+_wkM(ta)+' · ส่งลูกค้าแล้ว '+(m.SC.sent+m.SP.sent)+' ใบ');
+  if(m.bill.n)         L.push('เปิดบิล '+m.bill.n+' ใบ ฿'+_wkM(m.bill.amt));
+  if(m.con.n)          L.push('สัญญาใหม่เริ่ม '+m.con.n+' ฉบับ ฿'+_wkM(m.con.amt));
+  if(m.alert.neu||m.alert.cleared)
+                       L.push('เครื่องเสีย: ใหม่ '+m.alert.neu+' · เคลียร์ '+m.alert.cleared+' · ค้างอยู่ '+m.alert.down+' เครื่อง');
+  if(m.sp.neu)         L.push('สั่งอะไหล่ใหม่ '+m.sp.neu+' รายการ');
+  if(!L.length)        L.push('สัปดาห์นี้ไม่มีความเคลื่อนไหวที่ระบบจับได้');
+  return L.map(function(x){ return '- '+x; }).join('\n');
+}
+function _wkGenNext(m){
+  var L=[];
+  if(m.inst.exp60)     L.push('สัญญาหมดอายุใน 60 วัน '+m.inst.exp60+' เครื่อง — ออกใบเสนอราคาต่อสัญญาล่วงหน้า');
+  if(m.inst.expOld)    L.push('สัญญาหมดแล้วยังไม่ต่อ '+m.inst.expOld+' เครื่อง — ติดตามกลับ');
+  if(m.SC.stuck+m.SP.stuck)
+                       L.push('ใบค้าง Send to Customer เกิน 30 วัน '+(m.SC.stuck+m.SP.stuck)+' ใบ — ตามลูกค้าให้ตอบกลับ');
+  if(m.sp.late)        L.push('SP เกินกำหนดส่งมอบ '+m.sp.late+' รายการ — เร่งกับผู้จัดหา');
+  if(m.sc.n)           L.push('งานรอออกบิล '+m.sc.n+' รายการ ฿'+_wkM(m.sc.amt)+' — ติดตามให้ปิดบิล');
+  if(!L.length)        L.push('ไม่มีงานค้างที่ระบบจับได้');
+  return L.map(function(x){ return '- '+x; }).join('\n');
+}
+
+/* ═══ กล่องข้อความ + ตัวนับโควตา 1 หน้า ═══ */
+function _wkBox(id, title, val, quota, ph){
+  var n=String(val||'').split('\n').filter(function(x){ return x.trim(); }).length;
+  var over=n>quota;
+  return '<div class="wk-card">'
+    + '<div class="wk-hd"><div class="wk-lbl">'+title+'</div>'
+    + '<div style="display:flex;gap:6px;align-items:center">'
+    + '<span id="'+id+'-cnt" style="font-size:10.5px;color:'+(over?'#fb923c':'var(--mu2,#6b7a9c)')+'">'+n+'/'+quota+' บรรทัด'+(over?' · เกิน 1 หน้า':'')+'</span>'
+    + '<button class="wk-mini" onclick="wkRegen(\''+id+'\')">↻ สร้างใหม่</button>'
+    + '<button class="wk-mini" onclick="wkCopy(\''+id+'\')">📋 คัดลอก</button>'
+    + '</div></div>'
+    + '<textarea id="'+id+'" rows="6" data-quota="'+quota+'" oninput="wkTouch(\''+id+'\')" placeholder="'+_wkEsc(ph||'')+'">'+_wkEsc(val||'')+'</textarea>'
+    + '</div>';
+}
+window.wkTouch=function(id){
+  window._wkDirty=true;
+  var el=document.getElementById(id), c=document.getElementById(id+'-cnt'); if(!el||!c) return;
+  var q=Number(el.getAttribute('data-quota'))||99;
+  var n=String(el.value||'').split('\n').filter(function(x){ return x.trim(); }).length;
+  var over=n>q;
+  c.textContent=n+'/'+q+' บรรทัด'+(over?' · เกิน 1 หน้า':'');
+  c.style.color=over?'#fb923c':'var(--mu2,#6b7a9c)';
+};
+window.wkRegen=function(id){
+  var m=window._wkMetrics; if(!m) return;
+  var el=document.getElementById(id); if(!el) return;
+  if(id==='wk-past') el.value=_wkGenPast(m);
+  else if(id==='wk-next') el.value=_wkGenNext(m);
+  else return;
+  window.wkTouch(id);
+};
+window.wkCopy=function(id){
+  var t='';
+  if(id==='wk-all'){
+    t='Next-Week Highlight Plan\n'+((document.getElementById('wk-next')||{}).value||'')
+     +'\n\nPast Week Challenges/Highlights\n'+((document.getElementById('wk-past')||{}).value||'')
+     +'\n\nSupport Needs\n'+((document.getElementById('wk-sup')||{}).value||'');
+  } else {
+    var el=document.getElementById(id); if(!el) return; t=el.value||'';
+  }
+  var ta=document.createElement('textarea');
+  ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  var ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+  var b=document.getElementById('wk-copy-msg');
+  if(b){ b.textContent=ok?'✅ คัดลอกแล้ว':'⚠ คัดลอกไม่สำเร็จ กด Ctrl+C เอง'; setTimeout(function(){ b.textContent=''; },2500); }
+};
+/* ➕ หยิบเคสเข้าบุลเล็ต */
+window.wkAdd=function(kind, i, target){
+  var arr=(kind==='iss')?(window._wkIssueList||[]):(window._wkHighList||[]);
+  var c=arr[i]; if(!c) return;
+  var line='- '+(kind==='iss'?'ติดตาม ':'')+c.cu+' · '+c.txt+(c.day?(' ('+c.day+')'):'')+(c.amt?(' ฿'+_wkM(c.amt)):'');
+  var el=document.getElementById(target); if(!el) return;
+  var cur=String(el.value||'').replace(/\s+$/,'');
+  if(cur.indexOf(line)>=0) return;             // กันซ้ำ
+  el.value=(cur?cur+'\n':'')+line;
+  window.wkTouch(target);
+  el.scrollTop=el.scrollHeight;
+};
+
+/* ═══ แถวเคส ═══ */
+function _wkCaseRow(kind, i, c, tgt){
+  return '<div class="wk-case">'
+    + '<span style="flex-shrink:0">'+(c.ic||'💰')+'</span>'
+    + '<div style="flex:1;min-width:0"><b>'+_wkEsc(c.cu||'—')+'</b>'
+    + '<div style="font-size:10.5px;color:var(--mu)">'+_wkEsc(c.txt||'')+'</div></div>'
+    + (c.day?'<span style="font-size:10.5px;color:#f87171;white-space:nowrap">'+_wkEsc(c.day)+'</span>':'')
+    + '<span style="font-family:var(--mono,monospace);font-weight:700;white-space:nowrap;min-width:56px;text-align:right">'
+    + (c.amt?('฿'+_wkM(c.amt)):'—')+'</span>'
+    + '<button class="wk-mini" onclick="wkAdd(\''+kind+'\','+i+',\''+tgt+'\')">➕</button>'
+    + '</div>';
+}
+
+/* ═══ ตาราง 8 หน้า ═══ */
+function _wkTable(m, prev){
+  function dv(now, was){
+    if(was===undefined||was===null) return '<span style="color:var(--mu2)">—</span>';
+    var d=now-was; if(!d) return '<span style="color:var(--mu2)">±0</span>';
+    return '<span style="color:'+(d>0?'#4ade80':'#f87171')+'">'+(d>0?'+':'')+d+'</span>';
+  }
+  var P=prev||{};
+  var rows=[
+    ['🚨 Alert','เครื่องเสียค้าง · ใหม่ '+m.alert.neu+' · เคลียร์ '+m.alert.cleared, m.alert.down, null, dv(m.alert.down,(P.alert||{}).down)],
+    ['🏥 Install Base','สัญญาหมดใน 60 วัน · หมดแล้วยังไม่ต่อ '+m.inst.expOld, m.inst.exp60, null, dv(m.inst.exp60,(P.inst||{}).exp60)],
+    ['📋 SC Quotation','ออกใหม่ · ส่งลูกค้า '+m.SC.sent+' · ค้าง >30 วัน '+m.SC.stuck, m.SC.neu, m.SC.amt, dv(m.SC.neu,(P.SC||{}).neu)],
+    ['🔧 SP Quotation','ออกใหม่ · ส่งลูกค้า '+m.SP.sent+' · ค้าง >30 วัน '+m.SP.stuck, m.SP.neu, m.SP.amt, dv(m.SP.neu,(P.SP||{}).neu)],
+    ['📄 Contract & PO','สัญญาใหม่เริ่มสัปดาห์นี้', m.con.n, m.con.amt, dv(m.con.n,(P.con||{}).n)],
+    ['🛒 SP Monitor','สั่งอะไหล่ใหม่ · เกินกำหนดส่งมอบ '+m.sp.late, m.sp.neu, null, dv(m.sp.neu,(P.sp||{}).neu)],
+    ['📥 SC Monitor','งานรอออกบิล (ยอดค้างสะสม)', m.sc.n, m.sc.amt, dv(m.sc.n,(P.sc||{}).n)],
+    ['🧾 Bill Monitor','เปิดบิล', m.bill.n, m.bill.amt, dv(m.bill.n,(P.bill||{}).n)]
+  ];
+  return '<table class="wk-tbl"><thead><tr><th>หน้า</th><th>สัปดาห์นี้</th><th class="r">จำนวน</th><th class="r">มูลค่า</th><th class="r">vs สัปดาห์ก่อน</th></tr></thead><tbody>'
+    + rows.map(function(r){
+        return '<tr><td>'+r[0]+'</td><td style="color:var(--mu);font-size:11px">'+_wkEsc(r[1])+'</td>'
+          +'<td class="r">'+r[2]+'</td><td class="r">'+(r[3]?('฿'+_wkM(r[3])):'—')+'</td><td class="r">'+r[4]+'</td></tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+/* ═══ โหลด/บันทึกชีต ═══ */
+function _wkLoad(cb){
+  var r=_wkRange(window._wkOff);
+  if(!(typeof google!=='undefined'&&google.script&&google.script.run)){ cb({rows:[]}); return; }
+  google.script.run
+    .withSuccessHandler(function(s){ var o={rows:[]}; try{ o=JSON.parse(s)||o; }catch(e){} window._wkStore=o; cb(o); })
+    .withFailureHandler(function(){ cb({rows:[]}); })
+    .getWeeklyReports(JSON.stringify({ week:r.key, prev:_wkRange(window._wkOff-1).key }));
+}
+window.wkSave=function(status){
+  var me=_wkMe(), r=_wkRange(window._wkOff);
+  var payload={
+    week:r.key, weekLabel:r.label, empId:me.empId, name:me.name, status:status,
+    data:{
+      next:(document.getElementById('wk-next')||{}).value||'',
+      past:(document.getElementById('wk-past')||{}).value||'',
+      support:(document.getElementById('wk-sup')||{}).value||'',
+      snap:window._wkMetrics||null
+    }
+  };
+  var msg=document.getElementById('wk-save-msg');
+  if(msg) msg.textContent='กำลังบันทึก…';
+  if(!(typeof google!=='undefined'&&google.script&&google.script.run)){ if(msg) msg.textContent='⚠ ไม่ได้อยู่ในระบบ'; return; }
+  google.script.run
+    .withSuccessHandler(function(s){
+      var o={}; try{ o=JSON.parse(s)||{}; }catch(e){}
+      if(msg) msg.textContent=o.ok?(status==='sent'?'✅ ส่งรายงานแล้ว':'✅ บันทึกร่างแล้ว'):('⚠ '+(o.error||'บันทึกไม่สำเร็จ'));
+      window._wkDirty=false;
+      if(o.ok && status==='sent') setTimeout(window.spRenderWeekly, 600);
+    })
+    .withFailureHandler(function(e){ if(msg) msg.textContent='⚠ '+(e&&e.message||'บันทึกไม่สำเร็จ'); })
+    .saveWeeklyReport(JSON.stringify(payload));
+};
+window.wkWeek=function(d){ window._wkOff+=d; window._wkView=null; window.spRenderWeekly(); };
+window.wkBack=function(){ window._wkView=null; window.spRenderWeekly(); };
+window.wkOpen=function(empId){
+  var st=window._wkStore||{rows:[]};
+  var row=(st.rows||[]).filter(function(x){ return String(x.empId)===String(empId); })[0];
+  if(!row) return;
+  window._wkView=row; window.spRenderWeekly();
+};
+
+
+/* [V608] สารบัญสัปดาห์ — ทุกสัปดาห์ที่เคยมี record เลือกย้อนได้เลย ไม่ต้องกดถอยทีละอัน */
+function _wkWeekSel(store){
+  var ws=(store&&store.weeks)||[], cur=_wkRange(window._wkOff).key, seen={}, opt='';
+  ws.forEach(function(w){ seen[w.week]=w; });
+  if(!seen[cur]) ws=[{week:cur,n:0,sent:0}].concat(ws);
+  ws.sort(function(a,b){ return a.week<b.week?1:-1; });
+  ws.slice(0,26).forEach(function(w){
+    var r=_wkRangeOfKey(w.week);
+    opt+='<option value="'+w.week+'"'+(w.week===cur?' selected':'')+'>'
+       + (r?r.label:w.week) + (w.n?(' \u00b7 '+w.sent+'/'+w.n+' ส่งแล้ว'):'') + '</option>';
+  });
+  return '<select onchange="wkGoWeek(this.value)" style="background:var(--bg2,#111722);border:1px solid var(--bd2,#334155);'
+    + 'border-radius:8px;padding:5px 9px;color:var(--tx);font-size:11.5px;font-family:inherit">'+opt+'</select>';
+}
+function _wkRangeOfKey(key){
+  var p=String(key||'').split('-'); if(p.length!==3) return null;
+  var d=new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+  if(isNaN(d)) return null;
+  var base=_wkRange(0).s;
+  var off=Math.round((d-base)/(7*86400000));
+  return _wkRange(off);
+}
+window.wkGoWeek=function(key){
+  var r=_wkRangeOfKey(key); if(!r) return;
+  var base=_wkRange(0).s;
+  window._wkOff=Math.round((r.s-base)/(7*86400000));
+  window._wkView=null; window.spRenderWeekly();
+};
+
+/* ═══ RENDER ═══ */
+window.spRenderWeekly = function(){
+  var el=document.getElementById('sp-weekly-body'); if(!el) return;
+  var r=_wkRange(window._wkOff), me=_wkMe(), boss=_wkIsBoss();
+
+  el.innerHTML='<div style="padding:30px;text-align:center;color:var(--mu)">⏳ กำลังโหลดรายงาน…</div>';
+  _wkLoad(function(store){
+    var rows=(store&&store.rows)||[], prevRows=(store&&store.prev)||[];
+
+    /* ── หัวเรื่อง + เลือกสัปดาห์ ── */
+    var head='<div class="wk-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
+      +'<div><div style="font-size:16px;font-weight:700">📝 Weekly Report</div>'
+      +'<div style="font-size:11.5px;color:var(--mu)">'+_wkEsc(r.label)+(window._wkOff===0?' · สัปดาห์นี้':'')+'</div></div>'
+      +'<div style="display:flex;gap:6px;align-items:center">'
+      +_wkWeekSel(store)
+      +'<button class="wk-mini" onclick="wkWeek(-1)">←</button>'
+      +(window._wkOff<0?'<button class="wk-mini" onclick="wkWeek(1)">→</button>':'')
+      +'</div></div>';
+
+    /* ── หัวหน้า: หน้า Summary ทีม ── */
+    if(boss && !window._wkView){
+      var tot={q:0,qa:0,b:0,ba:0,iss:0,sent:0};
+      var body=rows.map(function(x){
+        var s=(x.data&&x.data.snap)||{}, sent=String(x.status)==='sent';
+        var q=((s.SC||{}).neu||0)+((s.SP||{}).neu||0), qa=((s.SC||{}).amt||0)+((s.SP||{}).amt||0);
+        var b=(s.bill||{}).n||0, ba=(s.bill||{}).amt||0, iss=(s.alert||{}).down||0;
+        if(sent){ tot.q+=q; tot.qa+=qa; tot.b+=b; tot.ba+=ba; tot.iss+=iss; tot.sent++; }
+        return '<tr>'
+          +'<td><b>'+_wkEsc(x.name||x.empId)+'</b></td>'
+          +'<td>'+(sent?('<span style="color:#4ade80">✅ ส่งแล้ว '+_wkEsc(String(x.sentAt||'').slice(5,16))+'</span>'
+                       + ((x.updatedAt&&x.sentAt&&x.updatedAt>x.sentAt)?('<div style="font-size:10px;color:var(--mu2)">แก้ล่าสุด '+_wkEsc(String(x.updatedAt).slice(5,16))+'</div>'):''))
+                       :'<span style="color:var(--mu2)">⬜ ยังไม่ส่ง</span>')+'</td>'
+          +'<td class="r">'+(sent?q+' ฿'+_wkM(qa):'—')+'</td>'
+          +'<td class="r">'+(sent?b+' ฿'+_wkM(ba):'—')+'</td>'
+          +'<td class="r">'+(sent?iss:'—')+'</td>'
+          +'<td class="r">'+(sent?'<button class="wk-mini" onclick="wkOpen(\''+_wkEsc(x.empId)+'\')">ดูรายงาน →</button>':'')+'</td>'
+          +'</tr>';
+      }).join('');
+      var tblH='<div class="wk-card"><div class="wk-lbl">ภาพรวมทีม</div>'
+        +'<table class="wk-tbl"><thead><tr><th>ผู้แทน</th><th>สถานะ</th><th class="r">ใบเสนอราคา</th><th class="r">บิล</th><th class="r">เครื่องเสียค้าง</th><th class="r"></th></tr></thead><tbody>'
+        +(body||'<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--mu)">ยังไม่มีใครส่งรายงานสัปดาห์นี้</td></tr>')
+        +'</tbody>'
+        +(rows.length?('<tfoot><tr style="border-top:2px solid var(--bd2)"><td><b>รวมทีม</b></td>'
+          +'<td><b>'+tot.sent+'/'+rows.length+' ส่งแล้ว</b></td>'
+          +'<td class="r"><b>'+tot.q+' ฿'+_wkM(tot.qa)+'</b></td>'
+          +'<td class="r"><b>'+tot.b+' ฿'+_wkM(tot.ba)+'</b></td>'
+          +'<td class="r"><b>'+tot.iss+'</b></td><td></td></tr></tfoot>'):'')
+        +'</table></div>';
+      el.innerHTML=head+tblH;
+      return;
+    }
+
+    /* ── หัวหน้าเปิดดูรายคน (อ่านอย่างเดียว จาก snapshot) ── */
+    if(boss && window._wkView){
+      var v=window._wkView, d=(v.data||{}), s=d.snap||{};
+      var sec=function(t,x){ return '<div class="wk-card"><div class="wk-lbl">'+t+'</div>'
+        +'<div style="white-space:pre-wrap;font-size:12.5px;line-height:1.8">'+_wkEsc(x||'—')+'</div></div>'; };
+      el.innerHTML='<div class="wk-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
+        +'<div><div style="font-size:16px;font-weight:700">'+_wkEsc(v.name||'')+'</div>'
+        +'<div style="font-size:11.5px;color:var(--mu)">'+_wkEsc(r.label)+' · ส่งเมื่อ '+_wkEsc(String(v.sentAt||'—'))+'</div></div>'
+        +'<button class="wk-mini" onclick="wkBack()">← กลับหน้าทีม</button></div>'
+        + sec('Next-Week Highlight Plan', d.next)
+        + sec('Past Week Challenges/Highlights', d.past)
+        + sec('Support Needs', d.support)
+        + (s.SC?('<div class="wk-card"><div class="wk-lbl">การเคลื่อนไหวรายหน้า · ตัวเลข ณ วันที่ส่ง</div>'+_wkTable(s,null)+'</div>'):'');
+      return;
+    }
+
+    /* ── Sales: หน้ากรอกของตัวเอง ── */
+    var mine=rows.filter(function(x){ return String(x.empId)===String(me.empId); })[0]||null;
+    var prevMine=prevRows.filter(function(x){ return String(x.empId)===String(me.empId); })[0]||null;
+    var prevSnap=prevMine&&prevMine.data?prevMine.data.snap:null;
+
+    var m=_wkCollect(r, me.name);
+    window._wkMetrics=m;
+    var iss=_wkIssues(m, r, me.name), hv=_wkHighValue(m, me.name);
+    window._wkIssueList=iss.slice(0,5); window._wkHighList=hv.slice(0,5);
+
+    var saved=(mine&&mine.data)||{};
+    var vNext=saved.next||_wkGenNext(m), vPast=saved.past||_wkGenPast(m), vSup=saved.support||'';
+
+    var st=mine?String(mine.status||''):'';
+    var stTxt=st==='sent'?('<span style="color:#4ade80">✅ ส่งแล้ว '+_wkEsc(String(mine.sentAt||'').slice(0,16))+'</span>')
+             :(st==='draft'?'<span style="color:#facc15">📝 มีร่างบันทึกไว้</span>':'<span style="color:var(--mu2)">⬜ ยังไม่ส่ง</span>');
+    if(mine && mine._rev>1) stTxt+=' <span style="font-size:10.5px;color:var(--mu2)">· บันทึกมาแล้ว '+mine._rev+' ครั้ง (เก็บทุกครั้ง ไม่ทับของเก่า)</span>';
+
+    var who='<div class="wk-card" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">'
+      +'<div style="font-size:12px;color:var(--mu)">ผู้รายงาน <b style="color:var(--tx)">'+_wkEsc(me.name)+'</b>'
+      +' · ตัวเลขนับเฉพาะงานของคุณ</div><div style="font-size:12px">'+stTxt+'</div></div>';
+
+    var caseH='<div class="wk-card"><div class="wk-lbl">⚠️ Issues ที่ต้องตาม · กด ➕ เพื่อหยิบเข้าบุลเล็ต</div>'
+      + (window._wkIssueList.length
+          ? window._wkIssueList.map(function(c,i){ return _wkCaseRow('iss',i,c,'wk-next'); }).join('')
+            + (iss.length>5?'<div style="font-size:10.5px;color:var(--mu2);padding-top:4px;font-style:italic">และอีก '+(iss.length-5)+' รายการ</div>':'')
+          : '<div style="padding:10px;color:var(--mu);font-size:11.5px">— ไม่มีเคสที่เข้าเกณฑ์ —</div>')
+      + '<div class="wk-lbl" style="margin-top:14px">💰 มูลค่าสูงที่ต้อง Monitor · ยังไม่ปิด (≥฿300K)</div>'
+      + (window._wkHighList.length
+          ? window._wkHighList.map(function(c,i){ return _wkCaseRow('hv',i,c,'wk-next'); }).join('')
+            + (hv.length>5?'<div style="font-size:10.5px;color:var(--mu2);padding-top:4px;font-style:italic">รวมที่ยังไม่ปิดทั้งหมด '+hv.length+' รายการ ฿'+_wkM(hv.reduce(function(a,x){return a+x.amt;},0))+'</div>':'')
+          : '<div style="padding:10px;color:var(--mu);font-size:11.5px">— ไม่มีรายการ ≥฿300K —</div>')
+      + '</div>';
+
+    var foot='<div class="wk-card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'
+      +'<div style="font-size:11.5px;color:var(--mu)"><span id="wk-save-msg"></span> <span id="wk-copy-msg" style="color:#4ade80"></span></div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<button class="wk-btn" onclick="wkCopy(\'wk-all\')">📋 คัดลอกทั้ง 3 หัวข้อ</button>'
+      +'<button class="wk-btn ghost" onclick="wkSave(\'draft\')">💾 บันทึกร่าง</button>'
+      +'<button class="wk-btn go" onclick="wkSave(\'sent\')">📨 ส่งรายงาน</button>'
+      +'</div></div>';
+
+    el.innerHTML = head + who
+      + _wkBox('wk-next','Next-Week Highlight Plan', vNext, 4)
+      + _wkBox('wk-past','Past Week Challenges/Highlights', vPast, 4)
+      + _wkBox('wk-sup','Support Needs', vSup, 2, 'เช่น ต้องการ tool ใน SmartFlow สำหรับ Monitor งาน Commercial')
+      + caseH
+      + '<div class="wk-card"><div class="wk-lbl">📊 การเคลื่อนไหวรายหน้า</div>'+_wkTable(m, prevSnap)+'</div>'
+      + foot;
+
+    if(m.warn && m.warn.length){
+      el.innerHTML += '<div style="font-size:11px;color:#fb923c;padding:4px 2px">⚠ คำนวณไม่ได้: '+_wkEsc(m.warn.join(', '))+' (ข้อมูลยังโหลดไม่ครบ ลองกดแท็บใหม่อีกครั้ง)</div>';
+    }
+  });
 };
 
 // ── 📄 CONTRACT & PO ────────────────────────────────────────

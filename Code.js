@@ -2572,6 +2572,77 @@ function resetPasswordRequest(payloadStr) {
   }
 }
 
+/* ── [V608] Weekly Report — ชีตแยก ไม่ยัดเข้า config ที่โหลดทุก boot ──
+   คอลัมน์: week | empId | name | status | updatedAt | sentAt | json */
+function _wrSheet_() {
+  var ss = getSpreadsheet();
+  var sh = ss.getSheetByName('weekly_report');
+  if (!sh) {
+    sh = ss.insertSheet('weekly_report');
+    sh.getRange(1,1,1,8).setValues([['week','empId','name','status','updatedAt','sentAt','json','rev']]);
+  }
+  return sh;
+}
+function saveWeeklyReport(payloadStr) {
+  try {
+    var p  = JSON.parse(payloadStr);
+    if (!p.week || !p.empId) return JSON.stringify({ok:false, error:'ข้อมูลไม่ครบ (week/empId)'});
+    var sh = _wrSheet_();
+    var dat = sh.getDataRange().getValues();
+    var now = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd HH:mm');
+    var json = JSON.stringify({ weekLabel:p.weekLabel||'', data:p.data||{} });
+    /* [V608] append-only — ทุกครั้งที่บันทึกคือ record ใหม่ ไม่ทับของเก่า
+       ระบบจับคู่ (สัปดาห์ + empId) เอง แล้วอ่านเฉพาะ rev ล่าสุด
+       ของเก่ายังอยู่ครบในชีต ย้อนดูได้ว่าใครแก้อะไรตอนไหน */
+    var rev = 1, firstSent = '';
+    for (var i = 1; i < dat.length; i++) {
+      if (String(dat[i][0]) !== String(p.week) || String(dat[i][1]) !== String(p.empId)) continue;
+      var r0 = Number(dat[i][7] || 1); if (r0 >= rev) rev = r0 + 1;
+      if (!firstSent && dat[i][5]) firstSent = String(dat[i][5]);
+    }
+    /* sentAt = เวลาที่ "ส่งครั้งแรก" (ไว้ดูว่าส่งตรงเวลาไหม) — แก้ทีหลังไม่รีเซ็ต
+       ส่วนเวลาที่แก้ล่าสุดอยู่ใน updatedAt แล้ว */
+    sh.appendRow([p.week, p.empId, p.name||'', p.status||'draft', now,
+                  (p.status==='sent' ? (firstSent || now) : firstSent), json, rev]);
+    return JSON.stringify({ok:true, rev:rev});
+  } catch(e) { return JSON.stringify({ok:false, error:e.message}); }
+}
+function getWeeklyReports(payloadStr) {
+  try {
+    var p = {}; try { p = JSON.parse(payloadStr||'{}'); } catch(e){}
+    var sh = _wrSheet_();
+    var dat = sh.getDataRange().getValues();
+    /* [V608] เก็บทุก record — อ่านเฉพาะ rev ล่าสุดของแต่ละ (สัปดาห์ + คน) */
+    var pick = function(wk){
+      var best = {};
+      if (!wk) return [];
+      for (var i = 1; i < dat.length; i++) {
+        if (String(dat[i][0]) !== String(wk)) continue;
+        var id = String(dat[i][1]), rv = Number(dat[i][7] || 1);
+        if (best[id] && Number(best[id]._rev) >= rv) continue;
+        var j = {};
+        try { j = JSON.parse(String(dat[i][6]||'{}')) || {}; } catch(e){}
+        best[id] = { week:String(dat[i][0]), empId:id, name:String(dat[i][2]),
+                     status:String(dat[i][3]), updatedAt:String(dat[i][4]), sentAt:String(dat[i][5]),
+                     weekLabel:j.weekLabel||'', data:j.data||{}, _rev:rv };
+      }
+      return Object.keys(best).map(function(k){ return best[k]; });
+    };
+    /* สารบัญสัปดาห์ที่มี record — ให้เลือกย้อนหลังได้ ไม่ต้องกดถอยทีละสัปดาห์ */
+    var wmap = {};
+    for (var w = 1; w < dat.length; w++) {
+      var wk2 = String(dat[w][0]||''); if (!wk2) continue;
+      if (!wmap[wk2]) wmap[wk2] = { week:wk2, ids:{}, sent:{} };
+      wmap[wk2].ids[String(dat[w][1])] = 1;
+      if (String(dat[w][3]) === 'sent') wmap[wk2].sent[String(dat[w][1])] = 1;
+    }
+    var weeks = Object.keys(wmap).sort().reverse().map(function(k){
+      return { week:k, n:Object.keys(wmap[k].ids).length, sent:Object.keys(wmap[k].sent).length };
+    });
+    return JSON.stringify({ ok:true, rows:pick(p.week), prev:pick(p.prev), weeks:weeks });
+  } catch(e) { return JSON.stringify({ok:false, error:e.message, rows:[], prev:[]}); }
+}
+
 function getUsers() {
   try {
     var sh  = getUsersSheet();
