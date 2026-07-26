@@ -195,6 +195,17 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
     #sp-pane-weekly .wk-tbl th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--bd2,#334155);color:var(--mu,#94a3b8);font-weight:500;font-size:10.5px}
     #sp-pane-weekly .wk-tbl td{padding:5px 8px;border-bottom:1px solid var(--bd,#1e293b)}
     #sp-pane-weekly .wk-tbl .r{text-align:right;font-family:var(--mono,ui-monospace,monospace)}
+    /* [V609] ซ้าย = ที่พิมพ์ · ขวา = เคสให้หยิบ (ติดหนึบ เลื่อนแยกกัน ไม่ต้องเลื่อนขึ้นลงหาปุ่ม) */
+    #sp-pane-weekly .wk-grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:12px;align-items:start}
+    #sp-pane-weekly .wk-main{min-width:0}
+    #sp-pane-weekly .wk-side{position:sticky;top:6px;max-height:calc(100vh - 90px);overflow-y:auto;min-width:0}
+    #sp-pane-weekly .wk-side .wk-card{margin-bottom:0}
+    #sp-pane-weekly .wk-case{border-radius:6px;transition:background .15s}
+    #sp-pane-weekly .wk-mini{min-width:30px;text-align:center;transition:all .15s}
+    @media (max-width:1180px){
+      #sp-pane-weekly .wk-grid{grid-template-columns:1fr}
+      #sp-pane-weekly .wk-side{position:static;max-height:none}
+    }
   </style>
   <div id="sp-weekly-body"></div>
 </div>
@@ -6675,7 +6686,16 @@ function _wkCollect(range, who){
             'Customer Rejected':1,'Contract Completed':1,'ยกเลิกสัญญา':1,'ยกเลิก':1};
   ['SC','SP'].forEach(function(kind){
     var pre=kind==='SC'?'QSC':'QSP';
-    var list=Q.filter(function(q){ return String(q.DOC_NUMBER||'').slice(0,3)===pre && mine(q.SALES_SERVICE_NAME); });
+    /* [V609] dedupe ตามเลขใบ — RAW_Quotation มีหลายแถวต่อ 1 ใบ (เหมือนที่ spRenderSCQuote ทำ)
+       + ตัดใบเก่า ≤2024 ที่ค้าง Send to Customer ทิ้ง ให้ตรงกับที่ V607 ซ่อนในแท็บ */
+    var _sn={};
+    var list=Q.filter(function(q){
+      var dn=String(q.DOC_NUMBER||'');
+      if(dn.slice(0,3)!==pre || !mine(q.SALES_SERVICE_NAME)) return false;
+      if(_sn[dn]) return false; _sn[dn]=1;
+      try{ if(window._qnIsOld && window._qnIsOld(q)) return false; }catch(e){}
+      return true;
+    });
     var neu=list.filter(function(q){ return _wkIn(q.QH_DOC_DATE_TIME||q.REQ_DATETIME, range); });
     var snt=list.filter(function(q){ return _wkIn(q.SEND_TO_CUSTOMER_DATETIME, range); });
     var stk=list.filter(function(q){
@@ -6805,8 +6825,10 @@ function _wkIssues(m, range, who){
       out.push({ sev:4, ic:'⚪', cu:q.CUSTOMER_NAME||'', txt:'ส่งลูกค้าแล้วไม่ตอบกลับ · '+(q.DOC_NUMBER||''),
                  day:d+' วัน', amt:(parseFloat(q.QH_TOTAL_AMT||0)-parseFloat(q.QH_TOTAL_DISCOUNT||0))||0 });
   });
-  out.sort(function(a,b){ return (a.sev-b.sev)||(b.amt-a.amt); });
-  return out;
+  var _si={}, uq=[];   // [V609] กันซ้ำ (เครื่อง/ใบเดียวกันมาจากหลายแถว)
+  out.forEach(function(x){ var k=x.sev+'|'+x.cu+'|'+x.txt; if(_si[k]) return; _si[k]=1; uq.push(x); });
+  uq.sort(function(a,b){ return (a.sev-b.sev)||(b.amt-a.amt); });
+  return uq;
 }
 
 /* ═══ มูลค่าสูงที่ยังไม่ปิด ═══ */
@@ -6820,14 +6842,22 @@ function _wkHighValue(m, who){
     out.push({ cu:q.CUSTOMER_NAME||'', txt:(q.DOC_NUMBER||'')+' · '+(q.BRAND_NAME||q.CONTRACT_TYPE_NAME||'')+' · รอลูกค้าตอบ',
                day:(d===null?'':'ส่ง '+d+' วัน'), amt:v });
   });
+  var _dq={};
   (window.D||[]).forEach(function(r){
     if(who && String(r.sa||'').trim()!==who) return;
     if(['SC Ordered','SC Carry','SC Carry (Pending)','Backlog'].indexOf(String(r.st||''))<0) return;
     var v=Number(r.px)||0; if(v<MIN) return;
+    var k=String(r.qn||'')||('_'+r.cu+v); if(_dq[k]) return; _dq[k]=1;   // [V609] กันซ้ำ
     out.push({ cu:r.cu||'', txt:(r.qn||'')+' · '+String(r.st||'')+' · รอออกบิล', day:'', amt:v });
   });
-  out.sort(function(a,b){ return b.amt-a.amt; });
-  return out;
+  /* [V609] กันซ้ำรอบสุดท้าย — เผื่อใบเดียวมาได้ทั้งจากใบเสนอราคาและจาก D */
+  var _seen={}, uniq=[];
+  out.forEach(function(x){
+    var k=(x.txt.split(' ')[0]||'')+'|'+x.cu;
+    if(_seen[k]) return; _seen[k]=1; uniq.push(x);
+  });
+  uniq.sort(function(a,b){ return b.amt-a.amt; });
+  return uniq;
 }
 
 /* ═══ ร่างข้อความ ═══ */
@@ -6910,6 +6940,7 @@ function _wkBox(id, title, val, quota, ph){
 }
 window.wkTouch=function(id){
   window._wkDirty=true;
+  if(id==='wk-next'){ try{ window.wkSyncAdded(); }catch(e){} }   // [V609]
   var el=document.getElementById(id), c=document.getElementById(id+'-cnt'); if(!el||!c) return;
   var q=Number(el.getAttribute('data-quota'))||99;
   var n=String(el.value||'').split('\n').filter(function(x){ return x.trim(); }).length;
@@ -6943,16 +6974,41 @@ window.wkCopy=function(id){
   if(b){ b.textContent=ok?'✅ คัดลอกแล้ว':'⚠ คัดลอกไม่สำเร็จ กด Ctrl+C เอง'; setTimeout(function(){ b.textContent=''; },2500); }
 };
 /* ➕ หยิบเคสเข้าบุลเล็ต */
-window.wkAdd=function(kind, i, target){
+/* [V609] ปุ่ม ➕ เป็น toggle — กดแล้วเป็น ✓ เขียว กดซ้ำเอาบรรทัดออก
+   เดิมกดแล้วไม่มีอะไรตอบ ต้องเลื่อนขึ้นไปดูเองว่าติดหรือยัง */
+function _wkLineOf(kind, i){
   var arr=(kind==='iss')?(window._wkIssueList||[]):(window._wkHighList||[]);
-  var c=arr[i]; if(!c) return;
-  var line='- '+(kind==='iss'?'ติดตาม ':'')+c.cu+' · '+c.txt+(c.day?(' ('+c.day+')'):'')+(c.amt?(' ฿'+_wkM(c.amt)):'');
+  var c=arr[i]; if(!c) return '';
+  return '- '+(kind==='iss'?'ติดตาม ':'')+c.cu+' · '+c.txt+(c.day?(' ('+c.day+')'):'')+(c.amt?(' ฿'+_wkM(c.amt)):'');
+}
+window.wkAdd=function(kind, i, target){
+  var line=_wkLineOf(kind, i); if(!line) return;
   var el=document.getElementById(target); if(!el) return;
-  var cur=String(el.value||'').replace(/\s+$/,'');
-  if(cur.indexOf(line)>=0) return;             // กันซ้ำ
-  el.value=(cur?cur+'\n':'')+line;
+  var lines=String(el.value||'').split('\n');
+  var at=-1;
+  for(var k=0;k<lines.length;k++){ if(lines[k].trim()===line.trim()){ at=k; break; } }
+  if(at>=0){ lines.splice(at,1); el.value=lines.join('\n').replace(/\n{3,}/g,'\n\n'); }
+  else { el.value=String(el.value||'').replace(/\s+$/,''); el.value=(el.value?el.value+'\n':'')+line; }
   window.wkTouch(target);
-  el.scrollTop=el.scrollHeight;
+  window.wkSyncAdded();
+};
+/* ไล่อัปเดตปุ่มทุกตัวให้ตรงกับข้อความในกล่องจริง (เรียกตอน render และตอนพิมพ์เอง) */
+window.wkSyncAdded=function(){
+  var tgt=(document.getElementById('wk-next')||{}).value||'';
+  ['iss','hv'].forEach(function(kind){
+    var arr=(kind==='iss')?(window._wkIssueList||[]):(window._wkHighList||[]);
+    (arr||[]).forEach(function(c,i){
+      var b=document.getElementById('wk-add-'+kind+'-'+i); if(!b) return;
+      var on=tgt.indexOf(_wkLineOf(kind,i))>=0;
+      b.textContent = on ? '\u2713' : '\u2795';
+      b.style.color = on ? '#0b1220' : '#60a5fa';
+      b.style.background = on ? '#4ade80' : 'transparent';
+      b.style.borderColor = on ? '#4ade80' : 'var(--bd2,#334155)';
+      b.title = on ? 'อยู่ในบุลเล็ตแล้ว — กดเพื่อเอาออก' : 'กดเพื่อหยิบเข้าบุลเล็ต';
+      var row=b.closest?b.closest('.wk-case'):null;
+      if(row) row.style.background = on ? 'rgba(74,222,128,.07)' : 'transparent';
+    });
+  });
 };
 
 /* ═══ แถวเคส ═══ */
@@ -6964,7 +7020,7 @@ function _wkCaseRow(kind, i, c, tgt){
     + (c.day?'<span style="font-size:10.5px;color:#f87171;white-space:nowrap">'+_wkEsc(c.day)+'</span>':'')
     + '<span style="font-family:var(--mono,monospace);font-weight:700;white-space:nowrap;min-width:56px;text-align:right">'
     + (c.amt?('฿'+_wkM(c.amt)):'—')+'</span>'
-    + '<button class="wk-mini" onclick="wkAdd(\''+kind+'\','+i+',\''+tgt+'\')">➕</button>'
+    + '<button class="wk-mini" id="wk-add-'+kind+'-'+i+'" onclick="wkAdd(\''+kind+'\','+i+',\''+tgt+'\')" title="กดเพื่อหยิบเข้าบุลเล็ต">➕</button>'
     + '</div>';
 }
 
@@ -7181,12 +7237,14 @@ window.spRenderWeekly = function(){
       +'</div></div>';
 
     el.innerHTML = head + who
+      + '<div class="wk-grid"><div class="wk-main">'
       + _wkBox('wk-next','Next-Week Highlight Plan', vNext, 4)
       + _wkBox('wk-past','Past Week Challenges/Highlights', vPast, 4)
       + _wkBox('wk-sup','Support Needs'+(_supCarry?' <span style="font-size:10px;color:#facc15;letter-spacing:0;text-transform:none">\u00b7 ยกมาจากสัปดาห์ก่อน แก้ได้</span>':''), vSup, 2, 'เช่น ต้องการ tool ใน SmartFlow สำหรับ Monitor งาน Commercial')
-      + caseH
-      + '<div class="wk-card"><div class="wk-lbl">📊 การเคลื่อนไหวรายหน้า</div>'+_wkTable(m, prevSnap)+'</div>'
-      + foot;
+      + foot
+      + '</div><div class="wk-side">' + caseH + '</div></div>'
+      + '<div class="wk-card"><div class="wk-lbl">📊 การเคลื่อนไหวรายหน้า</div>'+_wkTable(m, prevSnap)+'</div>';
+    try{ window.wkSyncAdded(); }catch(e){}   // [V609] ปุ่มที่หยิบไว้แล้วขึ้น ✓ ตั้งแต่เปิดหน้า
 
     if(m.warn && m.warn.length){
       el.innerHTML += '<div style="font-size:11px;color:#fb923c;padding:4px 2px">⚠ คำนวณไม่ได้: '+_wkEsc(m.warn.join(', '))+' (ข้อมูลยังโหลดไม่ครบ ลองกดแท็บใหม่อีกครั้ง)</div>';
