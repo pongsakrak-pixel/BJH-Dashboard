@@ -8704,53 +8704,27 @@ function _rtnCompute(opts){
   };
 }
 
-/* ══════════════ [V612] Price Book — ราคาอ้างอิง SC / SP ══════════════
+/* ══════════════ [V611] Price Book — ราคาอ้างอิง SC / SP ══════════════
    Tools > 💵 ราคาอ้างอิง SC/SP · สิทธิ์ tool_pricebook (admin+manager)
-
-   [V612] SC ย้ายแหล่งจาก _jsupQuo -> _jsupContract (สัญญาที่เซ็นจริง)
-     เหตุผล: _jsupQuo มีแถวซ้ำต่อ 1 DOC_NUMBER (4,105 แถว = 2,277 ใบจริง · ซ้ำมากสุด 22 แถว)
-             + 1 ใบคุมได้หลายเครื่อง + resolveBM ติดแค่ 56% -> ราคาเพี้ยนทุกทาง
-     _jsupContract: 1 แถว = 1 เครื่อง · BRAND 92% · Model 90% · CONTRACT_PRICE_NET 100%
-                    CONTRACT_LENGHT 100% (หน่วยปี) · CONTRACT_TYPE 100%
-   [V612] ค่าหลัก = mode (ราคาที่พบซ้ำบ่อยสุด · ซ้ำเท่ากันเอาตัวต่ำสุด) แทน avg
-     เหตุผล: สัญญาบริการมีราคามาตรฐานที่ใช้ซ้ำ · avg โดน outlier ลากตลอด */
-var _PB = {tab:'sc', cancel:false, unit:true, q:'', sortSC:{k:'all_n',d:-1}, sortSP:{k:'mode',d:-1}, cache:null};
+   SC: group brand+รุ่น × ความคุ้มครอง · SP: group matcode
+   ที่มาราคา: _jsupQuo.QH_TOTAL_AMT (SC) · _jsupParts.QH_TOTAL_AMT (SP, ใบ matcode เดียว) */
+var _PB = {tab:'sc', cancel:false, unit:true, q:'', sortSC:{k:'all_n',d:-1}, sortSP:{k:'avg',d:-1}, cache:null};
 var _PB_DEAD = {'Canceled':1,'Rejected':1,'ยกเลิกสัญญา':1};
 var _PB_CT = [
   {k:'np',  lbl:'ไม่รวมอะไหล่',            m:'สัญญาบริการ (ไม่รวมอะไหล่)'},
   {k:'npx', lbl:'ไม่รวมอะไหล่<br>แบบยกเว้น', m:'สัญญาบริการ (ไม่รวมอะไหล่แบบยกเว้น)'},
   {k:'px',  lbl:'รวมอะไหล่<br>แบบยกเว้น',   m:'สัญญาบริการ (รวมอะไหล่แบบยกเว้น)'},
   {k:'p',   lbl:'รวมอะไหล่',              m:'สัญญาบริการ (รวมอะไหล่)'},
-  {k:'once',lbl:'รายครั้งเดียว',           m:'บริการแบบรายครั้งเดียว'}
+  {k:'ot',  lbl:'อื่นๆ',                  m:null}
 ];
-/* สัญญาซื้อขาย (2,240) · สัญญาเช่า (56) = ขาย/เช่าเครื่อง ไม่ใช่ค่าบริการ -> ไม่นับ */
-var _PB_SKIP_CT = {'สัญญาซื้อขาย':1, 'สัญญาเช่า':1};
 var _PB_NOMODEL = '(ไม่ระบุรุ่น)';
 
 function _pbNum(v){ var n = parseFloat(String(v==null?'':v).replace(/[,\s฿]/g,'')); return isFinite(n)?n:0; }
-/* CONTRACT_LENGHT: 1/2/3/5 = ปี · มีขยะ 0, 0.1, 0.3, 0.9 (222 แถว) -> ถือเป็น 1 ปี ห้ามหารด้วยค่าพวกนี้ (ราคาจะพอง 10 เท่า) */
-function _pbYears(v){
-  var n = _pbNum(v);
-  if(n >= 12) return n / 12;        // เผื่อบางแถวกรอกเป็นเดือน
-  if(n >= 1 && n <= 10) return n;
-  return 1;
-}
-function _pbMode(a){ // ราคาที่ซ้ำบ่อยสุด · ซ้ำเท่ากันเอาตัวต่ำสุด
-  var c = {}, bn = 0, bv = null;
-  for(var i=0;i<a.length;i++){ var k = Math.round(a[i]); c[k] = (c[k]||0) + 1; }
-  for(var k2 in c){ if(!c.hasOwnProperty(k2)) continue;
-    var n = c[k2], v = +k2;
-    if(n > bn || (n === bn && v < bv)){ bn = n; bv = v; } }
-  return {v:bv, n:bn};
-}
 function _pbStat(a){
   if(!a || !a.length) return null;
-  var s = a.slice().sort(function(x,y){return x-y;}), sum = 0;
+  var s = a.slice().sort(function(x,y){return x-y;}), sum=0;
   for(var i=0;i<s.length;i++) sum += s[i];
-  var pc = function(p){ return s[Math.min(s.length-1, Math.floor(s.length*p))]; };
-  var md = _pbMode(s);
-  return {n:s.length, min:s[0], max:s[s.length-1], avg:sum/s.length, med:pc(.5),
-          p25:pc(.25), p75:pc(.75), mode:md.v, modeN:md.n};
+  return {n:s.length, min:s[0], max:s[s.length-1], avg:sum/s.length, med:s[s.length>>1]};
 }
 function _pbFmt(v){
   if(v==null) return '—';
@@ -8759,47 +8733,42 @@ function _pbFmt(v){
 }
 function _pbEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _pbDead(st){ return !!_PB_DEAD[String(st||'').trim()]; }
-function _pbTop(a){
+function _pbMode(a){ // ค่าที่พบบ่อยสุด
   var m={}, best='', bn=0;
   for(var i=0;i<a.length;i++){ var v=String(a[i]||'').trim(); if(!v) continue; m[v]=(m[v]||0)+1; if(m[v]>bn){bn=m[v];best=v;} }
   return best;
 }
 
-/* ── SC: จาก _jsupContract · 1 แถว = 1 เครื่อง ── */
+/* ── SC: brand+รุ่น × ความคุ้มครอง ── */
 function _pbBuildSC(inclCancel){
-  var C = window._jsupContract || [], grp = {};
-  var used=0, skipSale=0, skipDead=0, skipAmt=0, skipBrand=0, fixLen=0;
-  for(var i=0;i<C.length;i++){
-    var r = C[i];
-    var ct = String(r.CONTRACT_TYPE||'').trim();
-    if(_PB_SKIP_CT[ct]){ skipSale++; continue; }
-    if(!inclCancel && _pbDead(r.CONTRACT_PROCESS_STATUS_NAME)){ skipDead++; continue; }
-    var amt = _pbNum(r.CONTRACT_PRICE_NET) || _pbNum(r.CONTRACT_PRICE);
+  var Q = window._jsupQuo || [], grp = {}, used = 0, skipBM = 0, skipDead = 0, skipAmt = 0;
+  for(var i=0;i<Q.length;i++){
+    var r = Q[i];
+    if(String(r.QH_TYPE||'') !== 'SC') continue;
+    if(!inclCancel && _pbDead(r.STATUS_NAME)){ skipDead++; continue; }
+    var amt = _pbNum(r.QH_TOTAL_AMT);
     if(!(amt > 0)){ skipAmt++; continue; }
-    var br = String(r.BRAND||'').trim();
-    if(!br){ skipBrand++; continue; }
-    var raw = _pbNum(r.CONTRACT_LENGHT);
-    if(!(raw >= 1)) fixLen++;
-    var perYear = amt / _pbYears(r.CONTRACT_LENGHT);
-    var ml = String(r.Model||'').trim();
+    var bm = {br:'', ml:''};
+    try { bm = window.resolveBM({qn: r.DOC_NUMBER}) || bm; } catch(e){}
+    var br = String(bm.br||'').trim(), ml = String(bm.ml||'').trim();
+    if(!br){ skipBM++; continue; }
     var key = br + '\u0001' + (ml || _PB_NOMODEL);
     var g = grp[key];
     if(!g){ g = grp[key] = {br:br, ml:ml||_PB_NOMODEL, noModel:!ml, v:{}}; }
-    var ck = 'ot';
-    for(var c=0;c<_PB_CT.length;c++){ if(_PB_CT[c].m === ct){ ck = _PB_CT[c].k; break; } }
-    (g.v[ck] = g.v[ck] || []).push(perYear);
-    (g.v.all = g.v.all || []).push(perYear);
+    var ctn = String(r.CONTRACT_TYPE_NAME||'').trim(), ck = 'ot';
+    for(var c=0;c<_PB_CT.length;c++){ if(_PB_CT[c].m === ctn){ ck = _PB_CT[c].k; break; } }
+    (g.v[ck] = g.v[ck] || []).push(amt);
+    (g.v.all = g.v.all || []).push(amt);
     used++;
   }
   var rows = [];
   for(var k in grp){ if(!grp.hasOwnProperty(k)) continue;
     var gg = grp[k], row = {br:gg.br, ml:gg.ml, noModel:gg.noModel, st:{}};
     for(var c2=0;c2<_PB_CT.length;c2++){ row.st[_PB_CT[c2].k] = _pbStat(gg.v[_PB_CT[c2].k]); }
-    row.st.ot = _pbStat(gg.v.ot);   /* ประเภทนอก 5 กลุ่ม — ไม่มีคอลัมน์ แต่รวมใน "ทุกประเภท" */
     row.st.all = _pbStat(gg.v.all);
     rows.push(row);
   }
-  return {rows:rows, used:used, skipSale:skipSale, skipDead:skipDead, skipAmt:skipAmt, skipBrand:skipBrand, fixLen:fixLen};
+  return {rows:rows, used:used, skipBM:skipBM, skipDead:skipDead, skipAmt:skipAmt};
 }
 
 /* ── SP: matcode (เฉพาะใบที่มี matcode เดียว) ── */
@@ -8822,17 +8791,18 @@ function _pbBuildSP(inclCancel, unit){
     var qty = 0;
     for(var j2=0;j2<rs.length;j2++) qty += _pbNum(rs[j2].PARTS_QTY);
     if(!(qty > 0)) qty = 1;
+    var price = unit ? (amt / qty) : amt;
     var g = grp[mc];
     if(!g){ g = grp[mc] = {mc:mc, v:[], nm:[], br:[], ml:[], qty:0}; }
-    g.v.push(unit ? (amt/qty) : amt);
+    g.v.push(price);
     g.nm.push(rs[0].PARTS_NAME); g.br.push(rs[0].BRAND_NAME); g.ml.push(rs[0].MODEL_NAME);
     g.qty += qty;
     used++;
   }
   var rows = [];
   for(var k in grp){ if(!grp.hasOwnProperty(k)) continue;
-    var gg = grp[k];
-    rows.push({mc:gg.mc, name:_pbTop(gg.nm), br:_pbTop(gg.br), ml:_pbTop(gg.ml), qty:gg.qty, st:_pbStat(gg.v)});
+    var gg = grp[k], st = _pbStat(gg.v);
+    rows.push({mc:gg.mc, name:_pbMode(gg.nm), br:_pbMode(gg.br), ml:_pbMode(gg.ml), qty:gg.qty, st:st});
   }
   return {rows:rows, used:used, skipMulti:skipMulti, skipAmt:skipAmt, skipDead:skipDead, noQN:noQN};
 }
@@ -8842,7 +8812,7 @@ function _pbData(){
   if(_PB.cache && _PB.cache.sig === sig) return _PB.cache;
   var t0 = Date.now();
   var d = {sig:sig, sc:_pbBuildSC(_PB.cancel), sp:_pbBuildSP(_PB.cancel, _PB.unit)};
-  try{ console.log('[PriceBook] build '+(Date.now()-t0)+'ms · SC '+d.sc.rows.length+' รุ่น/'+d.sc.used+' สัญญา · SP '+d.sp.rows.length+' matcode/'+d.sp.used+' ใบ'); }catch(e){}
+  try{ console.log('[PriceBook] build '+(Date.now()-t0)+'ms · SC '+d.sc.rows.length+' รุ่น/'+d.sc.used+' ใบ · SP '+d.sp.rows.length+' matcode/'+d.sp.used+' ใบ'); }catch(e){}
   _PB.cache = d;
   return d;
 }
@@ -8856,7 +8826,7 @@ window.hdrOpenPriceBook = function(){
   ov.innerHTML =
     '<div style="background:var(--sur,#0f172a);border:1px solid var(--bd2,#334155);border-radius:10px;max-width:1600px;width:100%;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.5)">'
     + '<div style="padding:14px 18px;border-bottom:1px solid var(--bd,#1e293b);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
-    +   '<div style="font-size:16px;font-weight:800;color:#c4b5fd">💵 ราคาอ้างอิง SC / SP <span style="font-size:10px;color:var(--mu,#8494b2);font-weight:400;border:1px solid var(--bd2,#334155);border-radius:4px;padding:2px 8px;margin-left:6px">ราคาต่อปี · ต่อเครื่อง</span></div>'
+    +   '<div style="font-size:16px;font-weight:800;color:#c4b5fd">💵 ราคาอ้างอิง SC / SP <span style="font-size:10px;color:var(--mu,#8494b2);font-weight:400;border:1px solid var(--bd2,#334155);border-radius:4px;padding:2px 8px;margin-left:6px">จากใบเสนอราคาย้อนหลัง</span></div>'
     +   '<div style="display:flex;gap:8px;align-items:center">'
     +     '<button onclick="pbExportCSV()" style="background:#16a34a;border:none;color:#fff;border-radius:5px;padding:5px 10px;font-size:11px;cursor:pointer">📥 CSV</button>'
     +     '<button onclick="document.getElementById(\'pb-overlay\').remove()" style="background:transparent;border:none;color:var(--mu,#94a3b8);font-size:22px;cursor:pointer;line-height:1">×</button>'
@@ -8884,7 +8854,7 @@ function pbRender(){
     + '<span style="width:10px"></span>'
     + '<input type="text" id="pb-q" value="'+_pbEsc(_PB.q)+'" oninput="pbSearch(this.value)" placeholder="ค้นหา brand / รุ่น / matcode / ชื่ออะไหล่…" style="width:250px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);border:1px solid var(--bd2,#374151);border-radius:5px;padding:4px 8px;font-size:11px;font-family:inherit;outline:none">'
     + '<span style="flex:1"></span>'
-    + _pbChip('pb-c-cx', _PB.cancel, 'รวมสัญญาที่ยกเลิก', 'pbToggle(\'cancel\')')
+    + _pbChip('pb-c-cx', _PB.cancel, 'รวมใบที่ยกเลิก/ปฏิเสธ', 'pbToggle(\'cancel\')')
     + (_PB.tab==='sp' ? _pbChip('pb-c-un', _PB.unit, 'ราคาต่อชิ้น (÷ qty)', 'pbToggle(\'unit\')') : '');
   body.innerHTML = (_PB.tab==='sc') ? _pbHtmlSC() : _pbHtmlSP();
 }
@@ -8907,14 +8877,13 @@ function _pbKcard(lbl, num, sub){
     + '<div style="font-size:22px;font-weight:700">'+num+'</div>'
     + '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:2px">'+sub+'</div></div>';
 }
-/* เซลล์ SC: mode ตัวใหญ่ + ซ้ำกี่ใบ + ช่วง P25–P75 */
 function _pbCell(st){
   if(!st) return '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)"><span style="font-size:11px;color:#334155">—</span></td>';
-  var weak = st.modeN < 3;
+  var warn = st.n < 5;
   return '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)">'
-    + '<div style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">'+_pbFmt(st.mode)+'</div>'
-    + '<div style="font-size:10px;color:'+(weak?'#f59e0b':'#7c6fe0')+'">ซ้ำ '+st.modeN+'/'+st.n+' สัญญา'+(weak?' ⚠':'')+'</div>'
-    + '<div style="font-size:10px;color:var(--mu,#94a3b8);font-variant-numeric:tabular-nums;white-space:nowrap">'+_pbFmt(st.p25)+' – '+_pbFmt(st.p75)+'</div></td>';
+    + '<div style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">'+_pbFmt(st.avg)+'</div>'
+    + '<div style="font-size:10px;color:var(--mu,#94a3b8);font-variant-numeric:tabular-nums;white-space:nowrap">'+_pbFmt(st.min)+' – '+_pbFmt(st.max)+'</div>'
+    + '<div style="font-size:10px;color:'+(warn?'#f59e0b':'#7c6fe0')+'">'+st.n+' ใบ'+(warn?' ⚠':'')+'</div></td>';
 }
 function _pbTh(k, label, cur, align){
   var on = (cur.k === k), ar = on ? (cur.d<0?' ↓':' ↑') : ' ↕';
@@ -8932,25 +8901,21 @@ function _pbHtmlSC(){
     bv = b.st[key] ? b.st[key][fld] : -1;
     return (av - bv) * s.d;
   });
-  var withModel = 0, noModel = 0;
-  d.rows.forEach(function(r){ if(r.noModel) noModel++; else withModel++; });
-  var solid = d.rows.filter(function(r){ return r.st.all && r.st.all.modeN >= 3; }).length;
+  var withModel = 0, noModel = 0, allN = 0;
+  d.rows.forEach(function(r){ if(r.noModel) noModel++; else withModel++; if(r.st.all) allN += r.st.all.n; });
+  var solid = d.rows.filter(function(r){ return r.st.all && r.st.all.n >= 5; }).length;
 
   var h = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'
     + _pbKcard('รุ่นที่มีราคาอ้างอิง', d.rows.length.toLocaleString(), 'ระบุรุ่นได้ '+withModel+' · เฉพาะ brand '+noModel)
-    + _pbKcard('ราคาซ้ำ 3 สัญญาขึ้นไป', solid.toLocaleString(), 'กลุ่มที่ถือเป็นราคามาตรฐานได้')
-    + _pbKcard('สัญญาที่ใช้คำนวณ', d.used.toLocaleString(), 'ไม่มี brand '+d.skipBrand.toLocaleString()+' · ไม่มีราคา '+d.skipAmt.toLocaleString())
-    + _pbKcard('ตัดออก', (d.skipSale + d.skipDead).toLocaleString(), 'ซื้อขาย/เช่า '+d.skipSale.toLocaleString()+' · ยกเลิก '+d.skipDead.toLocaleString())
+    + _pbKcard('ตั้งแต่ 5 ใบขึ้นไป', solid.toLocaleString(), 'กลุ่มที่ค่าเฉลี่ยพอเชื่อถือได้')
+    + _pbKcard('ใบที่ใช้คำนวณ', d.used.toLocaleString(), 'ระบุรุ่นไม่ได้ '+d.skipBM.toLocaleString()+' ใบ (ไม่นับ)')
+    + _pbKcard('ตัดใบยกเลิก/ปฏิเสธ', _PB.cancel ? 'รวมอยู่' : d.skipDead.toLocaleString(), _PB.cancel ? 'กดชิปเพื่อตัดออก' : 'Canceled · Rejected · ยกเลิกสัญญา')
     + '</div>';
 
-  h += '<div style="background:#0d1f17;border:1px solid #14532d;border-radius:6px;padding:10px 12px;font-size:11px;color:#86efac;margin-bottom:12px;line-height:1.7">'
-    + 'มาจาก <b>สัญญาที่เซ็นจริง</b> (RAW_CONTRACT) 1 แถว = 1 เครื่อง — ไม่ใช่ราคาที่เสนอไป · หารด้วยอายุสัญญาเป็น <b>ราคาต่อปีต่อเครื่อง</b> แล้ว'
-    + (d.fixLen ? ' · อายุสัญญาผิดรูป '+d.fixLen+' แถว ถือเป็น 1 ปี' : '') + '</div>';
-
-  h += '<div style="font-size:12px;font-weight:700;color:var(--mu,#94a3b8);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">ราคา SC ต่อปี/เครื่อง · แยกตามความคุ้มครอง</div>';
+  h += '<div style="font-size:12px;font-weight:700;color:var(--mu,#94a3b8);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">ราคา SC ต่อรุ่นเครื่อง · แยกตามความคุ้มครอง</div>';
   h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
     + _pbTh('bm', 'Brand / รุ่น', s);
-  for(var i=0;i<_PB_CT.length;i++) h += _pbTh(_PB_CT[i].k+'_mode', _PB_CT[i].lbl, s);
+  for(var i=0;i<_PB_CT.length;i++) h += _pbTh(_PB_CT[i].k+'_avg', _PB_CT[i].lbl, s);
   h += _pbTh('all_n', 'ทุกประเภท', s) + '</tr></thead><tbody>';
 
   if(!rows.length) h += '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--mu,#94a3b8)">ไม่พบรายการ</td></tr>';
@@ -8965,9 +8930,9 @@ function _pbHtmlSC(){
   }
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:10px;line-height:1.7">'
-    + '<b style="color:var(--tx,#e2e8f0)">เลขใหญ่ = ราคาที่พบซ้ำบ่อยสุด</b> (ซ้ำเท่ากันเลือกตัวต่ำสุด) · บรรทัดล่าง = ช่วงที่สัญญาครึ่งกลางอยู่ (ตัดหัวท้ายอย่างละ 25%)<br>'
-    + '<span style="color:#f59e0b">⚠</span> = ราคาซ้ำไม่ถึง 3 สัญญา ยังไม่ใช่ราคามาตรฐาน · <b style="color:var(--tx,#e2e8f0)">—</b> = ไม่เคยมีสัญญาประเภทนี้สำหรับรุ่นนี้<br>'
-    + 'แถวสีจาง = ไม่มีรุ่นในข้อมูลสัญญา · <b style="color:var(--tx,#e2e8f0)">ทุกประเภท</b> รวมสัญญาประเภทอื่นที่ไม่เข้า 5 คอลัมน์แรกด้วย'
+    + 'เลขใหญ่ = ค่าเฉลี่ย · บรรทัดล่าง = ต่ำสุด – สูงสุด · สีม่วง = จำนวนใบที่ใช้คำนวณ<br>'
+    + '<span style="color:#f59e0b">⚠</span> = น้อยกว่า 5 ใบ ค่าเฉลี่ยยังไม่น่าเชื่อถือ · <b style="color:var(--tx,#e2e8f0)">—</b> = ไม่เคยมีใบประเภทนี้สำหรับรุ่นนี้<br>'
+    + 'แถวสีจาง = ระบุได้แค่ brand ไม่ได้รุ่น · <b style="color:var(--tx,#e2e8f0)">ทุกประเภท</b> รวม "อื่นๆ" ด้วย ตัวเลขจึงไม่เท่ากับผลบวก 4 คอลัมน์แรก'
     + '</div>';
   return h;
 }
@@ -8999,60 +8964,55 @@ function _pbHtmlSP(){
     + _pbTh('mc', 'Matcode', s)
     + _pbTh('name', 'ชื่ออะไหล่', s)
     + '<th style="text-align:left;font-size:11px;color:var(--mu,#94a3b8);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);white-space:nowrap">Brand / รุ่น</th>'
-    + _pbTh('mode', 'ราคาที่พบบ่อย', s, 'right')
     + _pbTh('min', 'ต่ำสุด', s, 'right')
     + _pbTh('avg', 'เฉลี่ย', s, 'right')
     + _pbTh('max', 'สูงสุด', s, 'right')
     + _pbTh('n', 'จำนวนใบ', s, 'right')
     + '</tr></thead><tbody>';
 
-  if(!rows.length) h += '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--mu,#94a3b8)">ไม่พบรายการ</td></tr>';
-  var TD = 'padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)';
-  var TDR = TD + ';text-align:right;font-variant-numeric:tabular-nums';
+  if(!rows.length) h += '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--mu,#94a3b8)">ไม่พบรายการ</td></tr>';
   for(var i=0;i<rows.length;i++){
     var r = rows[i], st = r.st, warn = st.n < 3;
     h += '<tr style="'+(warn?'opacity:.62':'')+'" onmouseover="this.style.background=\'var(--sur2,#1e293b)\'" onmouseout="this.style.background=\'transparent\'">'
-      + '<td style="'+TD+';color:#7c6fe0;font-weight:600;white-space:nowrap">'+_pbEsc(r.mc)+'</td>'
-      + '<td style="'+TD+';max-width:300px;overflow:hidden;text-overflow:ellipsis">'+_pbEsc(r.name)+'</td>'
-      + '<td style="'+TD+';font-size:10px;color:var(--mu,#94a3b8)">'+_pbEsc(r.br)+'<br>'+_pbEsc(r.ml||'—')+'</td>'
-      + '<td style="'+TDR+';font-weight:700">'+_pbFmt(st.mode)+'<div style="font-size:10px;font-weight:400;color:'+(st.modeN<2?'#f59e0b':'#7c6fe0')+'">ซ้ำ '+st.modeN+'</div></td>'
-      + '<td style="'+TDR+';font-size:11px;color:var(--mu,#94a3b8)">'+_pbFmt(st.min)+'</td>'
-      + '<td style="'+TDR+';font-size:11px;color:var(--mu,#94a3b8)">'+_pbFmt(st.avg)+'</td>'
-      + '<td style="'+TDR+';font-size:11px;color:var(--mu,#94a3b8)">'+_pbFmt(st.max)+'</td>'
-      + '<td style="'+TDR+';color:'+(warn?'#f59e0b':'#7c6fe0')+';font-size:11px">'+st.n+(warn?' ⚠':'')+'</td></tr>';
+      + '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);color:#7c6fe0;font-weight:600;white-space:nowrap">'+_pbEsc(r.mc)+'</td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);max-width:320px;overflow:hidden;text-overflow:ellipsis">'+_pbEsc(r.name)+'</td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);font-size:10px;color:var(--mu,#94a3b8)">'+_pbEsc(r.br)+'<br>'+_pbEsc(r.ml||'—')+'</td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);text-align:right;font-size:11px;color:var(--mu,#94a3b8);font-variant-numeric:tabular-nums">'+_pbFmt(st.min)+'</td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);text-align:right;font-weight:700;font-variant-numeric:tabular-nums">'+_pbFmt(st.avg)+'</td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);text-align:right;font-size:11px;color:var(--mu,#94a3b8);font-variant-numeric:tabular-nums">'+_pbFmt(st.max)+'</td>'
+      + '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);text-align:right;color:'+(warn?'#f59e0b':'#7c6fe0')+';font-size:11px">'+st.n+(warn?' ⚠':'')+'</td></tr>';
   }
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:10px;line-height:1.7">'
-    + '<span style="color:#f59e0b">⚠</span> = น้อยกว่า 3 ใบ ยังไม่ใช่ช่วงราคา · "ซ้ำ" = ราคานั้นพบกี่ใบ · กดหัวคอลัมน์เพื่อเรียงลำดับ</div>';
+    + '<span style="color:#f59e0b">⚠</span> = น้อยกว่า 3 ใบ ยังไม่ใช่ช่วงราคา · กดหัวคอลัมน์เพื่อเรียงลำดับ</div>';
   return h;
 }
 
 function pbExportCSV(){
   var lines = [], d = _pbData();
   if(_PB.tab === 'sc'){
-    lines.push('# ราคาอ้างอิง SC — จาก RAW_CONTRACT (สัญญาที่เซ็นจริง) 1 แถว = 1 เครื่อง');
-    lines.push('# ราคา = CONTRACT_PRICE_NET หารด้วย CONTRACT_LENGHT = ราคาต่อปีต่อเครื่อง');
-    lines.push('# mode = ราคาที่พบซ้ำบ่อยสุด (ซ้ำเท่ากันเลือกตัวต่ำสุด) · P25/P75 = ช่วงกลาง ตัดหัวท้ายอย่างละ 25%');
-    lines.push('# ตัดสัญญาซื้อขาย/เช่า ' + d.sc.skipSale + ' · ' + (_PB.cancel ? 'รวมสัญญายกเลิก' : 'ตัดสัญญายกเลิก ' + d.sc.skipDead) + ' · ใช้จริง ' + d.sc.used + ' สัญญา');
+    lines.push('# ราคาอ้างอิง SC — จาก _jsupQuo.QH_TOTAL_AMT (QH_TYPE=SC) · รุ่นจาก resolveBM(DOC_NUMBER)');
+    lines.push('# ' + (_PB.cancel ? 'รวมใบยกเลิก/ปฏิเสธ' : 'ตัดใบ Canceled/Rejected/ยกเลิกสัญญาออกแล้ว') + ' · ใบที่ใช้ ' + d.sc.used);
     var head = ['Brand','รุ่น'];
-    for(var i=0;i<_PB_CT.length;i++){ var L = _PB_CT[i].lbl.replace(/<br>/g,' '); head.push(L+' ราคาที่พบบ่อย', L+' ซ้ำกี่สัญญา', L+' P25', L+' P75', L+' จำนวนสัญญา'); }
-    head.push('ทุกประเภท ราคาที่พบบ่อย','ทุกประเภท ซ้ำกี่สัญญา','ทุกประเภท P25','ทุกประเภท P75','ทุกประเภท จำนวนสัญญา');
+    for(var i=0;i<_PB_CT.length;i++){ var L = _PB_CT[i].lbl.replace(/<br>/g,' '); head.push(L+' ต่ำสุด', L+' เฉลี่ย', L+' สูงสุด', L+' จำนวนใบ'); }
+    head.push('ทุกประเภท ต่ำสุด','ทุกประเภท เฉลี่ย','ทุกประเภท สูงสุด','ทุกประเภท จำนวนใบ');
     lines.push(head.join(','));
     d.sc.rows.forEach(function(r){
       var c = ['"'+r.br+'"','"'+r.ml+'"'];
-      _PB_CT.map(function(x){return x.k;}).concat(['all']).forEach(function(k){
+      var keys = _PB_CT.map(function(x){return x.k;}).concat(['all']);
+      keys.forEach(function(k){
         var st = r.st[k];
-        c.push(st?Math.round(st.mode):'', st?st.modeN:'', st?Math.round(st.p25):'', st?Math.round(st.p75):'', st?st.n:0);
+        c.push(st?Math.round(st.min):'', st?Math.round(st.avg):'', st?Math.round(st.max):'', st?st.n:0);
       });
       lines.push(c.join(','));
     });
   } else {
     lines.push('# ราคาอ้างอิง SP — จาก _jsupParts.QH_TOTAL_AMT เฉพาะใบที่มี matcode เดียว');
     lines.push('# ' + (_PB.unit ? 'ราคาต่อชิ้น (หารด้วย PARTS_QTY)' : 'ยอดทั้งใบ ไม่หารจำนวนชิ้น') + ' · ' + (_PB.cancel ? 'รวมใบยกเลิก' : 'ตัดใบยกเลิกแล้ว') + ' · ใบที่ใช้ ' + d.sp.used);
-    lines.push('Matcode,ชื่ออะไหล่,Brand,รุ่น,ราคาที่พบบ่อย,ซ้ำกี่ใบ,ต่ำสุด,เฉลี่ย,สูงสุด,จำนวนใบ,รวมจำนวนชิ้น');
+    lines.push('Matcode,ชื่ออะไหล่,Brand,รุ่น,ต่ำสุด,เฉลี่ย,สูงสุด,จำนวนใบ,รวมจำนวนชิ้น');
     d.sp.rows.forEach(function(r){
       lines.push(['"'+r.mc+'"','"'+String(r.name).replace(/"/g,"'")+'"','"'+r.br+'"','"'+r.ml+'"',
-        Math.round(r.st.mode), r.st.modeN, Math.round(r.st.min), Math.round(r.st.avg), Math.round(r.st.max), r.st.n, r.qty].join(','));
+        Math.round(r.st.min), Math.round(r.st.avg), Math.round(r.st.max), r.st.n, r.qty].join(','));
     });
   }
   try{
