@@ -311,6 +311,10 @@ function doGet(e) {
   return _t
     .evaluate()
     .setTitle('BJH Sales Dashboard')
+    /* [V610] meta viewport ใน Index.html ใช้ไม่ได้ผล — Apps Script รันแอปใน iframe
+       ซ้อนอยู่ในหน้าของ Google, meta ข้างในคุมหน้านอกไม่ได้ ต้องสั่งจาก server ตรงนี้
+       ถ้าไม่มีบรรทัดนี้ มือถือจะเรนเดอร์ที่ความกว้าง ~980px แล้วย่อลง = ปุ่มเล็กเท่าเดิม */
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
