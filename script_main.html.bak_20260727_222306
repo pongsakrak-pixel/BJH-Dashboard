@@ -1104,8 +1104,7 @@ function cfgTabPermInit(){
     {key:'tool_pricetbl', label:'💵 ตั้งราคาสัญญาบริการ', group:'nav'},
     {key:'tool_saleforecast', label:'💰 ประมาณการยอดขาย', group:'nav'}, // [v412]
     {key:'tool_ma', label:'🔧 MA After Sales', group:'nav'}, // [v445]
-    {key:'tool_retention', label:'🔄 Sales Retention Report', group:'nav'}, // [V545] เดิมไม่มีในลิสต์ -> คุมสิทธิ์ไม่ได้ ทุกคนเห็น
-    {key:'tool_pricebook', label:'💵 ราคาอ้างอิง SC/SP', group:'nav'} // [V611]
+    {key:'tool_retention', label:'🔄 Sales Retention Report', group:'nav'} // [V545] เดิมไม่มีในลิสต์ -> คุมสิทธิ์ไม่ได้ ทุกคนเห็น
   ];
   var perms = window._TAB_PERMISSIONS || {};
   var DEF = window._TAB_PERM_DEFAULT || {};
@@ -6024,11 +6023,10 @@ window._TAB_PERM_DEFAULT = {
   tool_pricetbl: {admin:true, manager:true, sales:false}, // [v406]
   tool_saleforecast: {admin:true, manager:true, sales:true}, // [v412] ประมาณการยอดขาย — sales ใช้ได้ด้วย
   tool_ma: {admin:true, manager:true, sales:true}, // [v445] MA After Sales — เดิมไม่มีสิทธิ์เลย (เห็นทุกคน) ตั้งเป็น all-true ให้เหมือนพฤติกรรมเดิม แก้ทีหลังได้ที่ Config
-  tool_retention: {admin:true, manager:true, sales:false}, // [V545] เหมือน tool_pricetbl
-  tool_pricebook: {admin:true, manager:true, sales:false} // [V611] ราคาอ้างอิง SC/SP
+  tool_retention: {admin:true, manager:true, sales:false} // [V545] เหมือน tool_pricetbl
 };
 // keys ทั้งหมดที่ระบบรู้จัก (ลำดับ = ลำดับใน config UI)
-window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook
+window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention']; // [v445] · [V545] +tool_retention
 // helper: เช็คสิทธิ์ 1 key สำหรับ role — ไม่มี admin bypass (admin ตาม config เหมือน role อื่น)
 window._tpCan = function(key, role){
   // [v225+v247] sheet ก่อน — ถ้า key ไม่มีใน sheet fallback _TAB_PERM_DEFAULT
@@ -6081,9 +6079,6 @@ function _applyNavPermissions(){
     //  [V545] Sales Retention Report — เดิมไม่ถูกคุมสิทธิ์เลย
     var _rtEl = document.getElementById('tool-retention');
     if(_rtEl) _rtEl.style.display = window._tpCan('tool_retention', role) ? '' : 'none';
-    // [V611] Price Book (Tools menu) — admin+manager ตาม default · แก้ได้ที่ Config → สิทธิ์การเข้าถึง
-    var _pbEl = document.getElementById('tool-pricebook');
-    if(_pbEl) _pbEl.style.display = window._tpCan('tool_pricebook', role) ? '' : 'none';
   } catch(e){}
   window._visibleNav = visibleNav;
   // [DEBUG] เขียนค่า permission ลง dbg-box (กด 🐛)
