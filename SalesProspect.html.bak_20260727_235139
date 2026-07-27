@@ -8704,7 +8704,7 @@ function _rtnCompute(opts){
   };
 }
 
-/* ══════════════ [V615] Price Book — ราคาอ้างอิง SC / SP ══════════════
+/* ══════════════ [V612] Price Book — ราคาอ้างอิง SC / SP ══════════════
    Tools > 💵 ราคาอ้างอิง SC/SP · สิทธิ์ tool_pricebook (admin+manager)
 
    [V612] SC ย้ายแหล่งจาก _jsupQuo -> _jsupContract (สัญญาที่เซ็นจริง)
@@ -8714,8 +8714,7 @@ function _rtnCompute(opts){
                     CONTRACT_LENGHT 100% (หน่วยปี) · CONTRACT_TYPE 100%
    [V612] ค่าหลัก = mode (ราคาที่พบซ้ำบ่อยสุด · ซ้ำเท่ากันเอาตัวต่ำสุด) แทน avg
      เหตุผล: สัญญาบริการมีราคามาตรฐานที่ใช้ซ้ำ · avg โดน outlier ลากตลอด */
-var _PB = {tab:'sc', cancel:false, unit:true, q:'', sortSC:{k:'',d:-1}, sortSP:{k:'',d:-1},
-           fSC:{br:'',ml:''}, fSP:{br:'',ml:''}, cache:null};
+var _PB = {tab:'sc', cancel:false, unit:true, q:'', sortSC:{k:'all_n',d:-1}, sortSP:{k:'mode',d:-1}, cache:null};
 var _PB_DEAD = {'Canceled':1,'Rejected':1,'ยกเลิกสัญญา':1};
 var _PB_CT = [
   {k:'np',  lbl:'ไม่รวมอะไหล่',            m:'สัญญาบริการ (ไม่รวมอะไหล่)'},
@@ -8879,24 +8878,11 @@ function _pbChip(id, on, label, cls){
 function pbRender(){
   var ctrl = document.getElementById('pb-ctrl'), body = document.getElementById('pb-body');
   if(!ctrl || !body) return;
-  /* [V615] รายการยี่ห้อ/รุ่น สร้างจากข้อมูลที่มีจริง · รุ่นกรองตามยี่ห้อที่เลือกอยู่ */
-  var d0 = _pbData(), all = (_PB.tab === 'sc') ? d0.sc.rows : d0.sp.rows, f = _pbF();
-  var bo = {}, mo = {};
-  for(var z=0; z<all.length; z++){
-    var rr = all[z];
-    if(rr.br) bo[rr.br] = 1;
-    if((!f.br || rr.br === f.br) && rr.ml) mo[rr.ml] = 1;
-  }
-  var brands = Object.keys(bo).sort(), models = Object.keys(mo).sort();
-  var hasF = !!(f.br || f.ml || _PB.q);
   ctrl.innerHTML =
       _pbChip('pb-c-sc', _PB.tab==='sc', '📋 SC (ตามรุ่นเครื่อง)', "pbSetTab('sc')")
     + _pbChip('pb-c-sp', _PB.tab==='sp', '🔧 SP (ตาม Matcode)', "pbSetTab('sp')")
     + '<span style="width:10px"></span>'
-    + _pbSel('pb-f-br', f.br, brands, 'ทุกยี่ห้อ (' + brands.length + ')', 'pbSetBrand')
-    + _pbSel('pb-f-ml', f.ml, models, 'ทุกรุ่น (' + models.length + ')', 'pbSetModel')
-    + '<input type="text" id="pb-q" value="'+_pbEsc(_PB.q)+'" oninput="pbSearch(this.value)" placeholder="ค้นหา…" style="width:180px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);border:1px solid '+(_PB.q?'#7c6fe0':'var(--bd2,#374151)')+';border-radius:5px;padding:4px 8px;font-size:11px;font-family:inherit;outline:none">'
-    + '<span id="pb-clear-wrap" style="display:' + (hasF ? '' : 'none') + '"><button onclick="pbClearFilter()" style="font-size:11px;padding:3px 10px;border-radius:12px;cursor:pointer;font-family:inherit;background:transparent;border:1px solid #ef4444;color:#ef4444">✕ ล้างตัวกรอง</button></span>'
+    + '<input type="text" id="pb-q" value="'+_pbEsc(_PB.q)+'" oninput="pbSearch(this.value)" placeholder="ค้นหา brand / รุ่น / matcode / ชื่ออะไหล่…" style="width:250px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);border:1px solid var(--bd2,#374151);border-radius:5px;padding:4px 8px;font-size:11px;font-family:inherit;outline:none">'
     + '<span style="flex:1"></span>'
     + _pbChip('pb-c-cx', _PB.cancel, 'รวมสัญญาที่ยกเลิก', 'pbToggle(\'cancel\')')
     + (_PB.tab==='sp' ? _pbChip('pb-c-un', _PB.unit, 'ราคาต่อชิ้น (÷ qty)', 'pbToggle(\'unit\')') : '');
@@ -8904,39 +8890,11 @@ function pbRender(){
 }
 function pbSetTab(t){ _PB.tab = t; pbRender(); }
 function pbToggle(k){ _PB[k] = !_PB[k]; _PB.cache = null; pbRender(); }
-function pbSearch(v){
-  _PB.q = v||'';
-  var b = document.getElementById('pb-body');
-  if(b) b.innerHTML = (_PB.tab==='sc') ? _pbHtmlSC() : _pbHtmlSP();
-  var cl = document.getElementById('pb-clear-wrap');   /* ปุ่มล้างโผล่/หาย โดยไม่ให้ช่องพิมพ์เสีย focus */
-  if(cl) cl.style.display = (_PB.q || _pbF().br || _pbF().ml) ? '' : 'none';
-}
+function pbSearch(v){ _PB.q = v||''; var b = document.getElementById('pb-body'); if(b) b.innerHTML = (_PB.tab==='sc') ? _pbHtmlSC() : _pbHtmlSP(); }
 function pbSort(k){
   var s = (_PB.tab==='sc') ? _PB.sortSC : _PB.sortSP;
   if(s.k === k) s.d = -s.d; else { s.k = k; s.d = -1; }
   var b = document.getElementById('pb-body'); if(b) b.innerHTML = (_PB.tab==='sc') ? _pbHtmlSC() : _pbHtmlSP();
-}
-/* [V615] ตัวกรองยี่ห้อ/รุ่น — แยก state ระหว่าง SC กับ SP เพราะคนละชุดข้อมูล */
-function _pbF(){ return (_PB.tab === 'sc') ? _PB.fSC : _PB.fSP; }
-function _pbPass(r){
-  var f = _pbF();
-  if(f.br && r.br !== f.br) return false;
-  if(f.ml && (r.ml || '') !== f.ml) return false;
-  return true;
-}
-function pbSetBrand(v){ _pbF().br = v || ''; _pbF().ml = ''; pbRender(); }   /* เปลี่ยนยี่ห้อ = ล้างรุ่น */
-function pbSetModel(v){ _pbF().ml = v || ''; pbRender(); }
-function pbClearFilter(){ var f = _pbF(); f.br = ''; f.ml = ''; _PB.q = ''; pbRender(); }
-function _pbSel(id, cur, opts, ph, fn){
-  var st = 'background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);border:1px solid '
-    + (cur ? '#7c6fe0' : 'var(--bd2,#374151)') + ';border-radius:5px;padding:4px 7px;font-size:11px;font-family:inherit;outline:none;cursor:pointer;max-width:190px';
-  var h = '<select id="' + id + '" onchange="' + fn + '(this.value)" style="' + st + '">';
-  h += '<option value="" style="background:#1e293b;color:#e2e8f0">' + ph + '</option>';
-  for(var i=0;i<opts.length;i++){
-    h += '<option value="' + _pbEsc(opts[i]) + '" style="background:#1e293b;color:#e2e8f0"'
-       + (opts[i] === cur ? ' selected' : '') + '>' + _pbEsc(opts[i]) + '</option>';
-  }
-  return h + '</select>';
 }
 function _pbMatch(txt){
   var q = String(_PB.q||'').trim().toLowerCase();
@@ -8964,12 +8922,10 @@ function _pbTh(k, label, cur, align){
 }
 
 function _pbHtmlSC(){
-  var d = _pbData().sc, rows = d.rows.filter(function(r){ return _pbPass(r) && _pbMatch(r.br+' '+r.ml); });
+  var d = _pbData().sc, rows = d.rows.filter(function(r){ return _pbMatch(r.br+' '+r.ml); });
   var s = _PB.sortSC;
   rows.sort(function(a,b){
     var av, bv;
-    if(!s.k){ /* ยังไม่กดหัวคอลัมน์ = เรียงตามจำนวนสัญญามาก->น้อย */
-      av = a.st.all ? a.st.all.n : 0; bv = b.st.all ? b.st.all.n : 0; return bv - av; }
     if(s.k === 'bm'){ av = a.br+a.ml; bv = b.br+b.ml; return (av<bv?-1:av>bv?1:0) * -s.d; }
     var ka = s.k.split('_'), key = ka[0], fld = ka[1] || 'n';
     av = a.st[key] ? a.st[key][fld] : -1;
@@ -8978,10 +8934,7 @@ function _pbHtmlSC(){
   });
   var withModel = 0, noModel = 0;
   d.rows.forEach(function(r){ if(r.noModel) noModel++; else withModel++; });
-  var solid = d.rows.filter(function(r){
-    for(var i=0;i<_PB_CT.length;i++){ var st = r.st[_PB_CT[i].k]; if(st && st.modeN >= 3) return true; }
-    return false;
-  }).length;
+  var solid = d.rows.filter(function(r){ return r.st.all && r.st.all.modeN >= 3; }).length;
 
   var h = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'
     + _pbKcard('รุ่นที่มีราคาอ้างอิง', d.rows.length.toLocaleString(), 'ระบุรุ่นได้ '+withModel+' · เฉพาะ brand '+noModel)
@@ -8994,13 +8947,11 @@ function _pbHtmlSC(){
     + 'มาจาก <b>สัญญาที่เซ็นจริง</b> (RAW_CONTRACT) 1 แถว = 1 เครื่อง — ไม่ใช่ราคาที่เสนอไป · หารด้วยอายุสัญญาเป็น <b>ราคาต่อปีต่อเครื่อง</b> แล้ว'
     + (d.fixLen ? ' · อายุสัญญาผิดรูป '+d.fixLen+' แถว ถือเป็น 1 ปี' : '') + '</div>';
 
-  h += '<div style="font-size:12px;font-weight:700;color:var(--mu,#94a3b8);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">ราคา SC ต่อปี/เครื่อง · แยกตามความคุ้มครอง'
-    + (rows.length !== d.rows.length ? ' <span style="color:#7c6fe0;font-weight:600;text-transform:none">— แสดง '+rows.length+' จาก '+d.rows.length+' รุ่น</span>' : '')
-    + '</div>';
+  h += '<div style="font-size:12px;font-weight:700;color:var(--mu,#94a3b8);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">ราคา SC ต่อปี/เครื่อง · แยกตามความคุ้มครอง</div>';
   h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
     + _pbTh('bm', 'Brand / รุ่น', s);
   for(var i=0;i<_PB_CT.length;i++) h += _pbTh(_PB_CT[i].k+'_mode', _PB_CT[i].lbl, s);
-  h += _pbTh('all_n', 'รวมกี่สัญญา', s, 'right') + '</tr></thead><tbody>';
+  h += _pbTh('all_n', 'ทุกประเภท', s) + '</tr></thead><tbody>';
 
   if(!rows.length) h += '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--mu,#94a3b8)">ไม่พบรายการ</td></tr>';
   for(var r0=0;r0<rows.length;r0++){
@@ -9010,33 +8961,30 @@ function _pbHtmlSC(){
       + '<div style="font-weight:600">'+_pbEsc(r.br)+'</div>'
       + '<div style="font-size:11px;color:'+(r.noModel?'#f59e0b':'var(--mu,#94a3b8)')+'">'+_pbEsc(r.ml)+'</div></td>';
     for(var c=0;c<_PB_CT.length;c++) h += _pbCell(r.st[_PB_CT[c].k]);
-    h += '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);text-align:right;color:var(--mu,#94a3b8);font-size:11px;font-variant-numeric:tabular-nums">'
-       + (r.st.all ? r.st.all.n : 0) + '</td></tr>';
+    h += _pbCell(r.st.all) + '</tr>';
   }
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:10px;line-height:1.7">'
     + '<b style="color:var(--tx,#e2e8f0)">เลขใหญ่ = ราคาที่พบซ้ำบ่อยสุด</b> (ซ้ำเท่ากันเลือกตัวต่ำสุด) · บรรทัดล่าง = ช่วงที่สัญญาครึ่งกลางอยู่ (ตัดหัวท้ายอย่างละ 25%)<br>'
     + '<span style="color:#f59e0b">⚠</span> = ราคาซ้ำไม่ถึง 3 สัญญา ยังไม่ใช่ราคามาตรฐาน · <b style="color:var(--tx,#e2e8f0)">—</b> = ไม่เคยมีสัญญาประเภทนี้สำหรับรุ่นนี้<br>'
-    + 'แถวสีจาง = ไม่มีรุ่นในข้อมูลสัญญา · <b style="color:var(--tx,#e2e8f0)">รวมกี่สัญญา</b> นับสัญญาประเภทอื่นที่ไม่เข้า 5 คอลัมน์นี้ด้วย<br>'
-    + (s.k ? 'กดหัวคอลัมน์ซ้ำเพื่อสลับทิศ' : 'ตอนนี้เรียงตามจำนวนสัญญา มาก→น้อย · <b style="color:var(--tx,#e2e8f0)">กดหัวคอลัมน์</b> เพื่อเรียงตามราคา')
+    + 'แถวสีจาง = ไม่มีรุ่นในข้อมูลสัญญา · <b style="color:var(--tx,#e2e8f0)">ทุกประเภท</b> รวมสัญญาประเภทอื่นที่ไม่เข้า 5 คอลัมน์แรกด้วย'
     + '</div>';
   return h;
 }
 
 function _pbHtmlSP(){
-  var d = _pbData().sp, rows = d.rows.filter(function(r){ return _pbPass(r) && _pbMatch(r.mc+' '+r.name+' '+r.br+' '+r.ml); });
+  var d = _pbData().sp, rows = d.rows.filter(function(r){ return _pbMatch(r.mc+' '+r.name+' '+r.br+' '+r.ml); });
   var s = _PB.sortSP;
   rows.sort(function(a,b){
-    if(!s.k){ return (b.st?b.st.n:0) - (a.st?a.st.n:0); }
     if(s.k === 'mc'){ return (a.mc<b.mc?-1:a.mc>b.mc?1:0) * -s.d; }
     if(s.k === 'name'){ return (a.name<b.name?-1:a.name>b.name?1:0) * -s.d; }
     var av = a.st ? a.st[s.k] : -1, bv = b.st ? b.st[s.k] : -1;
     return (av - bv) * s.d;
   });
-  var solid = d.rows.filter(function(r){ return r.st && r.st.modeN >= 2; }).length;
+  var solid = d.rows.filter(function(r){ return r.st && r.st.n >= 3; }).length;
 
   var h = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'
-    + _pbKcard('Matcode ที่มีราคา', d.rows.length.toLocaleString(), 'ราคาซ้ำ 2 ใบขึ้นไป '+solid.toLocaleString()+' รายการ')
+    + _pbKcard('Matcode ที่มีราคา', d.rows.length.toLocaleString(), 'ตั้งแต่ 3 ใบขึ้นไป '+solid.toLocaleString()+' รายการ')
     + _pbKcard('ใบที่ใช้คำนวณ', d.used.toLocaleString(), 'เฉพาะใบที่มี matcode เดียว')
     + _pbKcard('ใบหลาย matcode', d.skipMulti.toLocaleString(), 'แยกราคารายชิ้นไม่ได้ — ไม่นับ')
     + _pbKcard('ไม่มีเลขใบเสนอราคา', d.noQN.toLocaleString(), 'เบิกในประกัน — ไม่มีราคา')
@@ -9046,45 +8994,41 @@ function _pbHtmlSP(){
     + 'ราคานี้มาจาก <b>QH_TOTAL_AMT</b> = ยอดรวมหัวใบเสนอราคา ไม่ใช่ราคาอะไหล่ล้วน — อาจรวมค่าแรง/ค่าขนส่ง/VAT ใช้เป็นราคาอ้างอิงคร่าว ๆ ไม่ใช่ต้นทุนจริง'
     + (_PB.unit ? ' · ตอนนี้หารด้วยจำนวนชิ้นแล้ว' : ' · ตอนนี้แสดงยอดทั้งใบ ยังไม่หารจำนวนชิ้น') + '</div>';
 
-  h += '<div style="font-size:12px;font-weight:700;color:var(--mu,#94a3b8);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">ราคา SP ต่อ Matcode'
-    + (rows.length !== d.rows.length ? ' <span style="color:#7c6fe0;font-weight:600;text-transform:none">— แสดง '+rows.length+' จาก '+d.rows.length+' matcode</span>' : '')
-    + '</div>';
+  h += '<div style="font-size:12px;font-weight:700;color:var(--mu,#94a3b8);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">ราคา SP ต่อ Matcode</div>';
   h += '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr>'
     + _pbTh('mc', 'Matcode', s)
     + _pbTh('name', 'ชื่ออะไหล่', s)
     + '<th style="text-align:left;font-size:11px;color:var(--mu,#94a3b8);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);white-space:nowrap">Brand / รุ่น</th>'
     + _pbTh('mode', 'ราคาที่พบบ่อย', s, 'right')
-    + _pbTh('modeN', 'ซ้ำกี่ใบ', s, 'right')
-    + _pbTh('p25', 'ช่วงกลาง (P25–P75)', s, 'right')
-    + _pbTh('n', 'ใบทั้งหมด', s, 'right')
+    + _pbTh('min', 'ต่ำสุด', s, 'right')
+    + _pbTh('avg', 'เฉลี่ย', s, 'right')
+    + _pbTh('max', 'สูงสุด', s, 'right')
+    + _pbTh('n', 'จำนวนใบ', s, 'right')
     + '</tr></thead><tbody>';
 
-  if(!rows.length) h += '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--mu,#94a3b8)">ไม่พบรายการ</td></tr>';
+  if(!rows.length) h += '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--mu,#94a3b8)">ไม่พบรายการ</td></tr>';
   var TD = 'padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)';
   var TDR = TD + ';text-align:right;font-variant-numeric:tabular-nums';
   for(var i=0;i<rows.length;i++){
-    var r = rows[i], st = r.st, warn = st.modeN < 2;   /* ราคาไม่ซ้ำเลย = ยังไม่ใช่ราคามาตรฐาน */
+    var r = rows[i], st = r.st, warn = st.n < 3;
     h += '<tr style="'+(warn?'opacity:.62':'')+'" onmouseover="this.style.background=\'var(--sur2,#1e293b)\'" onmouseout="this.style.background=\'transparent\'">'
       + '<td style="'+TD+';color:#7c6fe0;font-weight:600;white-space:nowrap">'+_pbEsc(r.mc)+'</td>'
       + '<td style="'+TD+';max-width:300px;overflow:hidden;text-overflow:ellipsis">'+_pbEsc(r.name)+'</td>'
       + '<td style="'+TD+';font-size:10px;color:var(--mu,#94a3b8)">'+_pbEsc(r.br)+'<br>'+_pbEsc(r.ml||'—')+'</td>'
-      + '<td style="'+TDR+';font-size:14px;font-weight:700">'+_pbFmt(st.mode)+'</td>'
-      + '<td style="'+TDR+';color:'+(st.modeN<2?'#f59e0b':'#7c6fe0')+';font-size:11px;font-weight:600">'+st.modeN+(st.modeN<2?' ⚠':'')+'</td>'
-      + '<td style="'+TDR+';font-size:11px;color:var(--mu,#94a3b8);white-space:nowrap">'+_pbFmt(st.p25)+' – '+_pbFmt(st.p75)+'</td>'
-      + '<td style="'+TDR+';color:var(--mu,#94a3b8);font-size:11px">'+st.n+'</td></tr>';
+      + '<td style="'+TDR+';font-weight:700">'+_pbFmt(st.mode)+'<div style="font-size:10px;font-weight:400;color:'+(st.modeN<2?'#f59e0b':'#7c6fe0')+'">ซ้ำ '+st.modeN+'</div></td>'
+      + '<td style="'+TDR+';font-size:11px;color:var(--mu,#94a3b8)">'+_pbFmt(st.min)+'</td>'
+      + '<td style="'+TDR+';font-size:11px;color:var(--mu,#94a3b8)">'+_pbFmt(st.avg)+'</td>'
+      + '<td style="'+TDR+';font-size:11px;color:var(--mu,#94a3b8)">'+_pbFmt(st.max)+'</td>'
+      + '<td style="'+TDR+';color:'+(warn?'#f59e0b':'#7c6fe0')+';font-size:11px">'+st.n+(warn?' ⚠':'')+'</td></tr>';
   }
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:10px;line-height:1.7">'
-    + '<b style="color:var(--tx,#e2e8f0)">ราคาที่พบบ่อย</b> = ราคาที่ซ้ำมากสุด (ซ้ำเท่ากันเลือกตัวต่ำสุด) · <b style="color:var(--tx,#e2e8f0)">ช่วงกลาง</b> = ตัดหัวท้ายอย่างละ 25%<br>'
-    + '<span style="color:#f59e0b">⚠</span> = ราคาไม่ซ้ำเลยสักใบ ยังไม่ใช่ราคามาตรฐาน · '
-    + (s.k ? 'กดหัวคอลัมน์ซ้ำเพื่อสลับทิศ' : 'ตอนนี้เรียงตามจำนวนใบ มาก→น้อย · <b style="color:var(--tx,#e2e8f0)">กดหัวคอลัมน์</b> เพื่อเรียงแบบอื่น') + '</div>';
+    + '<span style="color:#f59e0b">⚠</span> = น้อยกว่า 3 ใบ ยังไม่ใช่ช่วงราคา · "ซ้ำ" = ราคานั้นพบกี่ใบ · กดหัวคอลัมน์เพื่อเรียงลำดับ</div>';
   return h;
 }
 
 function pbExportCSV(){
-  var lines = [], d = _pbData(), f = _pbF();
-  var flt = function(r, txt){ return _pbPass(r) && _pbMatch(txt); };   /* [V615] export ตามที่กรองอยู่ */
-  if(f.br || f.ml || _PB.q) lines.push('# ตัวกรอง: ' + (f.br||'ทุกยี่ห้อ') + ' / ' + (f.ml||'ทุกรุ่น') + (_PB.q ? ' / ค้นหา "'+_PB.q+'"' : ''));
+  var lines = [], d = _pbData();
   if(_PB.tab === 'sc'){
     lines.push('# ราคาอ้างอิง SC — จาก RAW_CONTRACT (สัญญาที่เซ็นจริง) 1 แถว = 1 เครื่อง');
     lines.push('# ราคา = CONTRACT_PRICE_NET หารด้วย CONTRACT_LENGHT = ราคาต่อปีต่อเครื่อง');
@@ -9092,25 +9036,23 @@ function pbExportCSV(){
     lines.push('# ตัดสัญญาซื้อขาย/เช่า ' + d.sc.skipSale + ' · ' + (_PB.cancel ? 'รวมสัญญายกเลิก' : 'ตัดสัญญายกเลิก ' + d.sc.skipDead) + ' · ใช้จริง ' + d.sc.used + ' สัญญา');
     var head = ['Brand','รุ่น'];
     for(var i=0;i<_PB_CT.length;i++){ var L = _PB_CT[i].lbl.replace(/<br>/g,' '); head.push(L+' ราคาที่พบบ่อย', L+' ซ้ำกี่สัญญา', L+' P25', L+' P75', L+' จำนวนสัญญา'); }
-    head.push('รวมกี่สัญญา');
+    head.push('ทุกประเภท ราคาที่พบบ่อย','ทุกประเภท ซ้ำกี่สัญญา','ทุกประเภท P25','ทุกประเภท P75','ทุกประเภท จำนวนสัญญา');
     lines.push(head.join(','));
-    d.sc.rows.filter(function(r){ return flt(r, r.br+' '+r.ml); }).forEach(function(r){
+    d.sc.rows.forEach(function(r){
       var c = ['"'+r.br+'"','"'+r.ml+'"'];
-      _PB_CT.forEach(function(x){
-        var st = r.st[x.k];
+      _PB_CT.map(function(x){return x.k;}).concat(['all']).forEach(function(k){
+        var st = r.st[k];
         c.push(st?Math.round(st.mode):'', st?st.modeN:'', st?Math.round(st.p25):'', st?Math.round(st.p75):'', st?st.n:0);
       });
-      c.push(r.st.all ? r.st.all.n : 0);
       lines.push(c.join(','));
     });
   } else {
     lines.push('# ราคาอ้างอิง SP — จาก _jsupParts.QH_TOTAL_AMT เฉพาะใบที่มี matcode เดียว');
     lines.push('# ' + (_PB.unit ? 'ราคาต่อชิ้น (หารด้วย PARTS_QTY)' : 'ยอดทั้งใบ ไม่หารจำนวนชิ้น') + ' · ' + (_PB.cancel ? 'รวมใบยกเลิก' : 'ตัดใบยกเลิกแล้ว') + ' · ใบที่ใช้ ' + d.sp.used);
-    lines.push('# ราคาที่พบบ่อย = ราคาที่ซ้ำมากสุด (ซ้ำเท่ากันเลือกตัวต่ำสุด) · P25/P75 = ช่วงกลาง ตัดหัวท้ายอย่างละ 25%');
-    lines.push('Matcode,ชื่ออะไหล่,Brand,รุ่น,ราคาที่พบบ่อย,ซ้ำกี่ใบ,P25,P75,ใบทั้งหมด,รวมจำนวนชิ้น');
-    d.sp.rows.filter(function(r){ return flt(r, r.mc+' '+r.name+' '+r.br+' '+r.ml); }).forEach(function(r){
+    lines.push('Matcode,ชื่ออะไหล่,Brand,รุ่น,ราคาที่พบบ่อย,ซ้ำกี่ใบ,ต่ำสุด,เฉลี่ย,สูงสุด,จำนวนใบ,รวมจำนวนชิ้น');
+    d.sp.rows.forEach(function(r){
       lines.push(['"'+r.mc+'"','"'+String(r.name).replace(/"/g,"'")+'"','"'+r.br+'"','"'+r.ml+'"',
-        Math.round(r.st.mode), r.st.modeN, Math.round(r.st.p25), Math.round(r.st.p75), r.st.n, r.qty].join(','));
+        Math.round(r.st.mode), r.st.modeN, Math.round(r.st.min), Math.round(r.st.avg), Math.round(r.st.max), r.st.n, r.qty].join(','));
     });
   }
   try{
@@ -9124,7 +9066,6 @@ function pbExportCSV(){
 
 window.pbRender = pbRender; window.pbSetTab = pbSetTab; window.pbToggle = pbToggle;
 window.pbSearch = pbSearch; window.pbSort = pbSort; window.pbExportCSV = pbExportCSV;
-window.pbSetBrand = pbSetBrand; window.pbSetModel = pbSetModel; window.pbClearFilter = pbClearFilter;
 window._pbBuildSC = _pbBuildSC; window._pbBuildSP = _pbBuildSP; window._pbStat = _pbStat;
 
 // ── เปิด Report popup ──
