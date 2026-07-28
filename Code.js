@@ -2578,6 +2578,27 @@ function resetPasswordRequest(payloadStr) {
 
 /* ── [V608] Weekly Report — ชีตแยก ไม่ยัดเข้า config ที่โหลดทุก boot ──
    คอลัมน์: week | empId | name | status | updatedAt | sentAt | json */
+/* [V615.1] Sheets แปลง "2026-07-27" เป็น Date อัตโนมัติ พออ่านกลับได้
+   "Mon Jul 27 2026 00:00:00 GMT+0700" ซึ่งไม่มีวันเท่ากับคีย์ที่หน้าจอส่งมา -> เจอ 0 แถวตลอด
+   (เคสจริง 27 ก.ค.: ในชีตมี 1/1 แต่หน้าจอขึ้น rows=0 หัวหน้าเลยไม่เห็นรายงาน)
+   แก้ 2 ชั้น: (1) ล็อกคอลัมน์เป็นข้อความ  (2) normalize ทุกครั้งที่อ่าน — กู้แถวเก่าที่เพี้ยนไปแล้วด้วย */
+function _wrKey_(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) {
+    return Utilities.formatDate(v, 'Asia/Bangkok', 'yyyy-MM-dd');
+  }
+  var s = String(v == null ? '' : v).trim();
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return Utilities.formatDate(d, 'Asia/Bangkok', 'yyyy-MM-dd');
+  return s;
+}
+function _wrTime_(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) {
+    return Utilities.formatDate(v, 'Asia/Bangkok', 'yyyy-MM-dd HH:mm');
+  }
+  return String(v == null ? '' : v);
+}
 function _wrSheet_() {
   var ss = getSpreadsheet();
   var sh = ss.getSheetByName('weekly_report');
@@ -2585,6 +2606,11 @@ function _wrSheet_() {
     sh = ss.insertSheet('weekly_report');
     sh.getRange(1,1,1,8).setValues([['week','empId','name','status','updatedAt','sentAt','json','rev']]);
   }
+  /* ล็อกเป็นข้อความ กัน Sheets ตีความเป็นวันที่/ตัวเลขเอง (idempotent เรียกซ้ำได้) */
+  try {
+    sh.getRange('A:B').setNumberFormat('@');
+    sh.getRange('E:F').setNumberFormat('@');
+  } catch(e) {}
   return sh;
 }
 function saveWeeklyReport(payloadStr) {
@@ -2600,9 +2626,9 @@ function saveWeeklyReport(payloadStr) {
        ของเก่ายังอยู่ครบในชีต ย้อนดูได้ว่าใครแก้อะไรตอนไหน */
     var rev = 1, firstSent = '';
     for (var i = 1; i < dat.length; i++) {
-      if (String(dat[i][0]) !== String(p.week) || String(dat[i][1]) !== String(p.empId)) continue;
+      if (_wrKey_(dat[i][0]) !== _wrKey_(p.week) || String(dat[i][1]) !== String(p.empId)) continue;
       var r0 = Number(dat[i][7] || 1); if (r0 >= rev) rev = r0 + 1;
-      if (!firstSent && dat[i][5]) firstSent = String(dat[i][5]);
+      if (!firstSent && dat[i][5]) firstSent = _wrTime_(dat[i][5]);
     }
     /* sentAt = เวลาที่ "ส่งครั้งแรก" (ไว้ดูว่าส่งตรงเวลาไหม) — แก้ทีหลังไม่รีเซ็ต
        ส่วนเวลาที่แก้ล่าสุดอยู่ใน updatedAt แล้ว */
@@ -2620,14 +2646,15 @@ function getWeeklyReports(payloadStr) {
     var pick = function(wk){
       var best = {};
       if (!wk) return [];
+      var wkK = _wrKey_(wk);
       for (var i = 1; i < dat.length; i++) {
-        if (String(dat[i][0]) !== String(wk)) continue;
+        if (_wrKey_(dat[i][0]) !== wkK) continue;
         var id = String(dat[i][1]), rv = Number(dat[i][7] || 1);
         if (best[id] && Number(best[id]._rev) >= rv) continue;
         var j = {};
         try { j = JSON.parse(String(dat[i][6]||'{}')) || {}; } catch(e){}
-        best[id] = { week:String(dat[i][0]), empId:id, name:String(dat[i][2]),
-                     status:String(dat[i][3]), updatedAt:String(dat[i][4]), sentAt:String(dat[i][5]),
+        best[id] = { week:wkK, empId:id, name:String(dat[i][2]),
+                     status:String(dat[i][3]), updatedAt:_wrTime_(dat[i][4]), sentAt:_wrTime_(dat[i][5]),
                      weekLabel:j.weekLabel||'', data:j.data||{}, _rev:rv };
       }
       return Object.keys(best).map(function(k){ return best[k]; });
@@ -2635,7 +2662,7 @@ function getWeeklyReports(payloadStr) {
     /* สารบัญสัปดาห์ที่มี record — ให้เลือกย้อนหลังได้ ไม่ต้องกดถอยทีละสัปดาห์ */
     var wmap = {};
     for (var w = 1; w < dat.length; w++) {
-      var wk2 = String(dat[w][0]||''); if (!wk2) continue;
+      var wk2 = _wrKey_(dat[w][0]); if (!wk2) continue;
       if (!wmap[wk2]) wmap[wk2] = { week:wk2, ids:{}, sent:{} };
       wmap[wk2].ids[String(dat[w][1])] = 1;
       if (String(dat[w][3]) === 'sent') wmap[wk2].sent[String(dat[w][1])] = 1;
@@ -2648,7 +2675,7 @@ function getWeeklyReports(payloadStr) {
     if (p.empId) {
       for (var z = dat.length - 1; z >= 1; z--) {
         if (String(dat[z][1]) !== String(p.empId)) continue;
-        if (String(dat[z][0]) === String(p.week)) continue;   // ข้ามสัปดาห์ปัจจุบัน
+        if (_wrKey_(dat[z][0]) === _wrKey_(p.week)) continue;   // ข้ามสัปดาห์ปัจจุบัน
         var jz = {}; try { jz = JSON.parse(String(dat[z][6]||'{}')) || {}; } catch(e){}
         var sup = (jz.data && jz.data.support) ? String(jz.data.support).trim() : '';
         if (sup) { lastSupport = sup; break; }
