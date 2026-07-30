@@ -888,6 +888,75 @@ function _dqToggleQspException(docNumber, checked){
     }
   }catch(e){}
 }
+
+/* ═══ [V617] Data Query — กางดูทุกฟิลด์ของ record ═══
+   เดิมตารางโชว์แค่ 8 คอลัมน์ที่ตั้งไว้ล่วงหน้า (cfg.keys) ฟิลด์ที่เหลืออีกหลายสิบตัว
+   มีอยู่ในข้อมูลแต่มองไม่เห็น -> ต้องไปเปิด Console เขียนสคริปต์เอาเอง
+   แยก "มีค่า" กับ "ว่าง" ให้ชัด เพราะตอนไล่บั๊กต้องรู้ว่าฟิลด์นั้น
+   'มีอยู่แต่ว่าง' หรือ 'ไม่มีฟิลด์นี้เลย' — คนละเรื่องกัน */
+function _dqFmtVal(v){
+  if(v===null) return '<i style="color:#64748b">null</i>';
+  if(v===undefined) return '<i style="color:#64748b">undefined</i>';
+  if(typeof v==='object'){
+    var j=''; try{ j=JSON.stringify(v); }catch(e){ j='[object]'; }
+    return '<span style="color:#a78bfa">'+_dqEsc(j.length>300?j.slice(0,300)+'…':j)+'</span>';
+  }
+  return _dqEsc(v);
+}
+window._dqDetail = function(tk, idx, btn){
+  var tr = btn.parentNode; while(tr && tr.tagName!=='TR') tr = tr.parentNode;
+  if(!tr) return;
+  var nx = tr.nextElementSibling;
+  if(nx && nx.getAttribute('data-dqd')==='1'){        /* กดซ้ำ = ปิด */
+    nx.parentNode.removeChild(nx);
+    btn.innerHTML='\ud83d\udd0d ทุกฟิลด์'; btn.style.color='#60a5fa'; btn.style.borderColor='var(--bd2)';
+    return;
+  }
+  var r = ((window._DQ_HITS||{})[tk]||[])[idx];
+  if(!r){ alert('ไม่พบข้อมูลแถวนี้ — กดค้นหาใหม่อีกครั้ง'); return; }
+  var keys = Object.keys(r);
+  var full=[], empty=[];
+  keys.forEach(function(k){
+    var v=r[k];
+    var isEmpty = (v===''||v===null||v===undefined||(Array.isArray(v)&&!v.length));
+    (isEmpty?empty:full).push(k);
+  });
+  var rows = full.map(function(k){
+    return '<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px dotted var(--bd)">'
+      +'<span style="min-width:190px;max-width:190px;color:#7dd3fc;font-family:var(--mono,monospace);font-size:10.5px;word-break:break-all">'+_dqEsc(k)+'</span>'
+      +'<span style="flex:1;min-width:0;font-size:11px;word-break:break-word">'+_dqFmtVal(r[k])+'</span></div>';
+  }).join('');
+  var emptyBlk = empty.length
+    ? '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:10.5px;color:var(--mu2)">ฟิลด์ว่าง '+empty.length+' ตัว (มีฟิลด์อยู่ แต่ไม่มีค่า) — กดดู</summary>'
+      +'<div style="font-size:10.5px;color:var(--mu2);font-family:var(--mono,monospace);padding:6px 0;word-break:break-all;line-height:1.9">'
+      +empty.map(function(k){ return _dqEsc(k); }).join(' · ')+'</div></details>'
+    : '';
+  var det = document.createElement('tr');
+  det.setAttribute('data-dqd','1');
+  det.innerHTML = '<td colspan="'+tr.children.length+'" style="padding:10px 12px;background:var(--bg2,#0f1729);border-bottom:2px solid var(--bd2)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">'
+      +'<b style="font-size:11.5px;color:var(--tx)">'+_dqEsc(tk)+' — ทุกฟิลด์ <span style="color:var(--mu);font-weight:400">('+full.length+' มีค่า · '+empty.length+' ว่าง · รวม '+keys.length+')</span></b>'
+      +'<button onclick="_dqCopyJSON(\''+tk+'\','+idx+',this)" style="font-size:10.5px;padding:4px 10px;border-radius:8px;border:1px solid var(--bd2);background:transparent;color:#4ade80;cursor:pointer;font-family:inherit">\ud83d\udccb คัดลอก JSON</button>'
+    +'</div>'
+    +(rows||'<div style="color:var(--mu);font-size:11px">— ไม่มีฟิลด์ที่มีค่า —</div>')
+    +emptyBlk
+    +'</td>';
+  tr.parentNode.insertBefore(det, tr.nextSibling);
+  btn.innerHTML='\u2715 ปิด'; btn.style.color='#f87171'; btn.style.borderColor='#f8717155';
+};
+window._dqCopyJSON = function(tk, idx, btn){
+  var r = ((window._DQ_HITS||{})[tk]||[])[idx]; if(!r) return;
+  var t=''; try{ t=JSON.stringify(r, null, 2); }catch(e){ t='(แปลงเป็น JSON ไม่ได้)'; }
+  var ta=document.createElement('textarea');
+  ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  var ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+  var old=btn.innerHTML;
+  btn.innerHTML = ok ? '\u2705 คัดลอกแล้ว' : '\u26a0 กด Ctrl+C เอง';
+  setTimeout(function(){ btn.innerHTML=old; }, 2200);
+};
+
 function cfgDataQueryRun(){
   var q=(document.getElementById('dq-input').value||'').trim().toLowerCase();
   var tSel=document.getElementById('dq-table').value;
@@ -912,9 +981,15 @@ function cfgDataQueryRun(){
     if(hits.length>0){
       // [v448] RAW_Quotation_SP ที่เป็น QSP23/24 (ถูก filter ออกจาก window.D) ให้มีช่องติ๊ก "เอากลับมา" ต่อท้าย
       var _isQspTbl = (tk==='RAW_Quotation_SP');
+      /* [V617] เก็บผลค้นไว้ใน registry เพื่อให้กดดู "ทุกฟิลด์" ได้ทีหลัง
+         (สร้าง HTML รายละเอียดตอนกด ไม่สร้างล่วงหน้าทั้ง 50 แถว × 8 ตาราง) */
+      window._DQ_HITS = window._DQ_HITS || {};
+      window._DQ_HITS[tk] = hits;
       html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">';
-      html+='<tr style="background:var(--bg2)">'+cfg.keys.map(function(k){return '<th style="padding:5px 8px;text-align:left;color:var(--mu);white-space:nowrap;border-bottom:1px solid var(--bd2)">'+k+'</th>';}).join('')+(_isQspTbl?'<th style="padding:5px 8px;text-align:center;color:var(--mu);white-space:nowrap;border-bottom:1px solid var(--bd2)">เอากลับมา</th>':'')+'</tr>';
-      hits.forEach(function(r){
+      html+='<tr style="background:var(--bg2)">'+cfg.keys.map(function(k){return '<th style="padding:5px 8px;text-align:left;color:var(--mu);white-space:nowrap;border-bottom:1px solid var(--bd2)">'+k+'</th>';}).join('')+(_isQspTbl?'<th style="padding:5px 8px;text-align:center;color:var(--mu);white-space:nowrap;border-bottom:1px solid var(--bd2)">เอากลับมา</th>':'')
+        +'<th style="padding:5px 8px;text-align:center;color:var(--mu);white-space:nowrap;border-bottom:1px solid var(--bd2)">ทุกฟิลด์</th>'   /* [V617] */
+        +'</tr>';
+      hits.forEach(function(r, _ri){
         var _dn = String(r.DOC_NUMBER||'');
         var _isOldQsp = _isQspTbl && /^QSP(23|24)/i.test(_dn);
         var _chkCell = '';
@@ -924,7 +999,12 @@ function cfgDataQueryRun(){
         } else if(_isQspTbl){
           _chkCell = '<td style="padding:5px 8px"></td>';
         }
-        html+='<tr style="border-bottom:1px solid var(--bd)">'+cfg.keys.map(function(k){return '<td style="padding:5px 8px;white-space:nowrap">'+_dqEsc(r[k])+'</td>';}).join('')+_chkCell+'</tr>';
+        html+='<tr style="border-bottom:1px solid var(--bd)">'+cfg.keys.map(function(k){return '<td style="padding:5px 8px;white-space:nowrap">'+_dqEsc(r[k])+'</td>';}).join('')+_chkCell
+          /* [V617] ปุ่มกางดูทุกฟิลด์ของแถวนี้ */
+          +'<td style="padding:4px 8px;text-align:center;white-space:nowrap">'
+          +'<button onclick="_dqDetail(\''+tk+'\','+_ri+',this)" style="font-size:10.5px;padding:4px 9px;border-radius:8px;border:1px solid var(--bd2);background:transparent;color:#60a5fa;cursor:pointer;font-family:inherit">\ud83d\udd0d ทุกฟิลด์</button>'
+          +'</td>'
+          +'</tr>';
       });
       html+='</table></div>';
     }
