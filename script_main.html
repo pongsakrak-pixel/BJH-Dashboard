@@ -2758,20 +2758,42 @@ var _bmLookupCache = null;
 function _buildBMLookup(){
   if(_bmLookupCache) return _bmLookupCache;
   var byInstall={}, byQn={}, byConId={}, byQnParts={};
+  var byInstallAll={};   // [V618] qn -> [{br,ml,sn}] ทุกเครื่อง (ใบ Package มีหลายเครื่อง)
   // Master list: brand → array of models (จาก records ที่ verify แล้ว)
   var brandMaster={}; // {brand: {models:Set, brandKey:lowercaseTrim}}
   // QN → SUBJECT_EMAIL (สำหรับ fallback parse)
   var byQnSubject={};
-  // 1. Installation Base: เสนอราคา → {br, ml} (priority สูงสุด — ของจริงจาก hardware)
+  /* 1. Installation Base: เลขใบเสนอราคา → เครื่องจริง (priority สูงสุด — ของจริงจาก hardware)
+     ─────────────────────────────────────────────────────────────────────
+     [V618] 🐛 FIX: เดิมอ่าน r['เสนอราคา'] ซึ่ง "ไม่มีคอลัมน์นี้ในข้อมูล"
+       → byInstall ว่างเปล่า 100% มาตลอด = Layer 1 ที่แม่นที่สุดตายสนิท
+       → ระบบตกไปใช้ Contract แล้วถ้าไม่เจอก็ไปแกะจากข้อความ (เดา)
+     ชื่อจริงคือ QH_DOC_NUMBER (เติม 1,893 แถว = 939 ใบ) · คงชื่อเดิมไว้เป็น fallback
+     เพิ่ม CON_NO เป็นกุญแจสำรอง เพราะเก็บเป็น "QSC2602-15510 Package1"
+       (เติม 4,521 แถว = 2,176 ค่า) → ตัดเอาเฉพาะเลขใบข้างหน้า
+     เก็บ "ทุกเครื่อง" ไม่ใช่เครื่องแรก — ใบ Package 1 ใบมีได้ 9 เครื่อง 7 ยี่ห้อ
+       (byInstall คงรูปเดิม {br,ml} เพื่อไม่ให้ 20 จุดที่เรียกใช้พัง) */
   try {
     if(typeof window._spInstallRows!=='undefined' && window._spInstallRows){
+      var _qnOfCon=function(v){
+        var m=String(v||'').trim().match(/^(QS[CP][0-9\-]+)/i);
+        return m ? m[1] : '';
+      };
       window._spInstallRows.forEach(function(r){
-        var k=String(r['เสนอราคา']||'').trim();
-        var br=String(r['ยี่ห้อ']||'').trim();
-        var ml=String(r['รุ่น']||'').trim();
-        if(k && (br||ml) && !byInstall[k]){
-          byInstall[k]={br:br,ml:ml};
-        }
+        var k=String(r['QH_DOC_NUMBER']||r['เสนอราคา']||'').trim();
+        var br=String(r['BRAND']||r['ยี่ห้อ']||'').trim();
+        var ml=String(r['MODEL']||r['รุ่น']||'').trim();
+        var sn=String(r['SN']||'').trim();
+        var k2=_qnOfCon(r['CON_NO']);
+        [k, (k2 && k2!==k) ? k2 : ''].forEach(function(key){
+          if(!key || !(br||ml)) return;
+          if(!byInstall[key]) byInstall[key]={br:br,ml:ml};
+          if(!byInstallAll[key]) byInstallAll[key]=[];
+          var dup=byInstallAll[key].some(function(x){
+            return x.sn===sn && x.br===br && x.ml===ml;
+          });
+          if(!dup) byInstallAll[key].push({br:br,ml:ml,sn:sn});
+        });
         if(br){
           if(!brandMaster[br]) brandMaster[br]={models:{}};
           if(ml) brandMaster[br].models[ml]=1;
@@ -2858,7 +2880,7 @@ function _buildBMLookup(){
   });
   // sort brands by length descending (เพื่อ match brand ยาวก่อน เช่น "EMS (Litrotripsy)" ก่อน "EMS")
   brandList.sort(function(a,b){return b.name.length-a.name.length;});
-  _bmLookupCache={byInstall:byInstall,byQn:byQn,byConId:byConId,byQnParts:byQnParts,brandList:brandList,byQnSubject:byQnSubject,byQnProduct:byQnProduct};
+  _bmLookupCache={byInstall:byInstall,byQn:byQn,byConId:byConId,byQnParts:byQnParts,brandList:brandList,byQnSubject:byQnSubject,byQnProduct:byQnProduct,byInstallAll:byInstallAll};
   return _bmLookupCache;
 }
 
@@ -3089,12 +3111,72 @@ function resolveBM(r){
       br=''; ml='';
     }
   }
+  /* [V618] แนบข้อมูลเพิ่มโดยไม่เปลี่ยนรูปเดิม — 20 จุดที่เรียกใช้แค่ bm.br / bm.ml
+     n    = จำนวนเครื่องที่ผูกกับใบนี้ (ใบ Package > 1)
+     nBr  = จำนวนยี่ห้อไม่ซ้ำ
+     list = รายการเครื่อง [{br,ml,sn}]
+     src  = มาจากชั้นไหน (ใช้ตรวจว่ายังพึ่งการเดาอยู่แค่ไหน) */
+  var _all = (qn && L.byInstallAll && L.byInstallAll[qn]) ? L.byInstallAll[qn] : null;
+  function _tag(o, src){
+    o.src = src;
+    if(_all && _all.length){
+      o.n = _all.length;
+      o.nBr = Object.keys(_all.reduce(function(a,x){ if(x.br) a[x.br]=1; return a; },{})).length;
+      o.list = _all;
+    } else { o.n = (o.br||o.ml) ? 1 : 0; o.nBr = o.br ? 1 : 0; o.list = null; }
+    return o;
+  }
   // ถ้าได้จาก Install Base โดยตรงแล้ว → ไม่ต้อง verify ซ้ำ (เป็น canonical อยู่แล้ว)
-  if(inst.br || inst.ml) return {br:br,ml:ml};
+  if(inst.br || inst.ml) return _tag({br:br,ml:ml}, 'install');
   // Verify กับ Install Base
   var verified=_verifyAgainstInstall(br, ml);
-  return verified;
+  var _src = c.br||c.ml ? 'contract' : (q.br||q.ml ? 'quotation' : (pn.br||pn.ml ? 'parse_product' : ((br||ml) ? 'parse_other' : 'none')));
+  return _tag(verified, _src);
 }
+
+/* ═══ [V618] เครื่องมือวัดที่มาของ brand/model — เรียกจาก Console: _bmAudit()
+   ไม่มี UI ไม่ถูกเรียกอัตโนมัติ ไม่กระทบ performance ตอนใช้งานปกติ
+   ใช้ตัดสินว่าเฟส 2 (ลบการเดา) ปลอดภัยแค่ไหน โดยดูจากเลขจริง ไม่ใช่ความรู้สึก ═══ */
+window._bmAudit = function(){
+  var D = window.D || [];
+  var L = _buildBMLookup();
+  var cnt = { install:0, contract:0, quotation:0, parse_product:0, parse_other:0, none:0 };
+  var seen = {}, pkg = [], mismatch = [], blankIfNoGuess = [];
+  D.forEach(function(r){
+    var qn = String(r.qn||'').trim();
+    if(!qn || seen[qn]) return; seen[qn]=1;
+    var bm; try{ bm = resolveBM(r); }catch(e){ return; }
+    var src = (bm && bm.src) || 'none';
+    if(cnt[src]===undefined) cnt[src]=0;
+    cnt[src]++;
+    if(bm && bm.n > 1) pkg.push({ qn:qn, n:bm.n, nBr:bm.nBr, brands:(bm.list||[]).map(function(x){return x.br;}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}) });
+    /* ของจริง (Install) ขัดกับที่ layer อื่นให้มา = เคยแสดงผิด */
+    var real = L.byInstallAll && L.byInstallAll[qn];
+    if(real && real.length && bm && bm.br){
+      var hasIt = real.some(function(x){ return String(x.br).toLowerCase().trim()===String(bm.br).toLowerCase().trim(); });
+      if(!hasIt) mismatch.push({ qn:qn, shown:bm.br, real:real.map(function(x){return x.br;}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}) });
+    }
+    if(src==='parse_product' || src==='parse_other') blankIfNoGuess.push(qn);
+  });
+  var tot = Object.keys(cnt).reduce(function(a,k){ return a+cnt[k]; },0);
+  var P=function(n){ return tot? (n*100/tot).toFixed(1)+'%' : '0%'; };
+  console.log('=== ที่มาของ brand/model (ใบไม่ซ้ำ '+tot+' ใบ) ===');
+  console.log('  Layer 1 Installation  '+String(cnt.install).padStart(5)+'  '+P(cnt.install)+'   << เดิม 0 ใบ (บั๊กชื่อคอลัมน์)');
+  console.log('  Layer 2 Contract      '+String(cnt.contract).padStart(5)+'  '+P(cnt.contract));
+  console.log('  Layer 3 Quotation     '+String(cnt.quotation).padStart(5)+'  '+P(cnt.quotation));
+  console.log('  Layer 4 แกะ PRODUCT   '+String(cnt.parse_product).padStart(5)+'  '+P(cnt.parse_product)+'   << เดา');
+  console.log('  Layer 5 แกะข้อความอื่น '+String(cnt.parse_other).padStart(5)+'  '+P(cnt.parse_other)+'   << เดา');
+  console.log('  ไม่เจอเลย             '+String(cnt.none).padStart(5)+'  '+P(cnt.none));
+  console.log('');
+  console.log('★ ถ้าลบการเดาทิ้ง (เฟส 2) จะกลายเป็นว่าง: '+blankIfNoGuess.length+' ใบ ('+P(blankIfNoGuess.length)+')');
+  console.log('★ ใบที่แสดงยี่ห้อ "ไม่ตรง" กับ Installation จริง: '+mismatch.length+' ใบ');
+  mismatch.slice(0,10).forEach(function(m){ console.log('     '+m.qn+' : แสดง "'+m.shown+'" แต่ของจริง '+JSON.stringify(m.real)); });
+  console.log('★ ใบ Package หลายเครื่อง: '+pkg.length+' ใบ');
+  pkg.sort(function(a,b){ return b.n-a.n; }).slice(0,8).forEach(function(p){
+    console.log('     '+p.qn+' : '+p.n+' เครื่อง · '+p.nBr+' ยี่ห้อ · '+p.brands.slice(0,5).join(', '));
+  });
+  return { cnt:cnt, total:tot, pkg:pkg.length, mismatch:mismatch.length, blankIfNoGuess:blankIfNoGuess.length };
+};
 window.resolveBM = resolveBM;
 
 // ─── Brand normalization — match กับ known brands ในระบบ ───
