@@ -3904,13 +3904,15 @@ function renderTbl(){
     h+='<td style="text-align:center">'+tt+'</td>';
     var teamStr=getTeam(r);
     var _bm=resolveBM(r);
-    /* [V622] ใบ Package → ชิปกดดูรายการเครื่อง (stopPropagation กันไปชนคลิกเปิดแถว) */
+    /* [V623] ใบ Package → กดแล้วเปิด modal รายละเอียด แล้วเด้งไปแท็บ Hardware List
+       (เดิม V622 เปิด popup แยก _pkgShow — คงฟังก์ชันไว้เรียกจาก console ได้)
+       stopPropagation ยังต้องมี กัน selRow ทำงานซ้ำสองรอบ */
     var _brHTML;
     if(_bm.multi && _bm.list && _bm.list.length){
-      _brHTML='<span onclick="event.stopPropagation();_pkgShow(\''+esc(String(r.qn||'').replace(/\\/g,'')).replace(/'/g,"\\'")+'\')" '
+      _brHTML='<span onclick="event.stopPropagation();window._dpJumpSub=\'hw\';selRow('+r.id+')" '
         +'style="display:inline-block;padding:1px 9px;border-radius:10px;border:1px solid var(--ac2);'
         +'color:var(--ac2);cursor:pointer;font-size:12.5px;line-height:1.6" '
-        +'title="กดดูรายการเครื่องทั้งหมด">Package</span>';
+        +'title="กดดูรายละเอียด + รายการเครื่องทั้งหมด ('+_bm.list.length+' เครื่อง)">Package</span>';
     } else {
       _brHTML=_bm.br?esc(_bm.br):'<span style="color:var(--mu)">—</span>';
     }

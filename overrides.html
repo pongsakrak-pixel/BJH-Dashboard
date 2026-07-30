@@ -1064,13 +1064,63 @@ function dpFmtDate(v){
       tab3+='<div style="padding:30px 20px;text-align:center;color:var(--mu);font-size:12px;background:var(--sur2);border:1px solid var(--bd);border-radius:8px">— ไม่พบรายการงวดบิลใน RAW_SC_BILL —</div>';
     }
 
-    h = dpBuildSubtabs([
+    /* ═══ [V623] Tab 4: Hardware List — เครื่องที่ผูกกับใบนี้ (Installation Base) ═══
+       เดิมข้อมูลชุดนี้อยู่ใน popup แยก (_pkgShow) → ย้ายเข้ามาเป็นแท็บที่ 4
+       โชว์เมื่อมีเครื่อง ≥ 1 (ใบเครื่องเดียวก็เห็น SN) · ไม่มี → ซ่อนแท็บ */
+    var tab4='', _hwN=0;
+    try {
+      var _bmHw   = (typeof resolveBM==='function') ? resolveBM(r) : null;
+      var _hwList = (_bmHw && _bmHw.list) ? _bmHw.list : [];
+      _hwN = _hwList.length;
+      if(_hwN){
+        var _hwBr={}; _hwList.forEach(function(x){ if(x && x.br) _hwBr[x.br]=1; });
+        var _hwSorted=_hwList.slice().sort(function(a,b){
+          return String(a.br||'').localeCompare(String(b.br||'')) || String(a.ml||'').localeCompare(String(b.ml||''));
+        });
+        tab4+='<div class="dp-sec"><div class="dp-sec-t">🔧 Hardware List — '+_hwN+' เครื่อง · '+Object.keys(_hwBr).length+' ยี่ห้อ</div>';
+        tab4+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+        tab4+='<thead><tr style="border-bottom:1px solid var(--bd2)">'
+          +'<th style="padding:6px 8px;text-align:right;color:var(--mu);font-weight:600;width:30px">#</th>'
+          +'<th style="padding:6px 8px;text-align:left;color:var(--mu);font-weight:600">Brand</th>'
+          +'<th style="padding:6px 8px;text-align:left;color:var(--mu);font-weight:600">Model</th>'
+          +'<th style="padding:6px 8px;text-align:left;color:var(--mu);font-weight:600">SN</th>'
+          +'</tr></thead><tbody>';
+        _hwSorted.forEach(function(x,i){
+          tab4+='<tr style="border-bottom:1px solid var(--bd)">'
+            +'<td style="padding:6px 8px;color:var(--mu);text-align:right">'+(i+1)+'</td>'
+            +'<td style="padding:6px 8px;font-weight:600">'+esc((x&&x.br)||'—')+'</td>'
+            +'<td style="padding:6px 8px">'+esc((x&&x.ml)||'—')+'</td>'
+            +'<td style="padding:6px 8px;font-family:var(--mono);color:var(--ac2)">'+esc((x&&x.sn)||'—')+'</td>'
+            +'</tr>';
+        });
+        tab4+='</tbody></table></div>';
+        tab4+='<div style="padding:7px 10px;font-size:10.5px;color:var(--mu)">ที่มา: Installation Base (ผูกด้วยเลขใบเสนอราคา)</div>';
+        tab4+='</div>';
+      }
+    } catch(e){ _hwN=0; }
+
+    var _subs=[
       {key:'status',   label:'สถานะ',        icon:'🔍', html:tab1},
       {key:'contract', label:'ข้อมูลสัญญา',   icon:'📄', html:tab2},
       {key:'bills',    label:'รายการงวดบิล',  icon:'🧾', html:tab3}
-    ]);
+    ];
+    if(_hwN) _subs.push({key:'hw', label:'Hardware List ('+_hwN+')', icon:'🔧', html:tab4});
+    h = dpBuildSubtabs(_subs);
 
     document.getElementById('dp-body').innerHTML=h;
+
+    /* [V623] ชิป Package ตั้งธง _dpJumpSub ไว้ → เด้งไปแท็บนั้นทันที (ใช้ครั้งเดียวแล้วล้าง) */
+    if(window._dpJumpSub){
+      var _jk=window._dpJumpSub; window._dpJumpSub=null;
+      try{
+        var _bd=document.getElementById('dp-body');
+        var _btns=_bd?_bd.querySelectorAll('.dp-subtab'):[];
+        var _panes=_bd?_bd.querySelectorAll('.dp-subpane'):[];
+        for(var _i=0;_i<_panes.length;_i++){
+          if(_panes[_i].getAttribute('data-subpane')===_jk && _btns[_i]){ _btns[_i].click(); break; }
+        }
+      }catch(e){}
+    }
   };
 
   // [v233] เบิกอะไหล่ทั้งใบ → ส่งเมลถึง Admin (ย้ายมาจาก Daily Sales)
@@ -1739,8 +1789,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V622.0';
-    var _BUILD_TIME='30 ก.ค. 2569 (V622 ตาราง 14px + Package กดดูเครื่อง)';
+    var _BUILD_VER='V623.0';
+    var _BUILD_TIME='30 ก.ค. 2569 (V623 แท็บ Hardware List ใน modal)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
