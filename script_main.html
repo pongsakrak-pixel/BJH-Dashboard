@@ -3022,80 +3022,23 @@ function resolveBM(r){
   // Layer 3: QUOTATION / CONTRACT-by-qn (byQn รวม Contract+Quotation+SC_BILL)
   var q={br:'',ml:''};
   if(qn && L.byQn[qn]) q={br:_cleanBM(L.byQn[qn].br),ml:_cleanBM(L.byQn[qn].ml)};
-  // Layer 3.5: PRODUCT_NAME (RAW_SC_BILL) → parse "ยี่ห้อ X รุ่น Y" (strict)
-  var pn={br:'',ml:''};
-  if(qn && L.byQnProduct && L.byQnProduct[qn]) pn={br:_cleanBM(L.byQnProduct[qn].br),ml:_cleanBM(L.byQnProduct[qn].ml)};
-  // Layer 4: PARSE PRODUCT_NAME (จาก r.pg/r.ml)
-  var p=_parseProductName(r.pg||r.ml||'');
-  // Pick BRAND: Install → Contract → Quotation/SC_BILL → PRODUCT_NAME(SC_BILL) → Parse
-  var br = inst.br || c.br || q.br || pn.br || p.br;
-  // Pick Model: Install → Contract → Quotation/SC_BILL → PRODUCT_NAME(SC_BILL) → Parse
-  var ml = inst.ml || c.ml || q.ml || pn.ml || p.ml;
-  // Fallback — มี br แล้วแต่ ml ว่าง → ลอง parse จาก PRODUCT_NAME
-  if(br && !ml && p.ml) ml = p.ml;
+  /* ═══ [V619] เลิกเดาเด็ดขาด — ลบ Layer 3.5 / 4 / 5 ที่ "แกะยี่ห้อจากข้อความ" ทิ้ง ═══
+     เหตุผล: การแกะข้อความให้ผลผิดได้ และผิดแบบเงียบ ๆ (เคสจริง QSC230501-5719
+       คนพิมพ์ SN ผิดใน SUBJECT_EMAIL -> ระบบดึงประวัติผิดเครื่อง เจอตอน V607)
+     วัดจากข้อมูลจริงแล้ว: แหล่งของจริง (Install/Contract/Quotation) ครอบคลุม
+       SC 98.3% · SP 96.6% -> ตัดการเดาออกเสียแค่ ~1.7% / 3.4% ที่จะกลายเป็น "—"
+     คงไว้เฉพาะแหล่งที่เป็น "ฟิลด์จริง" ไม่ใช่การตีความข้อความ */
+  var br = inst.br || c.br || q.br;
+  var ml = inst.ml || c.ml || q.ml;
   // r.br/r.ml จาก record เอง (ถ้าทุก layer ว่าง)
   if(!br) br = _cleanBM(r.br);
   if(!ml){
     var rawMl=_cleanBM(r.ml);
     if(rawMl && /^[A-Za-z0-9][A-Za-z0-9 \-\.\/&]*$/.test(rawMl)) ml=rawMl;
   }
-  // Layer 5: SUBJECT_EMAIL match กับ Master Brand List — strict match ไม่เดา
-  if((!br || !ml) && qn && L.byQnSubject && L.byQnSubject[qn] && L.brandList && L.brandList.length){
-    var subj=L.byQnSubject[qn], subjLc=subj.toLowerCase();
-    var matchedBrand=null, matchedModel='';
-    // ── Pass A: full brand name substring match (เดิม) ──
-    for(var _ib=0;_ib<L.brandList.length;_ib++){
-      var _b=L.brandList[_ib];
-      if(_b.lc && subjLc.indexOf(_b.lc)>=0){
-        matchedBrand=_b;
-        for(var _im=0;_im<_b.models.length;_im++){
-          var _m=_b.models[_im];
-          if(_m && _m.length>=3 && subjLc.indexOf(_m.toLowerCase())>=0){
-            matchedModel=_m; break;
-          }
-        }
-        break;
-      }
-    }
-    // ── Pass B: first-word fallback (ถ้า Pass A ไม่เจอ) — เช่น "Ziehm Imaging" match subject ที่มีแค่ "Ziehm" ──
-    if(!matchedBrand){
-      // build candidate list: brand ที่ first-word ปรากฏใน subject
-      var _cands=[];
-      for(var _ib2=0;_ib2<L.brandList.length;_ib2++){
-        var _b2=L.brandList[_ib2];
-        var _fw=String(_b2.name||'').split(/\s+/)[0];
-        if(_fw && _fw.length>=3){
-          var _fwLc=_fw.toLowerCase();
-          // ค้นแบบ word-boundary เบื้องต้น (มี space/start/end ก่อน-หลัง) เพื่อกัน substring เช่น "Echo" ไป match "Echelon"
-          var _re=new RegExp('(^|[^a-z0-9])'+_fwLc.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^a-z0-9])','i');
-          if(_re.test(subj)){
-            _cands.push(_b2);
-          }
-        }
-      }
-      // ถ้ามี candidate: เลือกที่ match model ใน subject ด้วย (precision สูงสุด)
-      if(_cands.length){
-        var _best=null, _bestModel='';
-        for(var _ic=0;_ic<_cands.length;_ic++){
-          var _bc=_cands[_ic];
-          for(var _im2=0;_im2<_bc.models.length;_im2++){
-            var _m2=_bc.models[_im2];
-            if(_m2 && _m2.length>=3 && subjLc.indexOf(_m2.toLowerCase())>=0){
-              _best=_bc; _bestModel=_m2; break;
-            }
-          }
-          if(_best) break;
-        }
-        // ถ้าไม่มี candidate ไหน match model → match brand แค่ตัวเดียวพอ (มั่นใจได้)
-        if(!_best && _cands.length===1){ _best=_cands[0]; }
-        if(_best){ matchedBrand=_best; matchedModel=_bestModel; }
-      }
-    }
-    if(matchedBrand){
-      if(!br) br=matchedBrand.name;
-      if(!ml && matchedModel) ml=matchedModel;
-    }
-  }
+  /* [V619] ลบ Layer 5 (แกะยี่ห้อจาก SUBJECT_EMAIL ~70 บรรทัด) — เป็นการเดาชัด ๆ
+     Pass B เดิมยอม match แค่คำแรกของชื่อยี่ห้อ ("Ziehm" -> "Ziehm Imaging")
+     ซึ่งเสี่ยงจับผิดยี่ห้อที่ขึ้นต้นเหมือนกัน */
   // ── Final Master Verify: ถ้า br ที่ได้ ไม่อยู่ใน brand master → ถือว่าเป็นชื่อมั่ว → ทิ้ง ──
   // ยกเว้น Layer 1 (Install Base) ที่เป็น canonical อยู่แล้ว
   if(br && !(inst.br)){
@@ -3117,20 +3060,40 @@ function resolveBM(r){
      list = รายการเครื่อง [{br,ml,sn}]
      src  = มาจากชั้นไหน (ใช้ตรวจว่ายังพึ่งการเดาอยู่แค่ไหน) */
   var _all = (qn && L.byInstallAll && L.byInstallAll[qn]) ? L.byInstallAll[qn] : null;
+  function _uniq(arr){ var o={},out=[]; arr.forEach(function(v){ v=String(v||'').trim(); if(v&&!o[v]){o[v]=1;out.push(v);} }); return out; }
   function _tag(o, src){
     o.src = src;
     if(_all && _all.length){
-      o.n = _all.length;
-      o.nBr = Object.keys(_all.reduce(function(a,x){ if(x.br) a[x.br]=1; return a; },{})).length;
-      o.list = _all;
-    } else { o.n = (o.br||o.ml) ? 1 : 0; o.nBr = o.br ? 1 : 0; o.list = null; }
+      var _brs=_uniq(_all.map(function(x){return x.br;}));
+      var _mls=_uniq(_all.map(function(x){return x.ml;}));
+      o.n = _all.length; o.nBr = _brs.length; o.list = _all;
+      /* ═══ [V619] ใบเดียวผูกหลายเครื่อง (SC Package) — ห้ามหยิบเครื่องแรกมาแสดง ═══
+         เคสจริง QSC2602-15510: 9 เครื่อง 7 ยี่ห้อ · งวด ฿93,333.33 เป็น HOLOGIC
+         แต่ระบบเคยแสดงยี่ห้อของเครื่องแรกให้ทุกงวด = ผิด 8 ใน 9 เครื่อง
+         RAW_SC_BILL ไม่มีฟิลด์ผูกเครื่องต่องวด (มีแต่ SR ซึ่งข้อมูลสด map ได้แค่ ~55%)
+         -> พูดความจริงว่า "หลายยี่ห้อ" ดีกว่าเดาให้ผิด */
+      if(_brs.length > 1){
+        o.multi = true;
+        o.br = 'หลายยี่ห้อ';
+        o.ml = _all.length + ' เครื่อง · ' + _brs.length + ' ยี่ห้อ';
+        return o;
+      }
+      /* ยี่ห้อเดียวแต่หลายเครื่อง -> ยี่ห้อชัวร์ ส่วนรุ่นบอกจำนวนถ้าไม่เหมือนกัน */
+      if(_brs.length === 1){
+        o.multi = (_all.length > 1);
+        o.br = _brs[0];
+        if(_mls.length > 1) o.ml = _mls.length + ' รุ่น (' + _all.length + ' เครื่อง)';
+        else if(_mls.length === 1) o.ml = _mls[0];
+        return o;
+      }
+    } else { o.n = (o.br||o.ml) ? 1 : 0; o.nBr = o.br ? 1 : 0; o.list = null; o.multi = false; }
     return o;
   }
   // ถ้าได้จาก Install Base โดยตรงแล้ว → ไม่ต้อง verify ซ้ำ (เป็น canonical อยู่แล้ว)
   if(inst.br || inst.ml) return _tag({br:br,ml:ml}, 'install');
   // Verify กับ Install Base
   var verified=_verifyAgainstInstall(br, ml);
-  var _src = c.br||c.ml ? 'contract' : (q.br||q.ml ? 'quotation' : (pn.br||pn.ml ? 'parse_product' : ((br||ml) ? 'parse_other' : 'none')));
+  var _src = (c.br||c.ml) ? 'contract' : ((q.br||q.ml) ? 'quotation' : ((br||ml) ? 'raw_field' : 'none'));
   return _tag(verified, _src);
 }
 
@@ -3140,7 +3103,7 @@ function resolveBM(r){
 window._bmAudit = function(){
   var D = window.D || [];
   var L = _buildBMLookup();
-  var cnt = { install:0, contract:0, quotation:0, parse_product:0, parse_other:0, none:0 };
+  var cnt = { install:0, contract:0, quotation:0, raw_field:0, none:0 };   // [V619] ไม่มี parse_* แล้ว
   var seen = {}, pkg = [], mismatch = [], blankIfNoGuess = [];
   D.forEach(function(r){
     var qn = String(r.qn||'').trim();
@@ -3152,11 +3115,11 @@ window._bmAudit = function(){
     if(bm && bm.n > 1) pkg.push({ qn:qn, n:bm.n, nBr:bm.nBr, brands:(bm.list||[]).map(function(x){return x.br;}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}) });
     /* ของจริง (Install) ขัดกับที่ layer อื่นให้มา = เคยแสดงผิด */
     var real = L.byInstallAll && L.byInstallAll[qn];
-    if(real && real.length && bm && bm.br){
+    if(real && real.length && bm && bm.br && !bm.multi){
       var hasIt = real.some(function(x){ return String(x.br).toLowerCase().trim()===String(bm.br).toLowerCase().trim(); });
       if(!hasIt) mismatch.push({ qn:qn, shown:bm.br, real:real.map(function(x){return x.br;}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}) });
     }
-    if(src==='parse_product' || src==='parse_other') blankIfNoGuess.push(qn);
+    if(bm && bm.multi) { /* ใบหลายเครื่อง — นับใน pkg แล้ว */ }
   });
   var tot = Object.keys(cnt).reduce(function(a,k){ return a+cnt[k]; },0);
   var P=function(n){ return tot? (n*100/tot).toFixed(1)+'%' : '0%'; };
@@ -3164,11 +3127,11 @@ window._bmAudit = function(){
   console.log('  Layer 1 Installation  '+String(cnt.install).padStart(5)+'  '+P(cnt.install)+'   << เดิม 0 ใบ (บั๊กชื่อคอลัมน์)');
   console.log('  Layer 2 Contract      '+String(cnt.contract).padStart(5)+'  '+P(cnt.contract));
   console.log('  Layer 3 Quotation     '+String(cnt.quotation).padStart(5)+'  '+P(cnt.quotation));
-  console.log('  Layer 4 แกะ PRODUCT   '+String(cnt.parse_product).padStart(5)+'  '+P(cnt.parse_product)+'   << เดา');
-  console.log('  Layer 5 แกะข้อความอื่น '+String(cnt.parse_other).padStart(5)+'  '+P(cnt.parse_other)+'   << เดา');
+  console.log('  ฟิลด์ดิบใน record    '+String(cnt.raw_field).padStart(5)+'  '+P(cnt.raw_field));
+  console.log('  (V619 ลบการเดาออกหมดแล้ว — ไม่มี Layer 4/5 อีก)');
   console.log('  ไม่เจอเลย             '+String(cnt.none).padStart(5)+'  '+P(cnt.none));
   console.log('');
-  console.log('★ ถ้าลบการเดาทิ้ง (เฟส 2) จะกลายเป็นว่าง: '+blankIfNoGuess.length+' ใบ ('+P(blankIfNoGuess.length)+')');
+  console.log('★ ใบที่ไม่มีแหล่งจริงเลย (แสดง —): '+cnt.none+' ใบ ('+P(cnt.none)+')');
   console.log('★ ใบที่แสดงยี่ห้อ "ไม่ตรง" กับ Installation จริง: '+mismatch.length+' ใบ');
   mismatch.slice(0,10).forEach(function(m){ console.log('     '+m.qn+' : แสดง "'+m.shown+'" แต่ของจริง '+JSON.stringify(m.real)); });
   console.log('★ ใบ Package หลายเครื่อง: '+pkg.length+' ใบ');
