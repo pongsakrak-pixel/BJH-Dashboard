@@ -3849,13 +3849,13 @@ function renderTbl(){
     var pxStr=(pxDisp||0)!==0?'<span style="font-family:var(--mono);font-size:11px;color:'+pxColor+'">'+_estMk+'฿'+fmt000(pxDisp)+'</span>':'<span style="color:var(--mu)">—</span>';
     var ownerText=getOwnerText(r);
     h+='<tr onclick="selRow('+r.id+')"'+hi+'>';
-    h+='<td style="color:var(--mu);font-family:var(--mono);font-size:10px;padding:5px 3px;text-align:center">'+(i+1)+'</td>';
+    h+='<td style="color:var(--mu);font-family:var(--mono);padding:5px 3px;text-align:center">'+(i+1)+'</td>';   /* [V621] เอา font-size ออก ให้เท่าคอลัมน์อื่น */
     h+='<td style="text-align:center">'+tt+'</td>';
     var teamStr=getTeam(r);
     var _bm=resolveBM(r);
     var _brHTML=_bm.br?esc(_bm.br):'<span style="color:var(--mu)">—</span>';
     var _mlHTML=_bm.ml?'<span title="'+esc(_bm.ml)+'">'+esc(_bm.ml)+'</span>':'<span style="color:var(--mu)">—</span>';
-    h+='<td style="font-size:11px;overflow:hidden;text-align:center"><span class="trunc" title="'+esc(ownerText||'')+'">'+esc(ownerText||'—')+'</span></td>';
+    h+='<td style="overflow:hidden;text-align:center"><span class="trunc" title="'+esc(ownerText||'')+'">'+esc(ownerText||'—')+'</span></td>';   /* [V621] */
     h+='<td>'+stb+'</td>';
     h+='<td>'+ipb+'</td>';
     // [v322] สถานะงาน (badge) — ใช้ r.sn (JOB_STATUS) ตรงๆ เหมือน modal
@@ -3870,9 +3870,9 @@ function renderTbl(){
     h+='<td style="overflow:hidden"><span class="trunc" title="'+esc(r.cu||'')+'">'+esc(r.cu||'—')+'</span></td>';
     h+='<td style="text-align:center">'+_brHTML+'</td>';
     h+='<td style="overflow:hidden"><span class="trunc">'+_mlHTML+'</span></td>';
-    h+='<td style="font-size:10px;color:var(--mu2);text-align:center;white-space:nowrap">'+esc(teamStr)+'</td>';
-    h+='<td style="font-family:var(--mono);font-size:11px"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.qn||'')+'">'+esc(r.qn||'—')+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:9px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+'</div></td>';
-    h+='<td style="font-size:11px;color:var(--mu2);white-space:nowrap;overflow:visible;text-overflow:clip">'+periodStr+'</td>';
+    h+='<td style="color:var(--mu2);text-align:center;white-space:nowrap">'+esc(teamStr)+'</td>';   /* [V621] */
+    h+='<td style="font-family:var(--mono)"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.qn||'')+'">'+esc(r.qn||'—')+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:9px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+'</div></td>';
+    h+='<td style="color:var(--mu2);white-space:nowrap;overflow:visible;text-overflow:clip">'+periodStr+'</td>';   /* [V621] */
     h+='<td style="text-align:right;overflow:hidden">'+pxStr+'</td>';
     h+='</tr>';
   });

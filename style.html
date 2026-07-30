@@ -424,11 +424,9 @@ html,body{display:flex;flex-direction:column;height:100%;background:var(--bg);co
 .dtbl tbody tr.hi{background:#172040;}
 .dtbl tbody tr.edited{background:#1a1500!important;border-left:3px solid var(--ylw2)!important;}
 .dtbl td{padding:5px 4px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid var(--bd);}
-/* [V619] ตาราง Service Commercial Orders: ตัวอักษรไม่เท่ากัน 3 ขนาด (10 / 11 / inherit)
-   เพราะ 5 คอลัมน์กำหนด font-size เองใน inline style ที่เหลือปล่อย inherit
-   ธีมสว่างไม่เห็นปัญหาเพราะมีกฎ td{font-size:12.5px !important} คุมอยู่แล้ว — ธีมมืดไม่มี
-   -> คุมเฉพาะธีมมืด ให้เท่ากันทั้งแถว (ไม่แตะธีมสว่าง จะได้ไม่เปลี่ยนของที่ใช้ได้อยู่แล้ว) */
-html:not([data-theme="light"]) #se-tbl tbody td{ font-size:11.5px !important; }
+/* [V621] ยกเลิกกฎ 11.5px ของ V620 — ทำให้ตารางเล็กลงทั้งแผง
+   ที่ถูกคือปล่อยให้ทุกคอลัมน์ inherit 14px จาก body เหมือนคอลัมน์ส่วนใหญ่เดิม
+   (ไปลบ inline font-size 5 จุดใน script_main แทน = แก้ที่ต้นเหตุ ไม่ต้องใช้ !important) */
 .trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;width:100%;cursor:default;}
 
 /* BADGES */
