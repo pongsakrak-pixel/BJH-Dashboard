@@ -159,7 +159,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   <button class="sp-tab"    id="sp-tab-renewal"   onclick="spTab('renewal')">🔄 Renewal</button>
   <button class="sp-tab"    id="sp-tab-scquote"   onclick="spTab('scquote')">📋 SC Quotation</button>
   <button class="sp-tab"    id="sp-tab-spquote"   onclick="spTab('spquote')">🔧 SP Quotation</button>
-  <button class="sp-tab"    id="sp-tab-contract"  onclick="spTab('contract')">📄 Contract &amp; PO</button>
+  <button class="sp-tab"    id="sp-tab-contract"  onclick="spTab('contract')">📄 Contract Monitor</button>
   <button class="sp-tab"    id="sp-tab-ordsp"     onclick="spTab('ordsp')">🛒 SP Monitor</button>
   <button class="sp-tab"    id="sp-tab-ordsc"     onclick="spTab('ordsc')">📥 SC Monitor</button>
   <button class="sp-tab"    id="sp-tab-billing"   onclick="spTab('billing')">🧾 Bill Monitor</button>
@@ -388,6 +388,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
     <input class="fsel" type="text" id="sp-ordsp-search" placeholder="ค้นหา QN / ลูกค้า..." oninput="spRenderOrdSP()" style="min-width:130px">
     <button class="ordsp-sub-chip" data-sub="ETA" data-label="⚠️ Issue" onclick="spOrdSPSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#ef4444;cursor:pointer;font-family:inherit">⚠️ Issue</button>
     <button class="ordsp-sub-chip" data-sub="" data-label="ทั้งหมด" onclick="spOrdSPSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid #7c3aed;background:rgba(124,58,237,.15);color:#a78bfa;cursor:pointer;font-family:inherit">ทั้งหมด</button>
+    <button class="ordsp-sub-chip" data-sub="BL" data-label="🔷 Sale Order" onclick="spOrdSPSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#2dd4bf;cursor:pointer;font-family:inherit">🔷 Sale Order</button>
     <button class="ordsp-sub-chip" data-sub="BLConfirm" data-label="🟡 Sales Confirm" onclick="spOrdSPSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#facc15;cursor:pointer;font-family:inherit">🟡 Sales Confirm</button>
     <button class="ordsp-sub-chip" data-sub="Stockin" data-label="🟢 Stockin" onclick="spOrdSPSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#4ade80;cursor:pointer;font-family:inherit">🟢 Stockin</button>
     <button class="ordsp-sub-chip" data-sub="WaitStockin" data-label="🟣 Wait Stock-in" onclick="spOrdSPSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#a78bfa;cursor:pointer;font-family:inherit">🟣 Wait Stock-in</button>
@@ -406,6 +407,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
     <select class="fsel" id="sp-ordsc-month" onchange="spRenderOrdSC()"><option value="">ทุกเดือน</option></select>
     <input class="fsel" type="text" id="sp-ordsc-search" placeholder="ค้นหา QN / ลูกค้า..." oninput="spRenderOrdSC()" style="min-width:120px">
     <button class="ordsc-sub-chip" data-sub="" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid #38bdf8;background:rgba(56,189,248,.15);color:#38bdf8;cursor:pointer;font-family:inherit">ทั้งหมด</button>
+    <button class="ordsc-sub-chip" data-sub="BL" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#2dd4bf;cursor:pointer;font-family:inherit">🔷 Sale Order</button>
     <button class="ordsc-sub-chip" data-sub="BLConfirm" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#facc15;cursor:pointer;font-family:inherit">🟡 Sales Confirm</button>
     <button class="ordsc-sub-chip" data-sub="SCOrder" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#38bdf8;cursor:pointer;font-family:inherit">🔵 SC Order</button>
     <button class="ordsc-sub-chip" data-sub="Carry" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#a78bfa;cursor:pointer;font-family:inherit">🟣 Carry</button>
@@ -7012,7 +7014,7 @@ function _wkTable(m, prev){
     ['🏥 Install Base','สัญญาหมดใน 60 วัน · หมดแล้วยังไม่ต่อ '+m.inst.expOld, m.inst.exp60, null, dv(m.inst.exp60,(P.inst||{}).exp60)],
     ['📋 SC Quotation','ออกใหม่ · ส่งลูกค้า '+m.SC.sent+' · ค้าง >30 วัน '+m.SC.stuck, m.SC.neu, m.SC.amt, dv(m.SC.neu,(P.SC||{}).neu)],
     ['🔧 SP Quotation','ออกใหม่ · ส่งลูกค้า '+m.SP.sent+' · ค้าง >30 วัน '+m.SP.stuck, m.SP.neu, m.SP.amt, dv(m.SP.neu,(P.SP||{}).neu)],
-    ['📄 Contract & PO','สัญญาใหม่เริ่มสัปดาห์นี้', m.con.n, m.con.amt, dv(m.con.n,(P.con||{}).n)],
+    ['📄 Contract Monitor','สัญญาใหม่เริ่มสัปดาห์นี้', m.con.n, m.con.amt, dv(m.con.n,(P.con||{}).n)],
     ['🛒 SP Monitor','สั่งอะไหล่ใหม่ · เกินกำหนดส่งมอบ '+m.sp.late, m.sp.neu, null, dv(m.sp.neu,(P.sp||{}).neu)],
     ['📥 SC Monitor','งานรอออกบิล (ยอดค้างสะสม)', m.sc.n, m.sc.amt, dv(m.sc.n,(P.sc||{}).n)],
     ['🧾 Bill Monitor','เปิดบิล', m.bill.n, m.bill.amt, dv(m.bill.n,(P.bill||{}).n)]
@@ -8044,8 +8046,8 @@ function _spOrdSPUpdateChips(counts){
   document.querySelectorAll('.ordsp-sub-chip').forEach(function(c){
     var s=c.dataset.sub, lbl=c.dataset.label||c.textContent;
     var on = s===''?(!issueMode&&!subSet.length) : s==='ETA'?issueMode : (subSet.indexOf(s)>=0);
-    var col=s==='Stockin'?'#4ade80':s==='WaitStockin'?'#a78bfa':s==='Pending'?'#fb923c':s==='Prospect'?'#38bdf8':s==='BLConfirm'?'#facc15':s==='ETA'?'#ef4444':'#a78bfa';
-    var bg=s==='Stockin'?'rgba(74,222,128,.12)':s==='WaitStockin'?'rgba(124,58,237,.15)':s==='Pending'?'rgba(251,146,60,.12)':s==='Prospect'?'rgba(56,189,248,.12)':s==='BLConfirm'?'rgba(250,204,21,.12)':s==='ETA'?'rgba(239,68,68,.12)':'rgba(124,58,237,.15)';
+    var col=s==='BL'?'#2dd4bf':s==='Stockin'?'#4ade80':s==='WaitStockin'?'#a78bfa':s==='Pending'?'#fb923c':s==='Prospect'?'#38bdf8':s==='BLConfirm'?'#facc15':s==='ETA'?'#ef4444':'#a78bfa';
+    var bg=s==='BL'?'rgba(45,212,191,.12)':s==='Stockin'?'rgba(74,222,128,.12)':s==='WaitStockin'?'rgba(124,58,237,.15)':s==='Pending'?'rgba(251,146,60,.12)':s==='Prospect'?'rgba(56,189,248,.12)':s==='BLConfirm'?'rgba(250,204,21,.12)':s==='ETA'?'rgba(239,68,68,.12)':'rgba(124,58,237,.15)';
     c.style.background = on ? bg : 'transparent';
     c.style.borderColor = on ? col : 'var(--bd2,#374151)';
     c.style.color = on ? col : (s===''?'#a78bfa':col);
@@ -8244,7 +8246,7 @@ window.spRenderOrdSP = function(){
     preRows.push(pr);
   });
   // นับ badge ต่อปุ่ม จาก preRows (ผ่าน sales/search แล้ว แต่ยังไม่กรอง status/issue)
-  var _spOrdSPCounts={BLConfirm:0,Stockin:0,WaitStockin:0,Pending:0,Prospect:0,ETA:0};
+  var _spOrdSPCounts={BL:0,BLConfirm:0,Stockin:0,WaitStockin:0,Pending:0,Prospect:0,ETA:0};  // [V624] +BL = Sale Order
   preRows.forEach(function(pr){
     var k=_subOf(pr);
     if(_spOrdSPCounts[k]!==undefined) _spOrdSPCounts[k]++;
@@ -8353,8 +8355,8 @@ window.spOrdSCSub = function(btn){
   window._spOrdSCSub = btn.getAttribute('data-sub')||'';
   document.querySelectorAll('.ordsc-sub-chip').forEach(function(c){
     var on=c===btn, s=c.dataset.sub;
-    var col=s==='BL'?'#fb923c':s==='BLConfirm'?'#facc15':s==='SCOrder'?'#38bdf8':s==='Carry'?'#a78bfa':'#38bdf8';
-    var bg=s==='BL'?'rgba(251,146,60,.12)':s==='BLConfirm'?'rgba(250,204,21,.12)':s==='SCOrder'?'rgba(56,189,248,.15)':s==='Carry'?'rgba(124,58,237,.15)':'rgba(56,189,248,.15)';
+    var col=s==='BL'?'#2dd4bf':s==='BLConfirm'?'#facc15':s==='SCOrder'?'#38bdf8':s==='Carry'?'#a78bfa':'#38bdf8';
+    var bg=s==='BL'?'rgba(45,212,191,.12)':s==='BLConfirm'?'rgba(250,204,21,.12)':s==='SCOrder'?'rgba(56,189,248,.15)':s==='Carry'?'rgba(124,58,237,.15)':'rgba(56,189,248,.15)';
     c.style.background = on ? bg : 'transparent';
     c.style.borderColor = on ? col : 'var(--bd2,#374151)';
     c.style.color = on ? col : (s===''?'#38bdf8':col);
@@ -8467,7 +8469,7 @@ window.spRenderOrdSC = function(){
     var nPros=rows.filter(function(r){return r.st==='Offer';}).length; // [V522]
     var tot=rows.reduce(function(s,r){return s+(parseFloat(r.px)||0);},0);
     function _mini(l,v,c){ return '<span style="font-size:12px;color:var(--mu)">'+l+' <b style="color:'+(c||'var(--tx)')+';font-size:14px">'+v+'</b></span>'; }
-    kpiEl.innerHTML=_mini('รายการ',rows.length)+_mini('BL',nBL,'#fb923c')+_mini('BL Conf',nBLC,'#facc15')+_mini('SC Order',nOrd,'#38bdf8')+_mini('Carry',nCarry,'#a78bfa')+_mini('Prospect',nPros,'#22d3ee')+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
+    kpiEl.innerHTML=_mini('รายการ',rows.length)+_mini('BL',nBL,'#2dd4bf')+_mini('BL Conf',nBLC,'#facc15')+_mini('SC Order',nOrd,'#38bdf8')+_mini('Carry',nCarry,'#a78bfa')+_mini('Prospect',nPros,'#22d3ee')+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
   }
   if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบรายการเข้า SC</div>';return;}
   var _curMoSC=window.CUR_MO||(new Date().getMonth()+1);

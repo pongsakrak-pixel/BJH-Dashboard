@@ -1174,7 +1174,7 @@ function cfgTabPermInit(){
     {key:'sp_renewal',   label:'└ 🔄 Renewal Pipeline', group:'sub'},
     {key:'sp_scquote',   label:'└ 📋 SC Quotation', group:'sub'},
     {key:'sp_spquote',   label:'└ 🔧 SP Quotation', group:'sub'},
-    {key:'sp_contract',  label:'└ 📄 Contract & PO', group:'sub'},
+    {key:'sp_contract',  label:'└ 📄 Contract Monitor', group:'sub'},
     {key:'sp_ordsp',     label:'└ 🛒 ติดตามสั่ง SP', group:'sub'},
     {key:'sp_ordsc',     label:'└ 📥 ติดตามเข้า SC', group:'sub'},
     {key:'sp_billing',   label:'└ 🧾 ติดตามเปิดบิล', group:'sub'},
@@ -3085,7 +3085,9 @@ function resolveBM(r){
       if(_brs.length === 1){
         o.multi = (_all.length > 1);
         o.br = _brs[0];
-        if(_mls.length > 1) o.ml = _mls.length + ' รุ่น (' + _all.length + ' เครื่อง)';
+        /* [V624] ยี่ห้อเดียวกัน -> Brand โชว์ชื่อจริง (ไม่ติดชิป Package)
+           Model บอกแค่จำนวนรุ่น จำนวนเครื่องดูได้ที่แท็บ Hardware List */
+        if(_mls.length > 1) o.ml = _mls.length + ' รุ่น';
         else if(_mls.length === 1) o.ml = _mls[0];
         return o;
       }
@@ -3908,7 +3910,10 @@ function renderTbl(){
        (เดิม V622 เปิด popup แยก _pkgShow — คงฟังก์ชันไว้เรียกจาก console ได้)
        stopPropagation ยังต้องมี กัน selRow ทำงานซ้ำสองรอบ */
     var _brHTML;
-    if(_bm.multi && _bm.list && _bm.list.length){
+    /* [V624] เดิมใช้ _bm.multi ซึ่ง = "หลายเครื่อง" -> ยี่ห้อเดียวรุ่นเดียว 3 เครื่อง ก็ติดชิป
+       ทำให้คอลัมน์ Brand หายไปเปล่า ๆ ทั้งที่รู้ยี่ห้อชัดเจน
+       -> ใช้ nBr>1 (หลายยี่ห้อจริง) เท่านั้น · ไม่แตะค่า .multi เพราะ _bmAudit() ใช้อยู่ */
+    if((_bm.nBr||0)>1 && _bm.list && _bm.list.length){
       _brHTML='<span onclick="event.stopPropagation();window._dpJumpSub=\'hw\';selRow('+r.id+')" '
         +'style="display:inline-block;padding:1px 9px;border-radius:10px;border:1px solid var(--ac2);'
         +'color:var(--ac2);cursor:pointer;font-size:12.5px;line-height:1.6" '
