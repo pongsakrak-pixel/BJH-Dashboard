@@ -3137,6 +3137,12 @@
     function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function makeTbl(items){
       if(!items.length) return '<div style="padding:12px;color:var(--mu);font-size:11px">— ไม่มีรายการ —</div>';
+      /* [V616] เรียงยอดมาก→น้อยทุกตาราง — แก้ที่นี่จุดเดียวติดทุกการ์ด (ไม่แตะ array ต้นฉบับ) */
+      items = items.slice().sort(function(a,b){
+        var av=(a._sp_fix_exvat!=null?Number(a._sp_fix_exvat||0):Number(a.px||0)/1.07);
+        var bv=(b._sp_fix_exvat!=null?Number(b._sp_fix_exvat||0):Number(b.px||0)/1.07);
+        return bv-av;
+      });
       var h='<table class="iss-tbl" style="width:100%"><thead><tr>'
         +'<th>Type</th><th>Sales</th><th>Customer</th><th>Brand</th><th>Quotation</th><th>สถานะใบเสนอราคา</th><th>Status</th><th>Mo/Yr</th><th style="text-align:right">Amount</th>'
         +'</tr></thead><tbody>';
@@ -3161,16 +3167,24 @@
     var html = '';
 
     if(kpi==='fcsp' && _bdSpMode){
-      // [v201] SP (Ordered+Processing) breakdown by Status
-      var _opG = {}; var _opOrder=[];
-      _SP_OP.forEach(function(stk){ _opG[stk]=[]; });
-      records.forEach(function(r){ var k=String(r.st||''); if(!_opG[k]){_opG[k]=[];} _opG[k].push(r); });
-      var _opKeys = _SP_OP.filter(function(k){return _opG[k] && _opG[k].length;});
-      // เผื่อ status นอกชุด (กันตก)
-      Object.keys(_opG).forEach(function(k){ if(_SP_OP.indexOf(k)<0 && _opG[k].length) _opKeys.push(k); });
+      /* [V616] เดิมแยก 4 สถานะ (Ordered/Forward × Ordering/Pending) อ่านยาก
+         ยุบเหลือ 2 กลุ่มตามความหมายจริง: สั่งของแล้ว vs ยังค้างรอสั่ง
+           SP Ordered = SP Ordered (Ordering) + SP Forward (Ordering)
+           SP Pending = SP Ordered (Pending)  + SP Forward (Pending Order)
+         สถานะนอกชุดยังโชว์แยกกลุ่มตามเดิม (กันตก) */
+      var _opG = {'SP Ordered':[], 'SP Pending':[]};
+      var _opMap = { 'SP Ordered (Ordering)':'SP Ordered', 'SP Forward (Ordering)':'SP Ordered',
+                     'SP Ordered (Pending)':'SP Pending',  'SP Forward (Pending Order)':'SP Pending' };
+      records.forEach(function(r){
+        var k=_opMap[String(r.st||'')] || String(r.st||'(ไม่ระบุสถานะ)');
+        if(!_opG[k]) _opG[k]=[];
+        _opG[k].push(r);
+      });
+      var _opKeys = ['SP Ordered','SP Pending'].filter(function(k){ return _opG[k] && _opG[k].length; });
+      Object.keys(_opG).forEach(function(k){ if(_opKeys.indexOf(k)<0 && _opG[k].length) _opKeys.push(k); });
       _opKeys.forEach(function(stk){
         var arr=_opG[stk]; if(!arr.length) return;
-        html += '<details style="margin-bottom:8px" open>'
+        html += '<details style="margin-bottom:8px">'   /* [V616] พับไว้ก่อน */
           +'<summary style="cursor:pointer;padding:6px 10px;background:var(--sur2);border-radius:5px;font-size:11px;font-weight:600;color:#fb923c">'+escH(stk)+' ('+arr.length+' items · '+fmtM(sumAmt(arr))+')</summary>'
           +'<div style="margin-top:6px">'+makeTbl(arr)+'</div>'
           +'</details>';
@@ -3227,7 +3241,7 @@
         _hmMeta.forEach(function(m){
           if(_sel.indexOf(m.k)<0) return;
           var arr=_g[m.k]; if(!arr.length) return;
-          out += '<details style="margin-bottom:8px" open>'
+          out += '<details style="margin-bottom:8px">'   /* [V616] พับไว้ก่อน */
             +'<summary style="cursor:pointer;padding:6px 10px;background:var(--sur2);border-radius:5px;font-size:11px;font-weight:600;color:'+m.c+'">'+m.lbl+' ('+arr.length+' items · '+fmtM(sumAmt(arr))+')</summary>'
             +'<div style="margin-top:6px">'+makeTbl(arr)+'</div>'
             +'</details>';
@@ -3242,6 +3256,51 @@
       if(!_shown.length){ html += '<div style="padding:20px;text-align:center;color:var(--mu)">— ไม่มีรายการตามตัวกรอง —</div>'; }
     } else {
 
+    /* ═══ [V616] โหมดใหม่ 2 แบบ — แทนการแบ่ง Contract Type / Brand ที่ละเอียดเกินใช้งาน ═══ */
+    var _plainSCSP = (kpi==='actbill' || kpi==='backlog' || kpi==='backlogc');
+    var _byMonth   = (kpi==='scord');
+
+    if(_plainSCSP){
+      /* แยกแค่ SC / SP · กลุ่มที่ยอดสูงกว่าอยู่บน */
+      var _secs=[];
+      if(scRecs.length) _secs.push({lb:'📋 SC', c:'#fbbf24', arr:scRecs});
+      if(spRecs.length) _secs.push({lb:'🔧 SP', c:'#a78bfa', arr:spRecs});
+      _secs.sort(function(a,b){ return sumAmt(b.arr)-sumAmt(a.arr); });
+      _secs.forEach(function(sec){
+        html += '<details style="margin-bottom:10px">'
+          +'<summary style="cursor:pointer;padding:7px 10px;background:var(--sur2);border-left:3px solid '+sec.c
+          +';border-radius:4px;font-size:12px;font-weight:700;color:'+sec.c+'">'+sec.lb
+          +' <span style="font-weight:400;color:var(--mu);font-size:10px">('+sec.arr.length+' items · '+fmtM(sumAmt(sec.arr))+')</span></summary>'
+          +'<div style="margin-top:6px">'+makeTbl(sec.arr)+'</div></details>';
+      });
+
+    } else if(_byMonth){
+      /* แยกรายเดือนตาม D.mo (ตัวเดียวกับที่การ์ด/กราฟใช้ ตัวเลขจะตรงกันเสมอ)
+         เดือนเรียงตามปฏิทิน ม.ค.→ธ.ค. · รายการในเดือนเรียงยอดมาก→น้อย (ทำใน makeTbl) */
+      var _MOTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      var _moG={}, _noMo=[];
+      records.forEach(function(r){
+        var m=Number(r.mo||0);
+        if(m>=1 && m<=12){ (_moG[m]=_moG[m]||[]).push(r); } else { _noMo.push(r); }
+      });
+      Object.keys(_moG).map(Number).sort(function(a,b){ return a-b; }).forEach(function(m){
+        var arr=_moG[m];
+        html += '<details style="margin-bottom:8px">'
+          +'<summary style="cursor:pointer;padding:7px 10px;background:var(--sur2);border-left:3px solid #67e8f9'
+          +';border-radius:4px;font-size:12px;font-weight:700;color:#67e8f9">'+_MOTH[m-1]+' '+yr
+          +' <span style="font-weight:400;color:var(--mu);font-size:10px">('+arr.length+' items · '+fmtM(sumAmt(arr))+')</span></summary>'
+          +'<div style="margin-top:6px">'+makeTbl(arr)+'</div></details>';
+      });
+      if(_noMo.length){
+        html += '<details style="margin-bottom:8px">'
+          +'<summary style="cursor:pointer;padding:7px 10px;background:var(--sur2);border-left:3px solid #888'
+          +';border-radius:4px;font-size:12px;font-weight:700;color:#888">ไม่ระบุเดือน'
+          +' <span style="font-weight:400;color:var(--mu);font-size:10px">('+_noMo.length+' items · '+fmtM(sumAmt(_noMo))+')</span></summary>'
+          +'<div style="margin-top:6px">'+makeTbl(_noMo)+'</div></details>';
+      }
+
+    } else {
+
     // SC section: New / Renew / Unknown
     var totSC = sumAmt(scRecs);
     if(scRecs.length){
@@ -3250,7 +3309,7 @@
         var arr=scGroups[grp];
         if(!arr.length) return;
         var c = grp==='New'?'#4ade80':(grp==='Renew'?'#67e8f9':'#888');
-        html += '<details style="margin-bottom:8px"'+(grp!=='Unknown'?' open':'')+'>'
+        html += '<details style="margin-bottom:8px">'   /* [V616] พับไว้ก่อน */
           +'<summary style="cursor:pointer;padding:6px 10px;background:var(--sur2);border-radius:5px;font-size:11px;font-weight:600;color:'+c+'">'+grp+' ('+arr.length+' items · '+fmtM(sumAmt(arr))+')</summary>'
           +'<div style="margin-top:6px">'+makeTbl(arr)+'</div>'
           +'</details>';
@@ -3272,6 +3331,8 @@
       });
       html += '</div>';
     }
+
+    } // [V616] end else (โหมดเดิม: SC by Contract Type / SP by Brand)
 
     if(!records.length){
       html = '<div style="padding:30px;text-align:center;color:var(--mu)">— ไม่มีรายการ —</div>';
