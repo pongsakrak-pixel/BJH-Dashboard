@@ -8789,9 +8789,15 @@ function _rtnCompute(opts){
                     CONTRACT_LENGHT 100% (หน่วยปี) · CONTRACT_TYPE 100%
    [V612] ค่าหลัก = mode (ราคาที่พบซ้ำบ่อยสุด · ซ้ำเท่ากันเอาตัวต่ำสุด) แทน avg
      เหตุผล: สัญญาบริการมีราคามาตรฐานที่ใช้ซ้ำ · avg โดน outlier ลากตลอด */
-var _PB = {tab:'sc', cancel:false, unit:true, q:'', sortSC:{k:'',d:-1}, sortSP:{k:'',d:-1},
+var _PB = {tab:'sc', cancel:true,   /* [V627] นับทุกใบที่ส่งลูกค้า รวมที่ยกเลิก — ไม่มีตัวกรองสถานะอีกต่อไป */ unit:true, q:'', sortSC:{k:'',d:-1}, sortSP:{k:'',d:-1},
            fSC:{br:'',ml:''}, fSP:{br:'',ml:''}, cache:null};
 var _PB_DEAD = {'Canceled':1,'Rejected':1,'ยกเลิกสัญญา':1};
+/* [V627] ราคาต้องซ้ำ "เกิน 3 ใบ" ถึงนับเป็นราคามาตรฐาน — ไม่ถึง = ไม่แสดงเลย
+   อยากได้ 3 ใบก็พอ → แก้เลขนี้เป็น 3 */
+var _PB_MIN_MODE = 4;
+var _PB_BR_SEP = '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500';   /* [V627] เส้นคั่น top brands ใน dropdown */
+/* [V627] งานบริการ/ค่าแรง — ไม่ใช่อะไหล่ ห้ามปนในสถิติราคา SP */
+var _PB_SVC_RX = /ค่าบริการ|ค่าแรง|ค่าเดินทาง|ค่าขนส่ง|ค่าตรวจเช็ค|SERVICE\s*CHARGE|LABOU?R\s*COST/i;
 var _PB_CT = [
   {k:'np',  lbl:'ไม่รวมอะไหล่',            m:'สัญญาบริการ (ไม่รวมอะไหล่)'},
   {k:'npx', lbl:'ไม่รวมอะไหล่<br>แบบยกเว้น', m:'สัญญาบริการ (ไม่รวมอะไหล่แบบยกเว้น)'},
@@ -8886,13 +8892,15 @@ function _pbBuildSP(inclCancel, unit){
     if(!qn){ noQN++; continue; }
     (byQ[qn] = byQ[qn] || []).push(r);
   }
-  var grp = {}, used = 0, skipMulti = 0, skipAmt = 0, skipDead = 0;
+  var grp = {}, used = 0, skipMulti = 0, skipAmt = 0, skipDead = 0, skipSvc = 0;
   for(var q in byQ){ if(!byQ.hasOwnProperty(q)) continue;
     var rs = byQ[q], mats = {}, mc = '';
     for(var j=0;j<rs.length;j++){ var m = String(rs[j].PARTS_MAT_NO||'').trim(); if(m){ mats[m]=1; mc=m; } }
     var nm = 0; for(var mk in mats){ if(mats.hasOwnProperty(mk)) nm++; }
     if(nm !== 1){ if(nm>1) skipMulti++; continue; }
     if(!inclCancel && _pbDead(rs[0].QUO_STATUS)){ skipDead++; continue; }
+    /* [V627] ตัดงานบริการ/ค่าแรง — ไม่ใช่อะไหล่ */
+    if(_PB_SVC_RX.test(String(rs[0].PARTS_NAME||''))){ skipSvc++; continue; }
     var amt = _pbNum(rs[0].QH_TOTAL_AMT);
     if(!(amt > 0)){ skipAmt++; continue; }
     var qty = 0;
@@ -8962,7 +8970,19 @@ function pbRender(){
     if(rr.br) bo[rr.br] = 1;
     if((!f.br || rr.br === f.br) && rr.ml) mo[rr.ml] = 1;
   }
-  var brands = Object.keys(bo).sort(), models = Object.keys(mo).sort();
+  /* [V627] ยี่ห้อที่ใช้บ่อยขึ้นก่อน — เรียงตามจำนวนรุ่นที่มีจริงในตาราง ไม่ได้ hardcode
+     คั่นด้วยเส้นขีด แล้วที่เหลือเรียง ก-ฮ ตามเดิม */
+  var _brCnt = {};
+  for(var z2=0; z2<all.length; z2++){ var b2 = all[z2].br; if(b2) _brCnt[b2] = (_brCnt[b2]||0) + 1; }
+  var _brAll = Object.keys(bo).sort();
+  var _brTop = _brAll.slice().sort(function(a,b){
+    var d2 = (_brCnt[b]||0) - (_brCnt[a]||0);
+    return d2 !== 0 ? d2 : a.localeCompare(b);
+  }).slice(0, 10);
+  var _isTop = {}; _brTop.forEach(function(b){ _isTop[b] = 1; });
+  var brands = _brTop.concat(_brAll.filter(function(b){ return !_isTop[b]; }));
+  if(_brTop.length && brands.length > _brTop.length) brands.splice(_brTop.length, 0, _PB_BR_SEP);
+  var models = Object.keys(mo).sort();
   var hasF = !!(f.br || f.ml || _PB.q);
   ctrl.innerHTML =
       _pbChip('pb-c-sc', _PB.tab==='sc', '📋 SC (ตามรุ่นเครื่อง)', "pbSetTab('sc')")
@@ -8973,7 +8993,6 @@ function pbRender(){
     + '<input type="text" id="pb-q" value="'+_pbEsc(_PB.q)+'" oninput="pbSearch(this.value)" placeholder="ค้นหา…" style="width:180px;background:var(--sur2,#1e293b);color:var(--tx,#e2e8f0);border:1px solid '+(_PB.q?'#7c6fe0':'var(--bd2,#374151)')+';border-radius:5px;padding:4px 8px;font-size:11px;font-family:inherit;outline:none">'
     + '<span id="pb-clear-wrap" style="display:' + (hasF ? '' : 'none') + '"><button onclick="pbClearFilter()" style="font-size:11px;padding:3px 10px;border-radius:12px;cursor:pointer;font-family:inherit;background:transparent;border:1px solid #ef4444;color:#ef4444">✕ ล้างตัวกรอง</button></span>'
     + '<span style="flex:1"></span>'
-    + _pbChip('pb-c-cx', _PB.cancel, 'รวมสัญญาที่ยกเลิก', 'pbToggle(\'cancel\')')
     + (_PB.tab==='sp' ? _pbChip('pb-c-un', _PB.unit, 'ราคาต่อชิ้น (÷ qty)', 'pbToggle(\'unit\')') : '');
   body.innerHTML = (_PB.tab==='sc') ? _pbHtmlSC() : _pbHtmlSP();
 }
@@ -9008,6 +9027,10 @@ function _pbSel(id, cur, opts, ph, fn){
   var h = '<select id="' + id + '" onchange="' + fn + '(this.value)" style="' + st + '">';
   h += '<option value="" style="background:#1e293b;color:#e2e8f0">' + ph + '</option>';
   for(var i=0;i<opts.length;i++){
+    if(typeof _PB_BR_SEP !== 'undefined' && opts[i] === _PB_BR_SEP){
+      h += '<option disabled style="background:#1e293b;color:#475569">' + _pbEsc(opts[i]) + '</option>';
+      continue;
+    }
     h += '<option value="' + _pbEsc(opts[i]) + '" style="background:#1e293b;color:#e2e8f0"'
        + (opts[i] === cur ? ' selected' : '') + '>' + _pbEsc(opts[i]) + '</option>';
   }
@@ -9027,11 +9050,11 @@ function _pbKcard(lbl, num, sub){
 /* เซลล์ SC: mode ตัวใหญ่ + ซ้ำกี่ใบ + ช่วง P25–P75 */
 function _pbCell(st){
   if(!st) return '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)"><span style="font-size:11px;color:#334155">—</span></td>';
-  var weak = st.modeN < 3;
+  /* [V627] ซ้ำไม่ถึงเกณฑ์ = ไม่แสดงเลย (เดิมแสดงแล้วติด ⚠) · ตัดช่วง P25–P75 ออก */
+  if(!(st.modeN >= _PB_MIN_MODE)) return '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)"><span style="font-size:11px;color:#334155">—</span></td>';
   return '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)">'
     + '<div style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">'+_pbFmt(st.mode)+'</div>'
-    + '<div style="font-size:10px;color:'+(weak?'#f59e0b':'#7c6fe0')+'">ซ้ำ '+st.modeN+'/'+st.n+' สัญญา'+(weak?' ⚠':'')+'</div>'
-    + '<div style="font-size:10px;color:var(--mu,#94a3b8);font-variant-numeric:tabular-nums;white-space:nowrap">'+_pbFmt(st.p25)+' – '+_pbFmt(st.p75)+'</div></td>';
+    + '<div style="font-size:10px;color:#7c6fe0">ซ้ำ '+st.modeN+'/'+st.n+' สัญญา</div></td>';
 }
 function _pbTh(k, label, cur, align){
   var on = (cur.k === k), ar = on ? (cur.d<0?' ↓':' ↑') : ' ↕';
@@ -9054,7 +9077,7 @@ function _pbHtmlSC(){
   var withModel = 0, noModel = 0;
   d.rows.forEach(function(r){ if(r.noModel) noModel++; else withModel++; });
   var solid = d.rows.filter(function(r){
-    for(var i=0;i<_PB_CT.length;i++){ var st = r.st[_PB_CT[i].k]; if(st && st.modeN >= 3) return true; }
+    for(var i=0;i<_PB_CT.length;i++){ var st = r.st[_PB_CT[i].k]; if(st && st.modeN >= _PB_MIN_MODE) return true; }
     return false;
   }).length;
 
@@ -9090,8 +9113,8 @@ function _pbHtmlSC(){
   }
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:10px;line-height:1.7">'
-    + '<b style="color:var(--tx,#e2e8f0)">เลขใหญ่ = ราคาที่พบซ้ำบ่อยสุด</b> (ซ้ำเท่ากันเลือกตัวต่ำสุด) · บรรทัดล่าง = ช่วงที่สัญญาครึ่งกลางอยู่ (ตัดหัวท้ายอย่างละ 25%)<br>'
-    + '<span style="color:#f59e0b">⚠</span> = ราคาซ้ำไม่ถึง 3 สัญญา ยังไม่ใช่ราคามาตรฐาน · <b style="color:var(--tx,#e2e8f0)">—</b> = ไม่เคยมีสัญญาประเภทนี้สำหรับรุ่นนี้<br>'
+    + '<b style="color:var(--tx,#e2e8f0)">เลขใหญ่ = ราคาที่พบซ้ำบ่อยสุด</b> (ซ้ำเท่ากันเลือกตัวต่ำสุด) · ตัวเลขใต้ = ซ้ำกี่ใบ จากทั้งหมดกี่ใบ<br>'
+    + '<b style="color:var(--tx,#e2e8f0)">—</b> = ยังไม่เป็นราคามาตรฐาน (ซ้ำไม่เกิน 3 ใบ) หรือไม่เคยมีสัญญาประเภทนี้ · นับรวมใบที่ยกเลิกแล้ว<br>'
     + 'แถวสีจาง = ไม่มีรุ่นในข้อมูลสัญญา · <b style="color:var(--tx,#e2e8f0)">รวมกี่สัญญา</b> นับสัญญาประเภทอื่นที่ไม่เข้า 5 คอลัมน์นี้ด้วย<br>'
     + (s.k ? 'กดหัวคอลัมน์ซ้ำเพื่อสลับทิศ' : 'ตอนนี้เรียงตามจำนวนสัญญา มาก→น้อย · <b style="color:var(--tx,#e2e8f0)">กดหัวคอลัมน์</b> เพื่อเรียงตามราคา')
     + '</div>';
@@ -9108,10 +9131,10 @@ function _pbHtmlSP(){
     var av = a.st ? a.st[s.k] : -1, bv = b.st ? b.st[s.k] : -1;
     return (av - bv) * s.d;
   });
-  var solid = d.rows.filter(function(r){ return r.st && r.st.modeN >= 2; }).length;
+  var solid = d.rows.filter(function(r){ return r.st && r.st.modeN >= _PB_MIN_MODE; }).length;
 
   var h = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'
-    + _pbKcard('Matcode ที่มีราคา', d.rows.length.toLocaleString(), 'ราคาซ้ำ 2 ใบขึ้นไป '+solid.toLocaleString()+' รายการ')
+    + _pbKcard('Matcode ที่มีราคา', d.rows.length.toLocaleString(), 'ราคาซ้ำเกิน 3 ใบ '+solid.toLocaleString()+' รายการ')
     + _pbKcard('ใบที่ใช้คำนวณ', d.used.toLocaleString(), 'เฉพาะใบที่มี matcode เดียว')
     + _pbKcard('ใบหลาย matcode', d.skipMulti.toLocaleString(), 'แยกราคารายชิ้นไม่ได้ — ไม่นับ')
     + _pbKcard('ไม่มีเลขใบเสนอราคา', d.noQN.toLocaleString(), 'เบิกในประกัน — ไม่มีราคา')
@@ -9130,7 +9153,6 @@ function _pbHtmlSP(){
     + '<th style="text-align:left;font-size:11px;color:var(--mu,#94a3b8);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748);white-space:nowrap">Brand / รุ่น</th>'
     + _pbTh('mode', 'ราคาที่พบบ่อย', s, 'right')
     + _pbTh('modeN', 'ซ้ำกี่ใบ', s, 'right')
-    + _pbTh('p25', 'ช่วงกลาง (P25–P75)', s, 'right')
     + _pbTh('n', 'ใบทั้งหมด', s, 'right')
     + '</tr></thead><tbody>';
 
@@ -9138,20 +9160,20 @@ function _pbHtmlSP(){
   var TD = 'padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)';
   var TDR = TD + ';text-align:right;font-variant-numeric:tabular-nums';
   for(var i=0;i<rows.length;i++){
-    var r = rows[i], st = r.st, warn = st.modeN < 2;   /* ราคาไม่ซ้ำเลย = ยังไม่ใช่ราคามาตรฐาน */
+    var r = rows[i], st = r.st;
+    /* [V627] ใช้เกณฑ์เดียวกับ SC — ซ้ำไม่ถึง = ข้ามแถวไปเลย */
+    if(!(st && st.modeN >= _PB_MIN_MODE)) continue;
     h += '<tr style="'+(warn?'opacity:.62':'')+'" onmouseover="this.style.background=\'var(--sur2,#1e293b)\'" onmouseout="this.style.background=\'transparent\'">'
       + '<td style="'+TD+';color:#7c6fe0;font-weight:600;white-space:nowrap">'+_pbEsc(r.mc)+'</td>'
       + '<td style="'+TD+';max-width:300px;overflow:hidden;text-overflow:ellipsis">'+_pbEsc(r.name)+'</td>'
       + '<td style="'+TD+';font-size:10px;color:var(--mu,#94a3b8)">'+_pbEsc(r.br)+'<br>'+_pbEsc(r.ml||'—')+'</td>'
       + '<td style="'+TDR+';font-size:14px;font-weight:700">'+_pbFmt(st.mode)+'</td>'
-      + '<td style="'+TDR+';color:'+(st.modeN<2?'#f59e0b':'#7c6fe0')+';font-size:11px;font-weight:600">'+st.modeN+(st.modeN<2?' ⚠':'')+'</td>'
-      + '<td style="'+TDR+';font-size:11px;color:var(--mu,#94a3b8);white-space:nowrap">'+_pbFmt(st.p25)+' – '+_pbFmt(st.p75)+'</td>'
+      + '<td style="'+TDR+';color:#7c6fe0;font-size:11px;font-weight:600">'+st.modeN+'</td>'
       + '<td style="'+TDR+';color:var(--mu,#94a3b8);font-size:11px">'+st.n+'</td></tr>';
   }
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:10px;line-height:1.7">'
-    + '<b style="color:var(--tx,#e2e8f0)">ราคาที่พบบ่อย</b> = ราคาที่ซ้ำมากสุด (ซ้ำเท่ากันเลือกตัวต่ำสุด) · <b style="color:var(--tx,#e2e8f0)">ช่วงกลาง</b> = ตัดหัวท้ายอย่างละ 25%<br>'
-    + '<span style="color:#f59e0b">⚠</span> = ราคาไม่ซ้ำเลยสักใบ ยังไม่ใช่ราคามาตรฐาน · '
+    + '<b style="color:var(--tx,#e2e8f0)">ราคาที่พบบ่อย</b> = ราคาที่ซ้ำมากสุด (ซ้ำเท่ากันเลือกตัวต่ำสุด) · แสดงเฉพาะที่ซ้ำเกิน 3 ใบ · ตัดงานบริการ/ค่าแรงออกแล้ว<br>'
     + (s.k ? 'กดหัวคอลัมน์ซ้ำเพื่อสลับทิศ' : 'ตอนนี้เรียงตามจำนวนใบ มาก→น้อย · <b style="color:var(--tx,#e2e8f0)">กดหัวคอลัมน์</b> เพื่อเรียงแบบอื่น') + '</div>';
   return h;
 }
