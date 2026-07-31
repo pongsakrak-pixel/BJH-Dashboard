@@ -8794,7 +8794,17 @@ var _PB = {tab:'sc', cancel:true,   /* [V627] นับทุกใบที่�
 var _PB_DEAD = {'Canceled':1,'Rejected':1,'ยกเลิกสัญญา':1};
 /* [V627] ราคาต้องซ้ำ "เกิน 3 ใบ" ถึงนับเป็นราคามาตรฐาน — ไม่ถึง = ไม่แสดงเลย
    อยากได้ 3 ใบก็พอ → แก้เลขนี้เป็น 3 */
-var _PB_MIN_MODE = 4;
+/* [V628] โชว์ทุกช่องที่มีข้อมูล — ความน่าเชื่อถือบอกด้วยความเข้มของสี ไม่ใช่การซ่อน
+   เหตุผล: mode มีค่าเดียวต่อช่องอยู่แล้ว ซ้ำ 5 ครั้งหรือ 1 ครั้งก็เลขเดิม
+   การซ่อนจึงไม่ได้ทำให้เลขแม่นขึ้น แค่ทำให้คนหาข้อมูลไม่เจอ */
+var _PB_MIN_MODE = 1;      /* ขั้นต่ำที่จะแสดง */
+var _PB_STRONG   = 3;      /* ซ้ำถึงเท่านี้ = ถือเป็นราคามาตรฐาน */
+/* [V628] คืนสีตามจำนวนครั้งที่ซ้ำ — [สีเลขหลัก, สีบรรทัดรอง] */
+function _pbTone(n){
+  if(n >= _PB_STRONG) return ['var(--tx,#e2e8f0)', '#7c6fe0'];
+  if(n === 2)         return ['#94a3b8', '#6b6096'];
+  return ['#64748b', '#4b5563'];
+}
 var _PB_BR_SEP = '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500';   /* [V627] เส้นคั่น top brands ใน dropdown */
 /* [V627] งานบริการ/ค่าแรง — ไม่ใช่อะไหล่ ห้ามปนในสถิติราคา SP */
 var _PB_SVC_RX = /ค่าบริการ|ค่าแรง|ค่าเดินทาง|ค่าขนส่ง|ค่าตรวจเช็ค|SERVICE\s*CHARGE|LABOU?R\s*COST/i;
@@ -9052,9 +9062,10 @@ function _pbCell(st){
   if(!st) return '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)"><span style="font-size:11px;color:#334155">—</span></td>';
   /* [V627] ซ้ำไม่ถึงเกณฑ์ = ไม่แสดงเลย (เดิมแสดงแล้วติด ⚠) · ตัดช่วง P25–P75 ออก */
   if(!(st.modeN >= _PB_MIN_MODE)) return '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)"><span style="font-size:11px;color:#334155">—</span></td>';
+  var _tn = _pbTone(st.modeN);
   return '<td style="padding:8px;border-bottom:1px solid var(--bd,#2d3748);border-right:1px solid var(--bd,#2d3748)">'
-    + '<div style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">'+_pbFmt(st.mode)+'</div>'
-    + '<div style="font-size:10px;color:#7c6fe0">ซ้ำ '+st.modeN+'/'+st.n+' สัญญา</div></td>';
+    + '<div style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:'+_tn[0]+'">'+_pbFmt(st.mode)+'</div>'
+    + '<div style="font-size:10px;color:'+_tn[1]+'">ซ้ำ '+st.modeN+'/'+st.n+' สัญญา</div></td>';
 }
 function _pbTh(k, label, cur, align){
   var on = (cur.k === k), ar = on ? (cur.d<0?' ↓':' ↑') : ' ↕';
@@ -9077,7 +9088,7 @@ function _pbHtmlSC(){
   var withModel = 0, noModel = 0;
   d.rows.forEach(function(r){ if(r.noModel) noModel++; else withModel++; });
   var solid = d.rows.filter(function(r){
-    for(var i=0;i<_PB_CT.length;i++){ var st = r.st[_PB_CT[i].k]; if(st && st.modeN >= _PB_MIN_MODE) return true; }
+    for(var i=0;i<_PB_CT.length;i++){ var st = r.st[_PB_CT[i].k]; if(st && st.modeN >= _PB_STRONG) return true; }
     return false;
   }).length;
 
@@ -9114,7 +9125,8 @@ function _pbHtmlSC(){
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:10px;line-height:1.7">'
     + '<b style="color:var(--tx,#e2e8f0)">เลขใหญ่ = ราคาที่พบซ้ำบ่อยสุด</b> (ซ้ำเท่ากันเลือกตัวต่ำสุด) · ตัวเลขใต้ = ซ้ำกี่ใบ จากทั้งหมดกี่ใบ<br>'
-    + '<b style="color:var(--tx,#e2e8f0)">—</b> = ยังไม่เป็นราคามาตรฐาน (ซ้ำไม่เกิน 3 ใบ) หรือไม่เคยมีสัญญาประเภทนี้ · นับรวมใบที่ยกเลิกแล้ว<br>'
+    + 'สีเลขบอกความน่าเชื่อถือ · <b style="color:var(--tx,#e2e8f0)">ขาวเข้ม</b> = ซ้ำ 3 ใบขึ้นไป · <span style="color:#94a3b8">เทา</span> = ซ้ำ 2 ใบ · <span style="color:#64748b">เทาจาง</span> = มีใบเดียว ยังไม่ใช่ราคามาตรฐาน<br>'
+    + '<b style="color:var(--tx,#e2e8f0)">—</b> = ไม่เคยมีสัญญาประเภทนี้สำหรับรุ่นนี้เลย · นับรวมใบที่ยกเลิกแล้ว<br>'
     + 'แถวสีจาง = ไม่มีรุ่นในข้อมูลสัญญา · <b style="color:var(--tx,#e2e8f0)">รวมกี่สัญญา</b> นับสัญญาประเภทอื่นที่ไม่เข้า 5 คอลัมน์นี้ด้วย<br>'
     + (s.k ? 'กดหัวคอลัมน์ซ้ำเพื่อสลับทิศ' : 'ตอนนี้เรียงตามจำนวนสัญญา มาก→น้อย · <b style="color:var(--tx,#e2e8f0)">กดหัวคอลัมน์</b> เพื่อเรียงตามราคา')
     + '</div>';
@@ -9131,10 +9143,10 @@ function _pbHtmlSP(){
     var av = a.st ? a.st[s.k] : -1, bv = b.st ? b.st[s.k] : -1;
     return (av - bv) * s.d;
   });
-  var solid = d.rows.filter(function(r){ return r.st && r.st.modeN >= _PB_MIN_MODE; }).length;
+  var solid = d.rows.filter(function(r){ return r.st && r.st.modeN >= _PB_STRONG; }).length;
 
   var h = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'
-    + _pbKcard('Matcode ที่มีราคา', d.rows.length.toLocaleString(), 'ราคาซ้ำเกิน 3 ใบ '+solid.toLocaleString()+' รายการ')
+    + _pbKcard('Matcode ที่มีราคา', d.rows.length.toLocaleString(), 'ราคาซ้ำ 3 ใบขึ้นไป '+solid.toLocaleString()+' รายการ')
     + _pbKcard('ใบที่ใช้คำนวณ', d.used.toLocaleString(), 'เฉพาะใบที่มี matcode เดียว')
     + _pbKcard('ใบหลาย matcode', d.skipMulti.toLocaleString(), 'แยกราคารายชิ้นไม่ได้ — ไม่นับ')
     + _pbKcard('ไม่มีเลขใบเสนอราคา', d.noQN.toLocaleString(), 'เบิกในประกัน — ไม่มีราคา')
@@ -9168,12 +9180,12 @@ function _pbHtmlSP(){
       + '<td style="'+TD+';max-width:300px;overflow:hidden;text-overflow:ellipsis">'+_pbEsc(r.name)+'</td>'
       + '<td style="'+TD+';font-size:10px;color:var(--mu,#94a3b8)">'+_pbEsc(r.br)+'<br>'+_pbEsc(r.ml||'—')+'</td>'
       + '<td style="'+TDR+';font-size:14px;font-weight:700">'+_pbFmt(st.mode)+'</td>'
-      + '<td style="'+TDR+';color:#7c6fe0;font-size:11px;font-weight:600">'+st.modeN+'</td>'
+      + '<td style="'+TDR+';color:'+_pbTone(st.modeN)[1]+';font-size:11px;font-weight:600">'+st.modeN+'</td>'
       + '<td style="'+TDR+';color:var(--mu,#94a3b8);font-size:11px">'+st.n+'</td></tr>';
   }
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:var(--mu,#94a3b8);margin-top:10px;line-height:1.7">'
-    + '<b style="color:var(--tx,#e2e8f0)">ราคาที่พบบ่อย</b> = ราคาที่ซ้ำมากสุด (ซ้ำเท่ากันเลือกตัวต่ำสุด) · แสดงเฉพาะที่ซ้ำเกิน 3 ใบ · ตัดงานบริการ/ค่าแรงออกแล้ว<br>'
+    + '<b style="color:var(--tx,#e2e8f0)">ราคาที่พบบ่อย</b> = ราคาที่ซ้ำมากสุด (ซ้ำเท่ากันเลือกตัวต่ำสุด) · สีเลขบอกความน่าเชื่อถือ (เข้ม = ซ้ำ 3 ใบขึ้นไป) · ตัดงานบริการ/ค่าแรงออกแล้ว<br>'
     + (s.k ? 'กดหัวคอลัมน์ซ้ำเพื่อสลับทิศ' : 'ตอนนี้เรียงตามจำนวนใบ มาก→น้อย · <b style="color:var(--tx,#e2e8f0)">กดหัวคอลัมน์</b> เพื่อเรียงแบบอื่น') + '</div>';
   return h;
 }
