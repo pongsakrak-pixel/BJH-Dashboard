@@ -3701,7 +3701,31 @@ function maSetupSheets() {
   maEnsureSheetWithHeader(ss, MA_TAB_SETTINGS, ['key','value']);
   maSeedSettings(ss);
   maSeedSampleData(ss);
+  maMigrateColumns(ss);   // [V630]
   Logger.log('maSetupSheets เสร็จแล้ว');
+}
+
+/** [V630] เติมคอลัมน์ที่ขาดในชีทที่มีข้อมูลแล้ว
+ *  maEnsureSheetWithHeader เดิมเขียน header เฉพาะชีทว่าง -> ชีทเก่าจะไม่มีคอลัมน์ใหม่
+ *  ตัวนี้ต่อท้ายอย่างเดียว ไม่แตะข้อมูลเดิม · รันซ้ำได้ไม่มีผลข้างเคียง */
+function maEnsureColumns(sh, cols){
+  if(!sh) return;
+  var lastCol = sh.getLastColumn();
+  if(lastCol < 1) return;
+  var head = sh.getRange(1,1,1,lastCol).getValues()[0].map(function(v){ return String(v||'').trim(); });
+  var add = cols.filter(function(k){ return head.indexOf(k) < 0; });
+  if(!add.length) return;
+  sh.getRange(1, lastCol+1, 1, add.length).setValues([add])
+    .setFontWeight('bold').setBackground('#e8eef7');
+  Logger.log('maEnsureColumns '+sh.getName()+' +'+add.join(','));
+}
+
+/** [V630] คอลัมน์ใหม่ของ flow ใหม่ — เรียกซ้ำได้ */
+function maMigrateColumns(ss){
+  ss = ss || SpreadsheetApp.openById(MA_SHEET_ID);
+  maEnsureColumns(ss.getSheetByName(MA_TAB_REQUESTS), [
+    'ref_quotation_no','requester_name','discount','discount_reason','auto_issued','issued_at'
+  ]);
 }
 
 function maEnsureSheetWithHeader(ss, name, headers) {
@@ -3950,12 +3974,38 @@ function maApiCreateRequest(payload){
     hospital_name:payload.hospital_name,sale_price:payload.sale_price,
     project_title:payload.project_title,present_types:(payload.present_types||[]).join(','),
     warranty_years:payload.warranty_years,ma_years:payload.ma_years,
-    note_overall:payload.note_overall,attach_urls:(payload.attach_urls||[]).join(',')
+    note_overall:payload.note_overall,attach_urls:(payload.attach_urls||[]).join(','),
+    /* [V630] ฟิลด์ใหม่ — ตรวจย้อนได้ว่าคีย์จากใบไหน ใครขอ ขอลดเท่าไหร่ */
+    ref_quotation_no:payload.ref_quotation_no||'',
+    requester_name:payload.requester_name||'',
+    discount:payload.discount||'',
+    discount_reason:payload.discount_reason||'',
+    pm_times_per_year:payload.pm_times_per_year||''
   });
   (payload.machines||[]).forEach(function(m,idx){
     maAppendRow(MA_TAB_MACHINES,{request_id:reqId,row_no:idx+1,brand:m.brand,model:m.model,qty:m.qty,note:m.note,spec_pulled:maApiGetModelSpec(m.brand,m.model)});
   });
   return reqId;
+}
+
+/** [V630] เส้นทาง "ราคามาตรฐาน" — ทุกรุ่นมีราคาในกลุ่มราคา + ไม่ขอส่วนลด
+ *  → ออก PDF เลย ไม่ต้องรอ Manager
+ *  การควบคุมอยู่ที่: ราคามาจากตารางกลุ่มราคาที่ Manager ตั้งไว้เอง + ทุกใบเห็นในรายการ
+ *  ถ้า client ส่ง needManager มา จะ throw — กันการอ้อมเส้นทาง */
+function maApiIssueDirect(payload){
+  if(payload && payload.needManager) throw new Error('ใบนี้ต้องผ่าน Manager ก่อน');
+  var reqId = maApiCreateRequest(payload);
+  var user  = maGetCurrentUser();
+  maSavePrices(reqId, payload.prices);
+  maUpdateRowByRequestId(MA_TAB_REQUESTS, reqId, {
+    status:'auto', auto_issued:'1', issued_at:new Date(),
+    exclude_items:payload.exclude_items||'',
+    approved_by_email:user?user.email:'', approved_at:new Date()
+  });
+  var url='';
+  try { url = maGeneratePdf(reqId); maUpdateRowByRequestId(MA_TAB_REQUESTS, reqId, {pdf_url:url}); }
+  catch(e){ Logger.log('maApiIssueDirect PDF fail '+reqId+': '+e.message); }
+  return { request_id:reqId, pdf_url:url };
 }
 
 function maApiSaveVerify(payload){
@@ -4180,10 +4230,35 @@ function maBuildPdfHtml(d, forPreview){
   var pmStep=pmStepEarly;
 
   // ข้อ 1: รูปแบบ "หัวข้อ||เนื้อหา" — เนื้อหารองรับ {PROJECT}
+  /* [V630] ตารางเครื่องที่ครอบคลุม — ใช้แทน {MACHINES} ในข้อ 1
+     เหตุผล: ระบุเครื่องเป็นรายการ ถ้าคีย์ตกเครื่องจะเห็นทันที
+     ห้ามใช้ประโยคคลุมแบบ "ครอบคลุมเครื่องทั้งหมดในโครงการ" — คีย์ตกแล้วต้องรับผิดชอบเครื่องที่ไม่ได้คิดราคา */
+  var _mcList = (d.machines||[]).filter(function(m){ return String(m.brand||m.model||'').trim(); });
+  var _mcTotal = 0;
+  _mcList.forEach(function(m){ _mcTotal += (Number(m.qty)||0); });
+  var machinesHtml = '';
+  if(_mcList.length){
+    machinesHtml = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 4px">'
+      + '<tr><th style="border:1px solid #999;padding:3px 6px;background:#f0f0f0;width:26px">#</th>'
+      + '<th style="border:1px solid #999;padding:3px 6px;background:#f0f0f0;text-align:left">ยี่ห้อ</th>'
+      + '<th style="border:1px solid #999;padding:3px 6px;background:#f0f0f0;text-align:left">รุ่น</th>'
+      + '<th style="border:1px solid #999;padding:3px 6px;background:#f0f0f0;width:64px">จำนวน</th></tr>';
+    _mcList.forEach(function(m,i){
+      machinesHtml += '<tr><td style="border:1px solid #999;padding:3px 6px;text-align:center">'+(i+1)+'</td>'
+        + '<td style="border:1px solid #999;padding:3px 6px">'+maEscapeHtml(m.brand||'')+'</td>'
+        + '<td style="border:1px solid #999;padding:3px 6px">'+maEscapeHtml(m.model||'')+'</td>'
+        + '<td style="border:1px solid #999;padding:3px 6px;text-align:center">'+(Number(m.qty)||0)+'</td></tr>';
+    });
+    machinesHtml += '</table>'
+      + '<div style="font-size:11px">รวม '+_mcTotal+' เครื่อง — ข้อเสนอนี้ครอบคลุมเฉพาะเครื่องตามรายการข้างต้นเท่านั้น</div>';
+  }
   var txt1raw=pick('ov_clause1','clause1');
   var c1parts=txt1raw.split('||');
   var c1head=maEscapeHtml((c1parts[0]||'รายละเอียดเครื่อง').trim());
   var c1body=maEscapeHtml((c1parts[1]!==undefined?c1parts[1]:'{PROJECT}').replace(/\{PROJECT\}/g, projOneLine).trim());
+  /* [V630] {MACHINES} -> ตาราง · ถ้าข้อความไม่มีแทนนี้ แต่มีเครื่อง → ต่อท้ายให้เอง */
+  if(c1body.indexOf('{MACHINES}')>=0) c1body=c1body.replace(/\{MACHINES\}/g, machinesHtml);
+  else if(machinesHtml) c1body += machinesHtml;
   var clause1Html='<div class="lead">'+c1head+'</div><div>'+c1body+'</div>';
 
   // ข้อ 2: ประโยคนำ รองรับ {YEARS} {PM} {ROUNDS}
