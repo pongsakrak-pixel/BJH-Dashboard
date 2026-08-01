@@ -9175,12 +9175,16 @@ function _pbHtmlSP(){
     var r = rows[i], st = r.st;
     /* [V627] ใช้เกณฑ์เดียวกับ SC — ซ้ำไม่ถึง = ข้ามแถวไปเลย */
     if(!(st && st.modeN >= _PB_MIN_MODE)) continue;
-    h += '<tr style="'+(warn?'opacity:.62':'')+'" onmouseover="this.style.background=\'var(--sur2,#1e293b)\'" onmouseout="this.style.background=\'transparent\'">'
+    /* [V628.1] เดิมใช้ตัวแปร warn ที่ถูกลบไปตอน V627 -> ReferenceError กดแท็บ SP ไม่ติด
+       เปลี่ยนมาใช้โทนเดียวกับ SC: ซ้ำ >=3 เต็มสี · 2 จาง · 1 จางสุด */
+    var _tn = _pbTone(st.modeN);
+    var _dim = (st.modeN >= _PB_STRONG) ? '' : (st.modeN === 2 ? 'opacity:.82' : 'opacity:.62');
+    h += '<tr style="'+_dim+'" onmouseover="this.style.background=\'var(--sur2,#1e293b)\'" onmouseout="this.style.background=\'transparent\'">'
       + '<td style="'+TD+';color:#7c6fe0;font-weight:600;white-space:nowrap">'+_pbEsc(r.mc)+'</td>'
       + '<td style="'+TD+';max-width:300px;overflow:hidden;text-overflow:ellipsis">'+_pbEsc(r.name)+'</td>'
       + '<td style="'+TD+';font-size:10px;color:var(--mu,#94a3b8)">'+_pbEsc(r.br)+'<br>'+_pbEsc(r.ml||'—')+'</td>'
-      + '<td style="'+TDR+';font-size:14px;font-weight:700">'+_pbFmt(st.mode)+'</td>'
-      + '<td style="'+TDR+';color:'+_pbTone(st.modeN)[1]+';font-size:11px;font-weight:600">'+st.modeN+'</td>'
+      + '<td style="'+TDR+';font-size:14px;font-weight:700;color:'+_tn[0]+'">'+_pbFmt(st.mode)+'</td>'
+      + '<td style="'+TDR+';color:'+_tn[1]+';font-size:11px;font-weight:600">'+st.modeN+'</td>'
       + '<td style="'+TDR+';color:var(--mu,#94a3b8);font-size:11px">'+st.n+'</td></tr>';
   }
   h += '</tbody></table>';

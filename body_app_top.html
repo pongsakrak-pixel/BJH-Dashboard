@@ -290,7 +290,7 @@ window._showBootLoading=function(){
           b.style.background = 'rgba(239,68,68,.14)';
           b.style.borderColor = '#ef4444';
           b.style.color = '#f87171';
-          b.title = 'บางส่วนโหลดไม่สำเร็จ — กด ↻ Update เพื่อโหลดใหม่';
+          b.title = 'บางส่วนโหลดไม่สำเร็จ — รีเฟรชหน้า (F5) เพื่อโหลดใหม่';   /* [V629] ปุ่ม Update ถูกลบแล้ว */
         }
       }catch(e){}
     }
@@ -397,7 +397,10 @@ window._showBootLoading=function(){
 <button class="hdr-btn" onclick="toggleTheme()" title="สลับ Theme (Dark/Light)" id="theme-toggle-btn" aria-label="Toggle theme"><svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg><svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg></button>
 
     <span id="light-lvl-wrap" title="ปรับความเข้มพื้นหลัง (Light mode): ซ้าย=เทานวล ขวา=ขาวจัด" style="display:none;align-items:center;gap:5px;border:1px solid var(--bd);border-radius:6px;padding:3px 8px"><span style="font-size:11px;color:var(--mu);user-select:none">◐</span><input type="range" id="light-lvl" min="0" max="100" step="1" value="50" oninput="setLightLvl(this.value)" style="width:80px;cursor:pointer;accent-color:var(--ac)"></span> <!-- [V472] slider ความเข้มพื้น Light mode -->
-    <button class="hdr-btn" onclick="bjhUnifiedRefresh()" title="โหลดข้อมูลล่าสุด (Master+TX) แล้ว refresh หน้าอัตโนมัติ" style="border-color:#38bdf8;color:#7dd3fc" id="gas-refresh-btn">↻ Update</button> <!-- [v429] ปุ่มรวม -->
+    <!-- [V629] ลบปุ่ม ↻ Update — bjhUnifiedRefresh() เรียก bjhFullReload()
+         ซึ่งเป็นตัวเดียวกับที่ boot เรียกตอนเปิดหน้า -> กดปุ่ม = F5 ทุกประการ
+         (F5 ดีกว่าด้วยซ้ำ — โหลด HTML/JS ใหม่ด้วย)
+         คงฟังก์ชัน bjhUnifiedRefresh / bjhRefreshData ไว้ — SWR เงียบยังเรียกอยู่ -->
     
     <!-- [v414] gas-data-ts ลบออก — ข้อมูลย้ายไปมุมซ้ายบน #ver-stamp แล้ว (Master/TX + สี) -->
     <div id="user-badge" onclick="doLogout()">
