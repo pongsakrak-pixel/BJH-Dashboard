@@ -295,7 +295,7 @@ var MA = window.MA;
   }
   function showMsg(t,ok){var m=document.getElementById('msg');m.textContent=t;m.className='msg '+(ok?'ok':'err');window.scrollTo({top:0});}
   function clearMsg(){var m=document.getElementById('msg');m.className='msg';m.textContent='';}
-  function statusTh(s){return {pending:'รอตรวจสอบ',verifying:'รออนุมัติ',approved:'อนุมัติแล้ว'}[s]||s;}
+  function statusTh(s){return {pending:'รอตรวจสอบ',verifying:'รออนุมัติ',approved:'อนุมัติแล้ว',auto:'ออกอัตโนมัติ'}[s]||s;}  // [V630.1] +auto
   // ===== helper: ใส่ comma ตัวเลข =====
   function fmtComma(v){v=String(v==null?'':v).replace(/,/g,'');if(v===''||isNaN(Number(v)))return v;return Number(v).toLocaleString('en-US');}
   function commaInput(el){var p=el.selectionStart,raw=el.value.replace(/[^\d]/g,'');el.value=raw?Number(raw).toLocaleString('en-US'):'';}
@@ -583,10 +583,17 @@ var MA = window.MA;
       if(!rows||!rows.length){q.innerHTML='<div style="color:var(--muted);padding:20px;text-align:center">ยังไม่มีคำขอ</div>';return;}
       rows.forEach(function(r){
         var div=document.createElement('div');div.className='qcard';
-        var pdf=(r.status==='approved'&&r.pdf_url)?'<a class="btn primary" style="padding:8px 15px;font-size:12.5px;text-decoration:none" href="'+r.pdf_url+'" target="_blank">⬇ ดาวน์โหลด PDF</a>':'<span style="font-size:12px;color:var(--muted)">PDF ยังไม่พร้อม</span>';
+        /* [V630.1] เส้นทางออกเองบันทึก status='auto' — เดิมเช็คแค่ 'approved' ปุ่ม PDF เลยไม่ขึ้น */
+        var _done=(r.status==='approved'||r.status==='auto');
+        var pdf=(_done&&r.pdf_url)?'<a class="btn primary" style="padding:8px 15px;font-size:12.5px;text-decoration:none" href="'+r.pdf_url+'" target="_blank">⬇ ดาวน์โหลด PDF</a>'
+          :(_done?'<span style="font-size:12px;color:#e6b35e">สร้าง PDF ไม่สำเร็จ — กดสร้างใหม่ที่หน้าตรวจสอบ</span>'
+                 :'<span style="font-size:12px;color:var(--muted)">PDF ยังไม่พร้อม</span>');
+        /* [V630.1] ma_years = ปีรวมทั้งประกัน — เดิมเขียน "ขอ MA 10 ปี" ทำให้เข้าใจผิด */
+        var _w=Number(r.warranty_years)||0, _tot=Number(r.ma_years)||0, _ma=Math.max(0,_tot-_w);
         div.innerHTML='<div><div class="qid">#'+r.request_id+'</div><div class="qhosp">'+r.hospital_name+'</div>'+
-          '<div class="qmeta">รับประกัน '+r.warranty_years+' ปี · ขอ MA '+r.ma_years+' ปี</div></div>'+
-          '<div class="qright"><span class="badge '+r.status+'">'+statusTh(r.status)+'</span>'+pdf+'</div>';
+          '<div class="qmeta">รวม '+_tot+' ปี · ประกัน '+_w+' ปี · คิดค่าบริการ '+_ma+' ปี'+
+            (r.ref_quotation_no?' · อ้างอิง '+r.ref_quotation_no:'')+'</div></div>'+
+          '<div class="qright"><span class="badge '+(r.status==='auto'?'approved':r.status)+'">'+statusTh(r.status)+'</span>'+pdf+'</div>';
         q.appendChild(div);
       });
     }).withFailureHandler(function(e){
