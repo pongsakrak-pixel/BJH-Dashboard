@@ -3880,8 +3880,19 @@ function maUpdateRowByRequestId(tabName,requestId,patchObj){
 }
 
 function maNewRequestId(){
-  var rows=maReadSheet(MA_TAB_REQUESTS); var n=rows.length+1;
-  return 'SR-'+(new Date().getFullYear())+'-'+('0000'+n).slice(-4);
+  /* [V631] เดิมใช้ rows.length+1 — พอลบแถวใดแถวหนึ่ง เลขจะซ้ำกับของเดิมทันที
+     (เจอจริง 1 ส.ค. 69: SR-2026-0008 ซ้ำ 2 ใบ)
+     ใช้เลขสูงสุดที่มีอยู่ +1 แทน · นับเฉพาะปีปัจจุบัน */
+  var yr = new Date().getFullYear();
+  var rows = maReadSheet(MA_TAB_REQUESTS) || [];
+  var pre = 'SR-' + yr + '-', mx = 0;
+  rows.forEach(function(r){
+    var id = String(r.request_id||'');
+    if(id.indexOf(pre)!==0) return;
+    var n = parseInt(id.slice(pre.length), 10);
+    if(!isNaN(n) && n > mx) mx = n;
+  });
+  return pre + ('0000' + (mx + 1)).slice(-4);
 }
 
 // =====================================================================
@@ -4086,7 +4097,38 @@ function maApiApprove(requestId){
 function maApiListRequests(statusFilter){
   var rows=maReadSheet(MA_TAB_REQUESTS) || [];
   if(statusFilter) rows=rows.filter(function(r){return r.status===statusFilter;});
+  /* [V631] แนบสรุปเครื่อง — หน้ารายการจะได้โชว์จำนวนเครื่องจริง ไม่ต้องยิงทีละใบ */
+  try{
+    var mc = maReadSheet(MA_TAB_MACHINES) || [], by = {};
+    mc.forEach(function(m){
+      var k = String(m.request_id||''); if(!k) return;
+      if(!by[k]) by[k] = {n:0, qty:0, brands:{}};
+      by[k].n++; by[k].qty += (Number(m.qty)||0);
+      if(m.brand) by[k].brands[m.brand] = 1;
+    });
+    rows.forEach(function(r){
+      var s = by[String(r.request_id||'')];
+      r._mcModels = s ? s.n : 0;
+      r._mcQty    = s ? s.qty : 0;
+      r._mcBrands = s ? Object.keys(s.brands) : [];
+    });
+  }catch(e){}
   return rows;
+}
+
+/** [V631] ล้างคำขอทั้งหมด — รันเองใน Apps Script editor
+ *  ลบเฉพาะ Requests / Machines / Prices (เก็บแถวหัวไว้)
+ *  ไม่แตะ Settings / Templates / Models / Users — เป็นค่าตั้งต้นที่ระบบใช้ */
+function maClearAllRequests(){
+  var ss = maSs_();
+  [MA_TAB_REQUESTS, MA_TAB_MACHINES, MA_TAB_PRICES].forEach(function(t){
+    var sh = ss.getSheetByName(t);
+    if(!sh) { Logger.log('ข้าม (ไม่มีชีท): '+t); return; }
+    var last = sh.getLastRow();
+    if(last > 1) sh.deleteRows(2, last - 1);
+    Logger.log('ล้าง '+t+' — ลบ '+Math.max(0,last-1)+' แถว');
+  });
+  Logger.log('maClearAllRequests เสร็จ · เลขที่เอกสารจะเริ่ม SR-'+(new Date().getFullYear())+'-0001 ใหม่');
 }
 
 /**
