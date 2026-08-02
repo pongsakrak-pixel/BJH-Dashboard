@@ -67,6 +67,7 @@
 #v-ma .field label{font-size:11.5px;color:var(--mu2);font-weight:600}
 #v-ma .field label .req{color:var(--red)}
 #v-ma .field .sub{font-size:10.5px;color:var(--mu);font-weight:400}
+#v-ma .grid2 .field > label{min-height:32px}   /* [V637] ป้าย 2 บรรทัดสูงเท่ากัน ช่องตรงแนว */
 #v-ma input,#v-ma select,#v-ma textarea{font-family:var(--font);font-size:12.5px;color:var(--tx);
   background:var(--sur2);border:1px solid var(--bd2);border-radius:5px;padding:7px 9px;width:100%;line-height:1.55}
 #v-ma input:focus,#v-ma select:focus,#v-ma textarea:focus{outline:none;border-color:var(--ac)}
@@ -259,10 +260,13 @@
         <div class="field"><label>ชื่อโครงการ <span class="req">*</span></label><input id="r_project2"></div>
         <div class="field"><label>ชื่อโรงพยาบาล <span class="req">*</span></label><input id="r_hospital"></div>
         <div class="grid2" style="margin-top:auto">
+          <!-- [V637] sub อยู่คนละบรรทัดเสมอ ป้ายจึงสูงเท่ากัน ช่องกรอกตรงแนว -->
           <div class="field" style="margin:0"><label>เลขที่ใบเสนอราคา <span class="req">*</span>
-            <span class="sub">ตรวจย้อนได้ว่าคีย์จากใบไหน</span></label><input id="r_refquo" placeholder="QSC2602-15510"></div>
+            <span class="sub" style="display:block">ตรวจย้อนได้ว่าคีย์จากใบไหน</span></label>
+            <input id="r_refquo" placeholder="QSC2602-15510"></div>
           <div class="field" style="margin:0"><label>ผู้ขอ <span class="req">*</span>
-            <span class="sub">เจ้าของ spec ที่ส่งมา</span></label><input id="r_requester" placeholder="ชื่อ · ทีม"></div>
+            <span class="sub" style="display:block">เจ้าของ spec ที่ส่งมา</span></label>
+            <input id="r_requester" placeholder="ชื่อ · ทีม"></div>
         </div>
       </div>
 
@@ -278,22 +282,21 @@
           <div class="field"><label>ปีบริการรวม <span class="req">*</span></label><select id="r_mayears"></select></div>
         </div>
         <div id="r_yrmsg"></div>
-        <div class="grid2" style="margin-top:9px">
-          <div class="field" style="margin:0"><label>ขอส่วนลด <span class="sub">เว้นว่าง = ราคามาตรฐาน</span></label>
-            <input id="r_disc" placeholder="เช่น 5% หรือ 200,000"></div>
-          <div class="field" style="margin:0"><label>เหตุผลที่ขอลด <span class="sub">จำเป็นเมื่อกรอกส่วนลด</span></label>
-            <input id="r_discwhy" placeholder="เช่น แข่งกับคู่เทียบ"></div>
-        </div>
+        <!-- [V640] ถอดช่อง "ขอส่วนลด" ออก — ถ้าราคาไม่ใช่มาตรฐาน ให้ Admin
+             แก้คำขอแล้วขออนุมัติใหม่ ดีกว่าขอลดตั้งแต่ต้น -->
       </div>
 
       <!-- 4 -->
       <div class="card">
         <h3><span class="sec-num">3</span> ไฟล์แนบ &amp; หมายเหตุ</h3>
         <div class="hint">แนบเอกสารให้ Manager ตรวจสอบได้</div>
+        <!-- [V637] แนบไฟล์ใช้งานได้จริง — อัปขึ้น Drive โฟลเดอร์เดียวกับ PDF -->
         <div class="reqfiles" style="margin-bottom:9px">
-          <div class="dropzone">⬆ ใบเสนอราคา</div>
-          <div class="dropzone">⬆ สเปคเครื่อง</div>
+          <div class="dropzone" id="dz_quo" onclick="document.getElementById('f_quo').click()">⬆ ใบเสนอราคา</div>
+          <div class="dropzone" id="dz_spec" onclick="document.getElementById('f_spec').click()">⬆ สเปคเครื่อง</div>
         </div>
+        <input type="file" id="f_quo" style="display:none" onchange="MA.upFile(this,'quo')">
+        <input type="file" id="f_spec" style="display:none" onchange="MA.upFile(this,'spec')">
         <div class="field" style="margin:0;flex:1"><label>หมายเหตุ <span class="sub">ไม่บังคับ</span></label>
           <textarea id="r_note" rows="2" placeholder="เงื่อนไขพิเศษ / ข้อตกลงกับลูกค้า..." style="flex:1"></textarea></div>
       </div>
@@ -384,6 +387,8 @@
         <table class="ltbl" id="v_models"></table>
       </div>
 
+      <!-- [V638] ครอบไว้เพื่อซ่อนทั้งบล็อกตอนใบถูกล็อก -->
+      <div id="v_sec3">
       <div class="tsec"><span class="n">3</span> ราคา <span class="hint2">ดึงจากกลุ่มราคา · แก้ตัวเลขได้</span></div>
       <table class="ftbl" style="margin-bottom:10px">
         <tr><th>แบบที่จะเสนอ<span class="sub">ติ๊กออก = ไม่เสนอ</span></th>
@@ -403,7 +408,9 @@
         <div class="chips" id="v_excludeChips" style="margin-bottom:10px"></div>
         <input id="v_excludeMore" class="editable" oninput="MA.syncExcludeChips()" placeholder="รายการที่จะแสดงในเอกสาร (คั่นด้วย ,)">
       </div>
+      </div><!-- /v_sec3 -->
 
+      <div id="v_sec4">
       <div class="tsec"><span class="n">4</span> ข้อความเอกสาร
         <span class="hint2" id="v_clsum"></span></div>
       <div id="v_clbar" style="margin-bottom:8px"></div>
@@ -416,6 +423,7 @@
         <tr><th>ข้อ 6<span class="sub">การติดต่อประสานงาน</span></th><td class="ed"><textarea id="v_clause6" rows="2" placeholder="(เว้นว่าง = ใช้ค่ามาตรฐาน)"></textarea></td></tr>
         <tr><th>หมายเหตุท้ายราคา</th><td class="ed"><textarea id="v_notes" rows="2" placeholder="(เว้นว่าง = ใช้ค่ามาตรฐาน)"></textarea></td></tr>
       </table>
+      </div><!-- /v_sec4 -->
 
       <div class="actions" style="margin-top:16px">
         <button class="btn" onclick="MA.previewPdf()">👁 ดูตัวอย่าง PDF</button>
@@ -428,8 +436,25 @@
   <!-- ============ PAGE: RESULT ============ -->
   <section id="page-result" class="hidden">
     <div class="stage-title">คำขอ &amp; ดาวน์โหลด PDF</div>
-    <div class="stage-desc">ติดตามสถานะ และดาวน์โหลด PDF เมื่ออนุมัติแล้ว</div>
-    <div class="queue" id="res_queue"></div>
+    <div class="stage-desc">ติดตามสถานะทุกใบ และดาวน์โหลด PDF เมื่อออกเอกสารแล้ว</div>
+    <!-- [V639] เปลี่ยนจากการ์ดเป็นตาราง ให้เหมือนหน้าตรวจสอบ/อนุมัติ -->
+    <div class="card" style="padding:0;overflow-x:auto">
+      <div class="ltool">
+        <button class="fchip on" data-f="all" onclick="MA.setRF(this)">ทั้งหมด <span id="rc-all"></span></button>
+        <button class="fchip gr" data-f="done" onclick="MA.setRF(this)">ออกเอกสารแล้ว <span id="rc-done"></span></button>
+        <button class="fchip" data-f="wait" onclick="MA.setRF(this)">ยังไม่ออก <span id="rc-wait"></span></button>
+        <input class="lsearch" id="res_q" oninput="MA.drawResult()" placeholder="ค้นหา เลขที่ / โรงพยาบาล / โครงการ...">
+        <span class="sp" id="res_count"></span>
+      </div>
+      <table class="ltbl"><colgroup>
+        <col style="width:112px"><col><col style="width:132px"><col style="width:118px">
+        <col style="width:88px"><col style="width:58px"><col style="width:112px">
+        <col style="width:104px"><col style="width:150px"></colgroup>
+        <thead><tr>
+        <th>เลขที่</th><th>โรงพยาบาล / โครงการ</th><th>เครื่อง</th><th>อ้างอิง / ผู้ขอ</th>
+        <th class="r">ปี</th><th class="r">ครั้ง/ปี</th><th>ส่งเมื่อ</th><th>สถานะ</th><th>เอกสาร</th>
+      </tr></thead><tbody id="res_body"></tbody></table>
+    </div>
   </section>
 
   <!-- ============ PAGE: CONFIG ============ -->
@@ -527,9 +552,10 @@ var MA = window.MA;
     document.getElementById('nav-draft').style.display = (p==='draft') ? '' : 'none';  // [V630]
     /* [V636] หน้าสร้างคำขอใช้เต็มความกว้าง หน้าอื่นคงเดิม */
     try{ var _w=document.querySelector('#v-ma .wrap'); if(_w) _w.classList.toggle('wide', p==='request'); }catch(e){}
-    if(p==='request'){ loadRequestOptions(); mrInit(); }
+    /* [V637] mrInit() ก่อน — สร้าง dropdown ปีให้มีค่าทันที ไม่ต้องรอ server */
+    if(p==='request'){ mrInit(); loadRequestOptions(); }
     if(p==='verify'){loadDefaults();loadVerifyList2();}   // [V630]
-    if(p==='result')loadResultList();
+    if(p==='result')loadResultList2();   // [V639] ตารางแทนการ์ด
     if(p==='config'){ loadConfig(); cSwitch('S'); }   // [V635] เปิดมาที่ข้อความเอกสาร (แท็บ Template ซ่อนแล้ว)
   }
   function showMsg(t,ok){var m=document.getElementById('msg');m.textContent=t;m.className='msg '+(ok?'ok':'err');window.scrollTo({top:0});}
@@ -552,12 +578,15 @@ var MA = window.MA;
   var reqOptLoaded=false;
   function loadRequestOptions(){
     if(reqOptLoaded)return;reqOptLoaded=true;
-    google.script.run.withSuccessHandler(function(s){
+    google.script.run.withFailureHandler(function(e){
+      /* [V637] โหลด settings ไม่สำเร็จก็ต้องมีตัวเลือกปีให้กรอก */
+      reqOptLoaded=false; try{ buildReqYears(); }catch(_e){}
+    }).withSuccessHandler(function(s){
       s=s||{};
-      // รูปแบบนำเสนอ (chips)
-      var pt=String(s.optPresentTypes||'ไม่รวมอะไหล่\nรวมอะไหล่ยกเว้น\nรวมอะไหล่ทุกชิ้น').split(/\r?\n/).map(function(x){return x.trim()}).filter(Boolean);
-      var box=document.getElementById('r_ptypes');box.innerHTML='';
-      pt.forEach(function(v){var sp=document.createElement('span');sp.className='chip';sp.dataset.v=v;sp.textContent=v;sp.onclick=function(){sp.classList.toggle('sel')};box.appendChild(sp);});
+      try{
+      /* [V637] ถอด chips รูปแบบนำเสนอออก — #r_ptypes ถูกลบไปตั้งแต่ V630
+         โค้ดเดิมทำ box.innerHTML กับ null -> callback ตายกลางคัน
+         ปีรับประกัน/ปีบริการจึงไม่ถูกสร้าง */
       // ปีรับประกัน
       var wy=String(s.optWarrantyYears||'1,2,3').split(',').map(function(x){return Number(x.trim())}).filter(Boolean);
       var ws=document.getElementById('r_warranty');ws.innerHTML='';
@@ -566,6 +595,10 @@ var MA = window.MA;
       reqMaxTotal=Number(s.maxTotalYears)||10;
       ws.onchange=buildTotalYears; // เปลี่ยนปีประกัน -> อัปเดตปีบริการ
       buildTotalYears();           // สร้างปีบริการครั้งแรก
+      }catch(e){
+        /* [V637] อะไรพังกลางคัน ก็ต้องเหลือ dropdown ปีที่ใช้งานได้ */
+        console.error('loadRequestOptions',e); try{ buildReqYears(); }catch(_e){}
+      }
     }).maApiGetSettings();
   }
   var reqMaxTotal=10;
@@ -1022,11 +1055,12 @@ var MA = window.MA;
       project_title:g('r_project2'), hospital_name:g('r_hospital'),
       ref_quotation_no:g('r_refquo'), requester_name:g('r_requester'),
       pm_times_per_year:g('r_pm'), warranty_years:g('r_warranty'), ma_years:g('r_mayears'),
-      discount:g('r_disc'), discount_reason:g('r_discwhy'), note_overall:g('r_note'),
+      discount:'', discount_reason:'',   /* [V640] เลิกใช้ช่องส่วนลด */
+      note_overall:g('r_note'),
       sale_price:'', present_types:['ไม่รวมอะไหล่','รวมอะไหล่ยกเว้น','รวมอะไหล่ทุกชิ้น'],
       machines:MR.filter(function(r){return String(r.brand||'').trim()&&String(r.model||'').trim();})
                  .map(function(r){return {brand:r.brand.trim(),model:r.model.trim(),qty:r.qty||1,note:''};}),
-      attach_urls:[]
+      attach_urls:attachUrls()   // [V637] ไฟล์ที่อัปขึ้น Drive แล้ว
     };
   }
   function validateReq(p){
@@ -1035,7 +1069,6 @@ var MA = window.MA;
     if(!p.ref_quotation_no) return 'กรุณากรอกเลขที่ใบเสนอราคาที่อ้างอิง';
     if(!p.requester_name) return 'กรุณากรอกชื่อผู้ขอ';
     if(!p.machines.length) return 'กรุณาใส่เครื่องอย่างน้อย 1 รุ่น (ยี่ห้อ + รุ่น)';
-    if(p.discount && !p.discount_reason) return 'กรอกส่วนลดแล้ว ต้องระบุเหตุผลด้วย';
     return '';
   }
 
@@ -1047,7 +1080,8 @@ var MA = window.MA;
     var w=Number(p.warranty_years)||0, y=Number(p.ma_years)||w;
     var miss=rowsMissing(p.machines);
     var totQty=p.machines.reduce(function(a,r){return a+(Number(r.qty)||0);},0);
-    var auto = (miss.length===0 && !p.discount);
+    /* [V640] เหลือเงื่อนไขเดียว — ทุกรุ่นมีราคาในกลุ่มราคาหรือไม่ */
+    var auto = (miss.length===0);
     draftPayload=p; draftAuto=auto;
 
     document.getElementById('d_cnt').innerHTML=
@@ -1066,7 +1100,6 @@ var MA = window.MA;
         +'<div class="t">ต้องผ่าน Manager ก่อน</div><div class="d">เพราะ:</div><ul>'
         +(miss.length?'<li>มี '+miss.length+' รุ่นที่ยังไม่มีราคาในระบบ ('
           +miss.map(function(r){return esc(r.brand+' '+r.model)}).join(', ')+')</li>':'')
-        +(p.discount?'<li>ขอส่วนลด <b style="color:#e6b35e">'+esc(p.discount)+'</b></li>':'')
         +'</ul></div></div>';
 
     var rows=p.machines.map(function(r,i){
@@ -1109,7 +1142,9 @@ var MA = window.MA;
     var btn=document.getElementById('d_go'), old=btn.textContent;
     btn.disabled=true; btn.textContent='กำลังส่ง...';
     function done(msg){ showMsg(msg,true); btn.disabled=false; btn.textContent=old;
-      MR=[{brand:'',model:'',qty:1}]; draftPayload=null; go('result'); }
+      MR=[{brand:'',model:'',qty:1}]; draftPayload=null;
+      try{ rmFile('quo'); rmFile('spec'); }catch(e){}   // [V637] เคลียร์ไฟล์แนบ
+      go('result'); }
     function fail(e){ showMsg('ผิดพลาด: '+e.message,false); btn.disabled=false; btn.textContent=old; }
     if(draftAuto){
       var p=JSON.parse(JSON.stringify(draftPayload));
@@ -1210,11 +1245,12 @@ var MA = window.MA;
     var sub=document.getElementById('v_sub');
     if(sub) sub.textContent='ส่งโดย '+(req.created_by_name||req.created_by_email||'-')
       +' · '+String(req.created_at||'').slice(0,16).replace('T',' ')+' · ช่องพื้นส้ม = แก้ไขได้';
-    var dc=document.getElementById('v_disccell');
-    if(dc) dc.innerHTML = req.discount
-      ? '<div style="padding:7px;color:#e6b35e;font-weight:600">'+esc(req.discount)+'</div>'
-        +'<div class="mini" style="padding:0 7px 7px">เหตุผล: '+esc(req.discount_reason||'-')+'</div>'
-      : '<div style="padding:7px;color:var(--muted)">— ไม่ได้ขอส่วนลด —</div>';
+    /* [V640] แถวส่วนลดโชว์เฉพาะใบเก่าที่เคยกรอกไว้ — ใบใหม่ไม่มีช่องนี้แล้ว */
+    var dc=document.getElementById('v_disccell'), dr=document.getElementById('v_discrow');
+    if(dr) dr.style.display = req.discount ? '' : 'none';
+    if(dc && req.discount) dc.innerHTML =
+      '<div style="padding:7px;color:var(--ylw2);font-weight:600">'+esc(req.discount)+'</div>'
+      +'<div class="mini" style="padding:0 7px 7px">เหตุผล: '+esc(req.discount_reason||'-')+'</div>';
     vRenderModels(req.machines||[]);
   }
   function vRenderModels(list){
@@ -1344,6 +1380,14 @@ var MA = window.MA;
     det.querySelectorAll('button').forEach(function(b){
       if(/Template/.test(b.textContent||'')) b.style.display = issued ? 'none' : '';
     });
+    /* [V638] ใบที่ออกแล้ว = เห็นแค่ข้อมูลในคำขอ
+       ข้อ 3 ราคา และ ข้อ 4 ข้อความ เป็นพื้นที่ทำงานของ Manager ไม่ใช่ข้อมูลคำขอ
+       ข้อ 4 ยังโชว์ถ้าใบนี้มีข้อความที่แก้เอง เพราะนั่นคือข้อมูลเฉพาะของใบนี้จริง */
+    var s3=document.getElementById('v_sec3'), s4=document.getElementById('v_sec4');
+    var hasOv=false;
+    try{ hasOv = clDiff().length>0; }catch(e){}
+    if(s3) s3.style.display = issued ? 'none' : '';
+    if(s4) s4.style.display = (issued && !hasOv) ? 'none' : '';
     var bar=document.getElementById('v_lockbar'); if(!bar) return;
     if(!issued){ bar.innerHTML=''; return; }
     var auto=String(req.status)==='auto';
@@ -1353,12 +1397,115 @@ var MA = window.MA;
       +'<div class="t">\ud83d\udd12 ออกเอกสารแล้ว — แก้ไขไม่ได้</div>'
       +'<div class="d">'+(auto?'ออกอัตโนมัติ (ราคามาตรฐาน)':'อนุมัติแล้ว')
         +(when?' · '+esc(when):'')+(who?' · '+esc(who):'')
+        +'<br>แสดงเฉพาะข้อมูลในคำขอ — ราคาและเงื่อนไขที่เสนอ ดูได้จากไฟล์ PDF'
         +'<br>ต้องแก้ไข → สร้างคำขอใหม่ เพื่อให้ได้เลขที่เอกสารใหม่และตรวจย้อนได้</div></div>'
       +'<div class="sp">'
       +(req.pdf_url
         ? '<a class="btn primary" style="text-decoration:none" href="'+esc(req.pdf_url)+'" target="_blank">\u2b07 ดาวน์โหลด PDF</a>'
         : '<span style="font-size:11.5px;color:var(--ylw2)">สร้าง PDF ไม่สำเร็จ — ดูที่หน้าสถานะ</span>')
       +'</div></div>';
+  }
+
+  /* ── [V637] แนบไฟล์ขึ้น Drive ───────────────────────────────────────── */
+  var ATT = {quo:null, spec:null};
+  function upFile(inp, kind){
+    var f = inp && inp.files && inp.files[0]; if(!f) return;
+    var dz = document.getElementById(kind==='quo' ? 'dz_quo' : 'dz_spec');
+    var MAXMB = 10;
+    if(f.size > MAXMB*1024*1024){
+      dz.innerHTML = '<span style="color:var(--red)">ไฟล์ใหญ่เกิน '+MAXMB+' MB</span>';
+      inp.value=''; return;
+    }
+    dz.innerHTML = 'กำลังอัปโหลด...';
+    var fr = new FileReader();
+    fr.onerror = function(){ dz.innerHTML='<span style="color:var(--red)">อ่านไฟล์ไม่สำเร็จ</span>'; inp.value=''; };
+    fr.onload = function(){
+      var b64 = String(fr.result||'').split(',')[1] || '';
+      google.script.run
+        .withSuccessHandler(function(res){
+          ATT[kind] = {name:f.name, url:res.url};
+          dz.innerHTML = '<div style="color:var(--grn)">✓ '+esc(f.name)+'</div>'
+            + '<div class="mini" style="margin-top:2px">'
+            + '<a href="'+esc(res.url)+'" target="_blank" onclick="event.stopPropagation()" style="color:var(--ac2)">เปิดดู</a>'
+            + ' · <span onclick="event.stopPropagation();MA.rmFile(\''+kind+'\')" style="cursor:pointer;color:var(--mu)">ลบ</span></div>';
+        })
+        .withFailureHandler(function(e){
+          ATT[kind]=null; inp.value='';
+          dz.innerHTML = '<span style="color:var(--red)">อัปโหลดไม่สำเร็จ</span>'
+            + '<div class="mini">'+esc(e.message||'')+'</div>';
+        })
+        .maApiUploadAttach(f.name, f.type||'application/octet-stream', b64);
+    };
+    fr.readAsDataURL(f);
+  }
+  function rmFile(kind){
+    ATT[kind]=null;
+    var id = kind==='quo' ? 'f_quo' : 'f_spec';
+    var el = document.getElementById(id); if(el) el.value='';
+    var dz = document.getElementById(kind==='quo'?'dz_quo':'dz_spec');
+    dz.innerHTML = (kind==='quo' ? '⬆ ใบเสนอราคา' : '⬆ สเปคเครื่อง');
+  }
+  function attachUrls(){
+    return ['quo','spec'].map(function(k){ return ATT[k] ? ATT[k].url : ''; }).filter(Boolean);
+  }
+
+  /* ── [V639] หน้าสถานะ: ตารางแบบเดียวกับหน้าตรวจสอบ ───────────────── */
+  var RRES=[], RF='all';
+  function loadResultList2(){
+    document.getElementById('res_body').innerHTML =
+      '<tr><td colspan="9" style="padding:22px;text-align:center;color:var(--mu)">กำลังโหลด...</td></tr>';
+    google.script.run.withSuccessHandler(function(rows){ RRES=rows||[]; drawResult(); })
+      .withFailureHandler(function(e){
+        document.getElementById('res_body').innerHTML =
+          '<tr><td colspan="9" style="padding:22px;text-align:center;color:#e69aa0">โหลดไม่สำเร็จ: '+esc(e.message)+'</td></tr>';
+      }).maApiListRequests('');
+  }
+  function setRF(el){
+    document.querySelectorAll('#page-result .fchip').forEach(function(c){c.classList.remove('on');});
+    el.classList.add('on'); RF=el.dataset.f; drawResult();
+  }
+  function resDone(r){ return r.status==='approved'||r.status==='auto'; }
+  function drawResult(){
+    var qEl=document.getElementById('res_q'), q=qEl?String(qEl.value||'').trim().toLowerCase():'';
+    var nDone=RRES.filter(resDone).length;
+    var set=function(id,v){var e=document.getElementById(id); if(e) e.textContent=v;};
+    set('rc-all',RRES.length); set('rc-done',nDone); set('rc-wait',RRES.length-nDone);
+    var rows=RRES.filter(function(r){
+      var ok = RF==='all' ? true : (RF==='done' ? resDone(r) : !resDone(r));
+      if(!ok) return false;
+      if(!q) return true;
+      return (String(r.request_id||'')+' '+String(r.hospital_name||'')+' '+String(r.project_title||'')).toLowerCase().indexOf(q)>=0;
+    }).sort(function(a,b){ return String(b.created_at||'').localeCompare(String(a.created_at||'')); });
+    set('res_count',rows.length+' รายการ');
+    document.getElementById('res_body').innerHTML = rows.length ? rows.map(function(r){
+      var done=resDone(r), au=r.status==='auto';
+      var bcls=au?'auto':(done?'approved':(r.status==='verifying'?'verifying':'pending'));
+      var btxt=statusTh(r.status);
+      var doc = (done&&r.pdf_url)
+        ? '<a class="linkbtn" style="text-decoration:none;display:inline-block" href="'+esc(r.pdf_url)+'" target="_blank">⬇ ดาวน์โหลด</a>'
+        : (done
+            ? '<span class="mini" style="color:var(--ylw2)">สร้าง PDF ไม่สำเร็จ</span>'
+            : '<span class="mini">ยังไม่ออกเอกสาร</span>');
+      var mc = r._mcModels
+        ? ((r._mcBrands&&r._mcBrands.length===1?esc(r._mcBrands[0]):(r._mcBrands&&r._mcBrands.length?'หลายยี่ห้อ':'-'))
+           +'<div class="mini">'+r._mcModels+' รุ่น · '+r._mcQty+' เครื่อง</div>')
+        : '<span style="color:var(--ylw2)">ไม่ระบุ</span>';
+      var wv=Number(r.warranty_years)||0, tv=Number(r.ma_years)||0;
+      var d=r.created_at?String(r.created_at).slice(0,16).replace('T',' '):'';
+      return '<tr class="row"><td class="mini" style="font-size:11px">'+esc(r.request_id)+'</td>'
+        +'<td title="'+esc(r.hospital_name||'')+'"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis">'+esc(r.hospital_name||'-')+'</div>'
+          +'<div class="mini" style="overflow:hidden;text-overflow:ellipsis">'+esc(String(r.project_title||'').split(/\r?\n/)[0])+'</div></td>'
+        +'<td>'+mc+'</td>'
+        +'<td title="'+esc(r.ref_quotation_no||'')+'">'+esc(r.ref_quotation_no||'-')
+          +'<div class="mini">'+esc(r.requester_name||'')+'</div></td>'
+        +'<td class="r">'+(tv||'-')+'<div class="mini">ประกัน '+(wv||'-')+'</div></td>'
+        +'<td class="r">'+esc(r.pm_times_per_year||'-')+'</td>'
+        +'<td class="mini">'+esc(d)+'</td>'
+        +'<td><span class="badge '+bcls+'">'+btxt+'</span></td>'
+        +'<td>'+doc+'</td></tr>';
+    }).join('')
+    : '<tr><td colspan="9" style="padding:26px;text-align:center;color:var(--mu);font-size:12.5px">'
+      +(q?'— ไม่พบคำขอที่ค้นหา —':'ยังไม่มีคำขอในหมวดนี้')+'</td></tr>';
   }
 
   MA.go = (typeof go==="function")?go:MA.go;
@@ -1419,6 +1566,8 @@ var MA = window.MA;
   MA.setF=setF; MA.drawList=drawList; MA.vOpen=vOpen;
   MA.clToggle=clToggle; MA.prMark=prMark;   /* [V631] */
   MA.vLock=vLock; MA.vIsIssued=vIsIssued;  /* [V634] */
+  MA.upFile=upFile; MA.rmFile=rmFile;      /* [V637] */
+  MA.setRF=setRF; MA.drawResult=drawResult;  /* [V639] */
   MA.diag = (typeof diag==="function")?diag:MA.diag;
 })();
 // ---- init เรียกจาก sv('ma') ----

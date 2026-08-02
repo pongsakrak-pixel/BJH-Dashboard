@@ -4003,6 +4003,19 @@ function maApiCreateRequest(payload){
  *  → ออก PDF เลย ไม่ต้องรอ Manager
  *  การควบคุมอยู่ที่: ราคามาจากตารางกลุ่มราคาที่ Manager ตั้งไว้เอง + ทุกใบเห็นในรายการ
  *  ถ้า client ส่ง needManager มา จะ throw — กันการอ้อมเส้นทาง */
+/** [V637] รับไฟล์แนบจากหน้าคำขอ — เก็บโฟลเดอร์เดียวกับ PDF
+ *  รับ base64 จาก FileReader ฝั่ง client · คืน URL กลับไปเก็บใน attach_urls */
+function maApiUploadAttach(fileName, mimeType, base64){
+  if(!base64) throw new Error('ไม่มีข้อมูลไฟล์');
+  var safe = String(fileName||'attachment').replace(/[\\/:*?"<>|]/g,'_').slice(0,120);
+  var stamp = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyyMMdd_HHmmss');
+  var blob = Utilities.newBlob(Utilities.base64Decode(base64), mimeType||'application/octet-stream', stamp+'_'+safe);
+  var folder = MA_PDF_FOLDER_ID ? DriveApp.getFolderById(MA_PDF_FOLDER_ID) : DriveApp.getRootFolder();
+  var file = folder.createFile(blob);
+  try{ file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); }catch(e){}
+  return { url:file.getUrl(), id:file.getId(), name:safe };
+}
+
 function maApiIssueDirect(payload){
   if(payload && payload.needManager) throw new Error('ใบนี้ต้องผ่าน Manager ก่อน');
   var reqId = maApiCreateRequest(payload);

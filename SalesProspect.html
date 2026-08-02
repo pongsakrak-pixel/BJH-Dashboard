@@ -2984,6 +2984,29 @@ function _pgAllBrands(){
   (window._spInstallRows||[]).forEach(function(r){ var b=String(r.BRAND||'').trim(); if(b) set[b]=1; });
   return Object.keys(set).sort();
 }
+/** [V641] นับจำนวนเครื่องต่อแบรนด์จาก Install Base — ใช้จัดอันดับ top 10 */
+function _pgBrandCounts(){
+  var c={};
+  (window._spInstallRows||[]).forEach(function(r){
+    var b=String(r.BRAND||'').trim(); if(b) c[b]=(c[b]||0)+1;
+  });
+  return c;
+}
+/** [V641] สรุปต่อแบรนด์: กี่กลุ่ม กี่รุ่นที่ครอบคลุม จากทั้งหมดกี่รุ่น */
+function _pgBrandSummary(){
+  var groups=window._PRICE_GROUPS||{}, cnt=_pgBrandCounts(), out={};
+  _pgAllBrands().forEach(function(b){
+    out[b]={brand:b, machines:cnt[b]||0, groups:0, covered:0, models:_pgModelsOfBrand(b).length};
+  });
+  Object.keys(groups).forEach(function(id){
+    var g=groups[id], b=String(g.brand||'').trim(); if(!b) return;
+    if(!out[b]) out[b]={brand:b, machines:cnt[b]||0, groups:0, covered:0, models:_pgModelsOfBrand(b).length};
+    out[b].groups++;
+    var seen={};
+    (g.models||[]).forEach(function(m){ if(m && !seen[m]){ seen[m]=1; out[b].covered++; } });
+  });
+  return out;
+}
 function _pgModelsOfBrand(brand){
   var set={};
   (window._spInstallRows||[]).forEach(function(r){
@@ -3005,25 +3028,39 @@ window.hdrOpenPriceGroups = function(){
   ov.id='sp-pricegroup-modal';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99997;display:flex;align-items:center;justify-content:center;padding:16px';
   ov.innerHTML =
-    '<div style="background:var(--sur,#1e293b);border:1px solid var(--bd2,#334155);border-radius:10px;padding:18px 20px;width:960px;max-width:97vw;max-height:92vh;display:flex;flex-direction:column">'
+    /* [V641] เต็มจอ — เดิม 960px กลางจอ ตารางรุ่น×อายุกว้างเกินต้องเลื่อน */
+    '<div style="background:var(--sur,#1e293b);border:1px solid var(--bd2,#334155);border-radius:10px;padding:16px 18px;width:98vw;max-width:1760px;height:94vh;display:flex;flex-direction:column">'
     + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
     +   '<div style="font-size:14px;font-weight:700;color:#facc15;flex:1">💵 ตั้งราคาสัญญาบริการ (แบบกลุ่ม)</div>'
     +   '<button onclick="_pgManageFreqParts()" style="background:transparent;border:1px solid #a78bfa;color:#a78bfa;padding:4px 12px;border-radius:5px;cursor:pointer;font-size:11px">📋 รายการอะไหล่ยกเว้น</button>'
     +   '<button onclick="document.getElementById(\'sp-pricegroup-modal\').remove()" style="background:transparent;border:1px solid var(--bd2,#334155);color:var(--mu,#94a3b8);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px">✕ ปิด</button>'
     + '</div>'
-    + '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">'
+    /* [V641] แถบเครื่องมือ: กลับ / เลือกแบรนด์ / ค้นหา / นับความคืบหน้า */
+    + '<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">'
+    +   '<button id="pg-back" onclick="_pgSelectBrand(\'\')" style="display:none;padding:6px 12px;border-radius:6px;border:1px solid var(--bd2,#334155);background:transparent;color:#9cc0ff;cursor:pointer;font-size:12px">← ทุกแบรนด์</button>'
     +   '<span style="font-size:12px;color:var(--mu)">แบรนด์:</span>'
-    +   '<select id="pg-brand-sel" onchange="_pgSelectBrand(this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--bd2,#334155);background:var(--sur2,#0f172a);color:var(--tx,#e6edf3);font-size:13px;min-width:200px"></select>'
+    +   '<select id="pg-brand-sel" onchange="_pgSelectBrand(this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--bd2,#334155);background:var(--sur2,#0f172a);color:var(--tx,#e6edf3);font-size:13px;min-width:220px"></select>'
+    +   '<input id="pg-q" oninput="_pgRenderGroupList()" placeholder="ค้นหาแบรนด์ / รุ่น / ชื่อกลุ่ม..." style="flex:1;min-width:160px;max-width:300px;padding:6px 10px;border-radius:6px;border:1px solid var(--bd2,#334155);background:var(--sur2,#0f172a);color:var(--tx,#e6edf3);font-size:12px">'
     +   '<button onclick="_pgOpenEditor(null)" id="pg-add-btn" style="padding:6px 16px;border-radius:6px;border:none;background:#4ade80;color:#052e16;font-weight:700;cursor:pointer;font-size:13px" disabled>+ เพิ่มกลุ่มราคา</button>'
+    +   '<span id="pg-progress" style="margin-left:auto;font-size:11.5px;color:var(--mu);font-family:var(--mono,monospace)"></span>'
     + '</div>'
     + '<div id="pg-group-list" style="flex:1;overflow:auto"></div>'
     + '</div>';
   document.body.appendChild(ov);
 
+  /* [V641] แบรนด์ที่มีเครื่องเยอะสุด 10 อันดับขึ้นก่อน คั่นเส้น แล้วที่เหลือเรียง ก-ฮ */
   var sel=document.getElementById('pg-brand-sel');
-  var brands=_pgAllBrands();
-  sel.innerHTML='<option value="">— เลือกแบรนด์ —</option>'+brands.map(function(b){return '<option value="'+_pgEsc(b)+'">'+_pgEsc(b)+'</option>';}).join('');
-  if(_PG_CUR_BRAND && brands.indexOf(_PG_CUR_BRAND)>=0){ sel.value=_PG_CUR_BRAND; _pgSelectBrand(_PG_CUR_BRAND); }
+  var cnt=_pgBrandCounts(), all=_pgAllBrands();
+  var top=all.slice().sort(function(a,b){ return (cnt[b]||0)-(cnt[a]||0) || a.localeCompare(b); }).slice(0,10);
+  var isTop={}; top.forEach(function(b){ isTop[b]=1; });
+  var rest=all.filter(function(b){ return !isTop[b]; });
+  var opt=function(b){ return '<option value="'+_pgEsc(b)+'">'+_pgEsc(b)+' ('+(cnt[b]||0)+' เครื่อง)</option>'; };
+  sel.innerHTML='<option value="">— ทุกแบรนด์ (ดูภาพรวม) —</option>'
+    + top.map(opt).join('')
+    + (rest.length && top.length ? '<option disabled>\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500</option>' : '')
+    + rest.map(opt).join('');
+  sel.value = (_PG_CUR_BRAND && all.indexOf(_PG_CUR_BRAND)>=0) ? _PG_CUR_BRAND : '';
+  _pgSelectBrand(sel.value);
 };
 window.hdrOpenPriceTable = window.hdrOpenPriceGroups; // alias เผื่อจุดอื่นเรียกชื่อเดิม
 
@@ -3035,20 +3072,117 @@ window._pgSelectBrand = function(brand){
 
 window._pgRenderGroupList = function(){
   var el=document.getElementById('pg-group-list'); if(!el) return;
-  if(!_PG_CUR_BRAND){ el.innerHTML='<div style="text-align:center;padding:30px;color:var(--mu)">เลือกแบรนด์ก่อน</div>'; return; }
+  var qEl=document.getElementById('pg-q');
+  var q=qEl?String(qEl.value||'').trim().toLowerCase():'';
   var groups=window._PRICE_GROUPS||{};
-  var ids=Object.keys(groups).filter(function(id){ return groups[id].brand===_PG_CUR_BRAND; });
-  if(!ids.length){ el.innerHTML='<div style="text-align:center;padding:30px;color:var(--mu)">ยังไม่มีกลุ่มราคาสำหรับแบรนด์นี้ — กด "+ เพิ่มกลุ่มราคา"</div>'; return; }
-  el.innerHTML=ids.map(function(id){
-    var g=groups[id];
-    var modelsTxt=(g.models||[]).join(', ');
-    return '<div style="border:1px solid var(--bd2,#334155);border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">'
-      +'<div style="flex:1"><b style="color:var(--tx)">'+_pgEsc(g.name||'(ไม่มีชื่อ)')+'</b>'
-      +'<div style="font-size:11px;color:var(--mu);margin-top:2px">'+_pgEsc(modelsTxt||'—')+'</div></div>'
-      +'<button onclick="_pgOpenEditor(\''+id+'\')" style="padding:5px 12px;border-radius:5px;border:1px solid #38bdf8;background:transparent;color:#38bdf8;cursor:pointer;font-size:12px">แก้ไข</button>'
-      +'<button onclick="_pgDeleteGroup(\''+id+'\')" style="padding:5px 12px;border-radius:5px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer;font-size:12px">ลบ</button>'
-      +'</div>';
-  }).join('');
+  var back=document.getElementById('pg-back');
+  if(back) back.style.display=_PG_CUR_BRAND?'':'none';
+
+  var TH='text-align:left;font-size:11px;color:var(--mu,#94a3b8);font-weight:600;padding:7px 9px;'
+        +'border-bottom:1px solid var(--bd2,#334155);white-space:nowrap;position:sticky;top:0;background:var(--sur,#1e293b);z-index:2';
+  var TD='padding:7px 9px;border-bottom:1px solid rgba(51,65,85,.5);font-size:12.5px';
+
+  /* ── ไม่ได้เลือกแบรนด์ = ตารางภาพรวมว่าแบรนด์ไหนทำแล้ว ── */
+  if(!_PG_CUR_BRAND){
+    var sum=_pgBrandSummary();
+    var rows=Object.keys(sum).map(function(b){ return sum[b]; })
+      .filter(function(r){ return !q || r.brand.toLowerCase().indexOf(q)>=0; })
+      .sort(function(a,b){
+        /* ยังไม่ได้ตั้งขึ้นก่อน แล้วเรียงตามจำนวนเครื่องมาก→น้อย */
+        var da=a.groups>0?1:0, db=b.groups>0?1:0;
+        return da-db || (b.machines-a.machines) || a.brand.localeCompare(b.brand);
+      });
+    var done=0, tot=0;
+    Object.keys(sum).forEach(function(b){ tot++; if(sum[b].groups>0) done++; });
+    var pg=document.getElementById('pg-progress');
+    if(pg) pg.textContent='ตั้งราคาแล้ว '+done+' / '+tot+' แบรนด์';
+
+    el.innerHTML='<div style="font-size:11.5px;color:var(--mu,#94a3b8);margin-bottom:8px">'
+      +'เรียงแบรนด์ที่ยังไม่ได้ตั้งราคาขึ้นก่อน · กดแถวเพื่อจัดการกลุ่มราคาของแบรนด์นั้น</div>'
+      +'<table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr><th style="'+TH+'">แบรนด์</th>'
+      +'<th style="'+TH+';text-align:right">เครื่องใน IB</th>'
+      +'<th style="'+TH+';text-align:right">รุ่นทั้งหมด</th>'
+      +'<th style="'+TH+';text-align:right">รุ่นที่มีราคา</th>'
+      +'<th style="'+TH+';text-align:right">กลุ่มราคา</th>'
+      +'<th style="'+TH+'">สถานะ</th><th style="'+TH+'"></th></tr></thead><tbody>'
+      +(rows.length ? rows.map(function(r){
+        var full = r.groups>0 && r.models>0 && r.covered>=r.models;
+        var badge = r.groups===0
+          ? '<span style="font-size:10.5px;padding:2px 9px;border-radius:12px;background:rgba(251,146,60,.14);color:#fb923c;border:1px solid rgba(251,146,60,.35)">ยังไม่ได้ตั้ง</span>'
+          : (full
+              ? '<span style="font-size:10.5px;padding:2px 9px;border-radius:12px;background:rgba(74,222,128,.14);color:#4ade80;border:1px solid rgba(74,222,128,.35)">ครบทุกรุ่น</span>'
+              : '<span style="font-size:10.5px;padding:2px 9px;border-radius:12px;background:rgba(250,204,21,.14);color:#facc15;border:1px solid rgba(250,204,21,.35)">ตั้งบางส่วน</span>');
+        return '<tr onclick="_pgPick(\''+_pgEsc(r.brand).replace(/'/g,"\\'")+'\')" style="cursor:pointer" '
+          +'onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'transparent\'">'
+          +'<td style="'+TD+';font-weight:600">'+_pgEsc(r.brand)+'</td>'
+          +'<td style="'+TD+';text-align:right;font-family:var(--mono,monospace)">'+r.machines+'</td>'
+          +'<td style="'+TD+';text-align:right;font-family:var(--mono,monospace)">'+r.models+'</td>'
+          +'<td style="'+TD+';text-align:right;font-family:var(--mono,monospace);color:'+(r.covered?'#4ade80':'var(--mu)')+'">'+r.covered+'</td>'
+          +'<td style="'+TD+';text-align:right;font-family:var(--mono,monospace)">'+r.groups+'</td>'
+          +'<td style="'+TD+'">'+badge+'</td>'
+          +'<td style="'+TD+';text-align:right;color:#38bdf8;font-size:11.5px">จัดการ →</td></tr>';
+        }).join('')
+      : '<tr><td colspan="7" style="padding:26px;text-align:center;color:var(--mu)">— ไม่พบแบรนด์ที่ค้นหา —</td></tr>')
+      +'</tbody></table>';
+    return;
+  }
+
+  /* ── เลือกแบรนด์แล้ว = ตารางกลุ่มราคาของแบรนด์นั้น ── */
+  var ids=Object.keys(groups).filter(function(id){
+    if(groups[id].brand!==_PG_CUR_BRAND) return false;
+    if(!q) return true;
+    var hay=(groups[id].name||'')+' '+((groups[id].models||[]).join(' '));
+    return hay.toLowerCase().indexOf(q)>=0;
+  });
+  var allModels=_pgModelsOfBrand(_PG_CUR_BRAND);
+  var covered={};
+  Object.keys(groups).forEach(function(id){
+    if(groups[id].brand!==_PG_CUR_BRAND) return;
+    (groups[id].models||[]).forEach(function(m){ covered[m]=1; });
+  });
+  var miss=allModels.filter(function(m){ return !covered[m]; });
+  var pg2=document.getElementById('pg-progress');
+  if(pg2) pg2.textContent=_PG_CUR_BRAND+' · มีราคา '+Object.keys(covered).length+' / '+allModels.length+' รุ่น';
+
+  var head='<div style="font-size:11.5px;color:var(--mu,#94a3b8);margin-bottom:8px">'
+    +'<b style="color:var(--tx,#e6edf3)">'+_pgEsc(_PG_CUR_BRAND)+'</b> · '
+    +ids.length+' กลุ่มราคา · ครอบคลุม '+Object.keys(covered).length+' จาก '+allModels.length+' รุ่น</div>';
+
+  var tbl = ids.length
+    ? '<table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr><th style="'+TH+'">ชื่อกลุ่ม</th><th style="'+TH+'">รุ่นที่ครอบคลุม</th>'
+      +'<th style="'+TH+';text-align:right">รุ่น</th><th style="'+TH+';text-align:right">ปีที่ตั้งราคา</th>'
+      +'<th style="'+TH+'"></th></tr></thead><tbody>'
+      +ids.map(function(id){
+        var g=groups[id];
+        var yrs=Object.keys(g.y||{}).filter(function(y){
+          var r=g.y[y]||{};
+          return (r.plain!=null&&r.plain!=='')||(r.full!=null&&r.full!=='')||((r.excl||[]).length>0);
+        }).length;
+        return '<tr><td style="'+TD+';font-weight:600">'+_pgEsc(g.name||'(ไม่มีชื่อ)')+'</td>'
+          +'<td style="'+TD+';color:var(--mu,#94a3b8);font-size:11.5px">'+_pgEsc((g.models||[]).join(', ')||'—')+'</td>'
+          +'<td style="'+TD+';text-align:right;font-family:var(--mono,monospace)">'+(g.models||[]).length+'</td>'
+          +'<td style="'+TD+';text-align:right;font-family:var(--mono,monospace);color:'+(yrs?'#4ade80':'#fb923c')+'">'+yrs+'</td>'
+          +'<td style="'+TD+';text-align:right;white-space:nowrap">'
+          +'<button onclick="_pgOpenEditor(\''+id+'\')" style="padding:4px 11px;border-radius:5px;border:1px solid #38bdf8;background:transparent;color:#38bdf8;cursor:pointer;font-size:11.5px">แก้ไข</button> '
+          +'<button onclick="_pgDeleteGroup(\''+id+'\')" style="padding:4px 11px;border-radius:5px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer;font-size:11.5px">ลบ</button>'
+          +'</td></tr>';
+      }).join('')+'</tbody></table>'
+    : '<div style="text-align:center;padding:26px;color:var(--mu)">'
+      +(q?'— ไม่พบกลุ่มที่ค้นหา —':'ยังไม่มีกลุ่มราคาสำหรับแบรนด์นี้ — กด "+ เพิ่มกลุ่มราคา"')+'</div>';
+
+  var missHtml = miss.length
+    ? '<div style="margin-top:12px;padding:10px 12px;border:1px solid rgba(251,146,60,.35);background:rgba(251,146,60,.07);border-radius:8px">'
+      +'<div style="font-size:11.5px;color:#fb923c;font-weight:600;margin-bottom:5px">ยังไม่มีราคา '+miss.length+' รุ่น</div>'
+      +'<div style="font-size:11px;color:var(--mu,#94a3b8);line-height:1.7">'+_pgEsc(miss.join(' · '))+'</div></div>'
+    : '';
+  el.innerHTML=head+tbl+missHtml;
+};
+
+window._pgPick = function(b){
+  var sel=document.getElementById('pg-brand-sel'); if(sel) sel.value=b;
+  _pgSelectBrand(b);
 };
 
 window._pgDeleteGroup = function(id){
