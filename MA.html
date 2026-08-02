@@ -5,6 +5,15 @@
 #v-ma{font-family:var(--font);color:var(--tx);background:var(--bg)}
 #v-ma *{box-sizing:border-box}
 #v-ma .hidden{display:none}
+/* [V634] โหมดอ่านอย่างเดียว — ใบที่ออกเอกสารไปแล้ว */
+#v-ma .locked input,#v-ma .locked select,#v-ma .locked textarea{opacity:.75;cursor:not-allowed;background:var(--sur2)!important;border-color:var(--bd)!important}
+#v-ma .locked .chips{pointer-events:none;opacity:.7}
+#v-ma .locked .editable{background:var(--sur2)!important;border-color:var(--bd)!important}
+#v-ma .lockbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:rgba(29,185,84,.09);
+  border:1px solid rgba(29,185,84,.3);border-radius:8px;padding:12px 15px;margin-bottom:13px}
+#v-ma .lockbar .t{font-size:13px;font-weight:700;color:var(--grn)}
+#v-ma .lockbar .d{font-size:11.5px;color:var(--mu2);margin-top:2px}
+#v-ma .lockbar .sp{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 
 /* ── แถบหัว: sub-nav แบบเดียวกับหน้าอื่น ── */
 #v-ma .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
@@ -323,6 +332,7 @@
       <span class="backlink" onclick="MA.vBack()">← กลับรายการ</span>
       <div class="stage-title" id="v_title">คำขอ</div>
       <div class="stage-desc" id="v_sub"></div>
+      <div id="v_lockbar"></div>
 
       <div class="tsec"><span class="n">1</span> ข้อมูลคำขอ <span class="hint2">ช่องพื้นส้ม = แก้ไขได้</span></div>
       <table class="ftbl">
@@ -620,6 +630,7 @@ var MA = window.MA;
       autoFillFromGroups();       // [V630] เติมราคาจากกลุ่มราคาก่อน
       if(req.prices&&req.prices.length)fillPrices(req.prices);   // ค่าที่บันทึกไว้ทับ
       prMark();                                                  // [V631] สรุปอัตโนมัติ/แก้เอง
+      vLock(req);                                                // [V634] ใบที่ออกแล้ว = อ่านอย่างเดียว
     }).withFailureHandler(function(e){showMsg('โหลดคำขอไม่สำเร็จ: '+e.message,false);}).maApiGetRequest(id);
   }
   function buildYearsDropdown(w,savedTotal){
@@ -737,11 +748,13 @@ var MA = window.MA;
         prices:v.prices});
   }
   function saveVerify(){
+    if(vCur && vIsIssued(vCur)){ showMsg('ใบนี้ออกเอกสารแล้ว แก้ไขไม่ได้ — สร้างคำขอใหม่แทน',false); return; }
     var btn=document.getElementById('v_save');btn.disabled=true;btn.textContent='กำลังบันทึก...';
     doSave(function(){showMsg('✓ บันทึกเรียบร้อย',true);btn.disabled=false;btn.textContent='บันทึก (Verify)';});
     setTimeout(function(){btn.disabled=false;btn.textContent='บันทึก (Verify)';},4000);
   }
   function approve(){
+    if(vCur && vIsIssued(vCur)){ showMsg('ใบนี้ออกเอกสารแล้ว แก้ไขไม่ได้ — สร้างคำขอใหม่แทน',false); return; }
     // อนุมัติ = บันทึกก่อนเสมอ แล้วค่อย gen PDF (กันลืมกดบันทึก)
     var v=validateVerify(); if(!v)return;
     var btn=document.getElementById('v_approve');btn.disabled=true;btn.textContent='กำลังบันทึก...';
@@ -1285,6 +1298,43 @@ var MA = window.MA;
       +'</div>';
   }
 
+  /* ── [V634] ใบที่ออกเอกสารแล้ว = อ่านอย่างเดียว ─────────────────────────
+     เหตุผล: PDF ถึงมือลูกค้าแล้ว ถ้ายังแก้ในระบบได้ เอกสารกับข้อมูลจะไม่ตรงกัน
+     ต้องแก้จริง -> ออกใบใหม่ (จะได้เลขที่ใหม่ ตรวจย้อนได้ว่าใบไหนแทนใบไหน) */
+  function vIsIssued(req){ var s=String(req&&req.status||''); return s==='auto'||s==='approved'; }
+  function vLock(req){
+    var det=document.getElementById('v_detail'); if(!det) return;
+    var issued=vIsIssued(req);
+    det.classList.toggle('locked', issued);
+    /* ปิดช่องกรอกทั้งหมดในหน้าตรวจ */
+    det.querySelectorAll('input,select,textarea').forEach(function(el){
+      if(issued){ el.setAttribute('disabled','disabled'); }
+      else { el.removeAttribute('disabled'); }
+    });
+    /* ปุ่มบันทึก/อนุมัติ + ปุ่มดึง Template ใช้ไม่ได้เมื่อออกแล้ว */
+    ['v_save','v_approve'].forEach(function(id){
+      var b=document.getElementById(id); if(b) b.style.display = issued ? 'none' : '';
+    });
+    det.querySelectorAll('button').forEach(function(b){
+      if(/Template/.test(b.textContent||'')) b.style.display = issued ? 'none' : '';
+    });
+    var bar=document.getElementById('v_lockbar'); if(!bar) return;
+    if(!issued){ bar.innerHTML=''; return; }
+    var auto=String(req.status)==='auto';
+    var when=String(req.approved_at||req.issued_at||'').slice(0,16).replace('T',' ');
+    var who=req.approved_by_email||req.created_by_name||'';
+    bar.innerHTML='<div class="lockbar"><div>'
+      +'<div class="t">\ud83d\udd12 ออกเอกสารแล้ว — แก้ไขไม่ได้</div>'
+      +'<div class="d">'+(auto?'ออกอัตโนมัติ (ราคามาตรฐาน)':'อนุมัติแล้ว')
+        +(when?' · '+esc(when):'')+(who?' · '+esc(who):'')
+        +'<br>ต้องแก้ไข → สร้างคำขอใหม่ เพื่อให้ได้เลขที่เอกสารใหม่และตรวจย้อนได้</div></div>'
+      +'<div class="sp">'
+      +(req.pdf_url
+        ? '<a class="btn primary" style="text-decoration:none" href="'+esc(req.pdf_url)+'" target="_blank">\u2b07 ดาวน์โหลด PDF</a>'
+        : '<span style="font-size:11.5px;color:var(--ylw2)">สร้าง PDF ไม่สำเร็จ — ดูที่หน้าสถานะ</span>')
+      +'</div></div>';
+  }
+
   MA.go = (typeof go==="function")?go:MA.go;
   MA.showMsg = (typeof showMsg==="function")?showMsg:MA.showMsg;
   MA.clearMsg = (typeof clearMsg==="function")?clearMsg:MA.clearMsg;
@@ -1342,6 +1392,7 @@ var MA = window.MA;
   MA.showDraft=showDraft; MA.submitNew=submitNew;
   MA.setF=setF; MA.drawList=drawList; MA.vOpen=vOpen;
   MA.clToggle=clToggle; MA.prMark=prMark;   /* [V631] */
+  MA.vLock=vLock; MA.vIsIssued=vIsIssued;  /* [V634] */
   MA.diag = (typeof diag==="function")?diag:MA.diag;
 })();
 // ---- init เรียกจาก sv('ma') ----
