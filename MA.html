@@ -30,6 +30,24 @@
 #v-ma .nav button.on{color:var(--tx);border-bottom-color:#7c6fe0}
 
 #v-ma .wrap{max-width:1180px;margin:0 auto;padding:16px 16px 70px}
+/* [V636] หน้าสร้างคำขอ: เต็มความกว้าง + จบในหน้าเดียว */
+#v-ma .wrap.wide{max-width:1680px;padding:12px 18px 24px}
+#v-ma .rq-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+#v-ma .rq-head .stage-title{margin:0}
+#v-ma .rq-head .stage-desc{margin:0}
+#v-ma .rq-top{display:grid;grid-template-columns:1.05fr .95fr .8fr;gap:12px;align-items:stretch;margin-bottom:12px}
+#v-ma .rq-top .card{margin-bottom:0;display:flex;flex-direction:column}
+#v-ma #page-request .card{padding:12px 14px}
+#v-ma #page-request .card .hint{margin-bottom:9px}
+#v-ma #page-request .field{margin-bottom:9px;gap:4px}
+#v-ma #page-request .grid2{gap:10px}
+#v-ma .rq-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+#v-ma .rq-mlist{max-height:210px;overflow-y:auto;padding-right:2px}
+#v-ma #page-request .mcard{padding:11px 12px;margin-bottom:7px}
+#v-ma #page-request .dropzone{padding:10px;font-size:11.5px}
+#v-ma #page-request textarea{min-height:44px}
+@media(max-width:1200px){#v-ma .rq-top{grid-template-columns:1fr 1fr}}
+@media(max-width:820px){#v-ma .rq-top{grid-template-columns:1fr}#v-ma .rq-3{grid-template-columns:1fr}}
 #v-ma .stage-title{font-size:16px;font-weight:700;margin-bottom:2px;color:var(--tx)}
 #v-ma .stage-desc{color:var(--mu2);font-size:12px;margin-bottom:14px}
 #v-ma .backlink{color:var(--ac2);font-size:12px;cursor:pointer;display:inline-block;margin-bottom:10px}
@@ -228,63 +246,70 @@
 
   <!-- ============ PAGE: REQUEST ============ -->
   <section id="page-request">
-    <div class="stage-title" style="margin-bottom:3px">สร้างคำขอเสนอราคา Service</div>
-    <div class="stage-desc">กรอกข้อมูลเครื่องและเงื่อนไข แล้วดูร่างเอกสารก่อนส่ง</div>
+    <div class="rq-head">
+      <div class="stage-title">สร้างคำขอเสนอราคา Service</div>
+      <div class="stage-desc">กรอกข้อมูลเครื่องและเงื่อนไข แล้วดูร่างเอกสารก่อนส่ง</div>
+    </div>
 
-    <div class="card" style="padding:18px">
-      <h3><span class="sec-num">1</span> ข้อมูลโครงการ</h3>
-      <div class="hint">ชื่อโครงการจะขึ้นหัวเอกสาร PDF</div>
-      <div class="grid2">
+    <div class="rq-top">
+      <!-- 1 -->
+      <div class="card">
+        <h3><span class="sec-num">1</span> ข้อมูลโครงการ</h3>
+        <div class="hint">ชื่อโครงการจะขึ้นหัวเอกสาร PDF</div>
         <div class="field"><label>ชื่อโครงการ <span class="req">*</span></label><input id="r_project2"></div>
         <div class="field"><label>ชื่อโรงพยาบาล <span class="req">*</span></label><input id="r_hospital"></div>
+        <div class="grid2" style="margin-top:auto">
+          <div class="field" style="margin:0"><label>เลขที่ใบเสนอราคา <span class="req">*</span>
+            <span class="sub">ตรวจย้อนได้ว่าคีย์จากใบไหน</span></label><input id="r_refquo" placeholder="QSC2602-15510"></div>
+          <div class="field" style="margin:0"><label>ผู้ขอ <span class="req">*</span>
+            <span class="sub">เจ้าของ spec ที่ส่งมา</span></label><input id="r_requester" placeholder="ชื่อ · ทีม"></div>
+        </div>
       </div>
-      <div class="grid2">
-        <div class="field" style="margin-bottom:0"><label>เลขที่ใบเสนอราคาที่อ้างอิง <span class="req">*</span>
-          <span class="sub">— ตรวจย้อนได้ว่าคีย์จากใบไหน</span></label><input id="r_refquo" placeholder="เช่น QSC2602-15510"></div>
-        <div class="field" style="margin-bottom:0"><label>ผู้ขอ (Sales / Product) <span class="req">*</span>
-          <span class="sub">— เจ้าของ spec ที่ส่งมา</span></label><input id="r_requester" placeholder="ชื่อ · ทีม"></div>
+
+      <!-- 3 -->
+      <div class="card">
+        <h3><span class="sec-num">2</span> เงื่อนไขบริการ</h3>
+        <div class="hint">จำนวนปีบริการรวมประกันแล้ว <b style="color:var(--ylw2)">ไม่เกิน 10 ปี</b></div>
+        <div class="rq-3">
+          <div class="field"><label>ครั้ง/ปี <span class="req">*</span></label>
+            <select id="r_pm"><option value="1">1 ครั้ง/ปี</option><option value="2">2 ครั้ง/ปี</option>
+              <option value="3" selected>3 ครั้ง/ปี</option><option value="4">4 ครั้ง/ปี</option></select></div>
+          <div class="field"><label>ปีรับประกัน <span class="req">*</span></label><select id="r_warranty"></select></div>
+          <div class="field"><label>ปีบริการรวม <span class="req">*</span></label><select id="r_mayears"></select></div>
+        </div>
+        <div id="r_yrmsg"></div>
+        <div class="grid2" style="margin-top:9px">
+          <div class="field" style="margin:0"><label>ขอส่วนลด <span class="sub">เว้นว่าง = ราคามาตรฐาน</span></label>
+            <input id="r_disc" placeholder="เช่น 5% หรือ 200,000"></div>
+          <div class="field" style="margin:0"><label>เหตุผลที่ขอลด <span class="sub">จำเป็นเมื่อกรอกส่วนลด</span></label>
+            <input id="r_discwhy" placeholder="เช่น แข่งกับคู่เทียบ"></div>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <div class="card">
+        <h3><span class="sec-num">3</span> ไฟล์แนบ &amp; หมายเหตุ</h3>
+        <div class="hint">แนบเอกสารให้ Manager ตรวจสอบได้</div>
+        <div class="reqfiles" style="margin-bottom:9px">
+          <div class="dropzone">⬆ ใบเสนอราคา</div>
+          <div class="dropzone">⬆ สเปคเครื่อง</div>
+        </div>
+        <div class="field" style="margin:0;flex:1"><label>หมายเหตุ <span class="sub">ไม่บังคับ</span></label>
+          <textarea id="r_note" rows="2" placeholder="เงื่อนไขพิเศษ / ข้อตกลงกับลูกค้า..." style="flex:1"></textarea></div>
       </div>
     </div>
 
-    <div class="card" style="padding:18px">
-      <h3><span class="sec-num">2</span> เครื่องที่ขอราคา</h3>
-      <div class="hint">ใส่ได้หลายรุ่น · ราคาดึงจาก <b style="color:#cfe0ff">Tools → ตั้งราคาสัญญาบริการ (แบบกลุ่ม)</b> ตามยี่ห้อ+รุ่น</div>
-      <div id="r_models"></div>
+    <!-- 2 เครื่อง — เต็มความกว้าง -->
+    <div class="card">
+      <h3><span class="sec-num">4</span> เครื่องที่ขอราคา
+        <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--mu)">
+          ใส่ได้หลายรุ่น · ราคาดึงจาก Tools → ตั้งราคาสัญญาบริการ (แบบกลุ่ม)</span></h3>
+      <div class="rq-mlist"><div id="r_models"></div></div>
       <button class="addbtn" onclick="MA.mrAdd()">+ เพิ่มรุ่นเครื่อง</button>
       <datalist id="dl_brand"></datalist>
     </div>
 
-    <div class="card" style="padding:18px">
-      <h3><span class="sec-num">3</span> เงื่อนไขบริการ</h3>
-      <div class="hint">จำนวนปีบริการรวมประกันแล้ว <b style="color:#e6b35e">ไม่เกิน 10 ปี</b></div>
-      <div class="grid2">
-        <div class="field"><label>จำนวนครั้งเข้าบริการต่อปี <span class="req">*</span></label>
-          <select id="r_pm"><option value="1">1 ครั้ง/ปี</option><option value="2">2 ครั้ง/ปี</option>
-            <option value="3" selected>3 ครั้ง/ปี</option><option value="4">4 ครั้ง/ปี</option></select></div>
-        <div class="field"><label>ปีรับประกัน <span class="req">*</span></label><select id="r_warranty"></select></div>
-      </div>
-      <div class="field"><label>จำนวนปีบริการทั้งหมด (รวมประกัน) <span class="req">*</span></label>
-        <select id="r_mayears"></select></div>
-      <div id="r_yrmsg"></div>
-      <div class="grid2" style="margin-top:12px">
-        <div class="field" style="margin-bottom:0"><label>ขอส่วนลด <span class="sub">— เว้นว่าง = ใช้ราคามาตรฐาน</span></label>
-          <input id="r_disc" placeholder="เช่น 5% หรือ 200,000"></div>
-        <div class="field" style="margin-bottom:0"><label>เหตุผลที่ขอลด <span class="sub">— จำเป็นเมื่อกรอกส่วนลด</span></label>
-          <input id="r_discwhy" placeholder="เช่น แข่งกับคู่เทียบ"></div>
-      </div>
-    </div>
-
-    <div class="card" style="padding:18px">
-      <h3><span class="sec-num">4</span> ไฟล์แนบ &amp; หมายเหตุ</h3>
-      <div class="reqfiles">
-        <div class="dropzone">⬆ ใบเสนอราคา</div>
-        <div class="dropzone">⬆ สเปคเครื่อง</div>
-      </div>
-      <div class="field" style="margin:0"><label>หมายเหตุ (ไม่บังคับ)</label>
-        <textarea id="r_note" rows="2" placeholder="เงื่อนไขพิเศษ / ข้อตกลงกับลูกค้า..."></textarea></div>
-    </div>
-
-    <div class="actions" style="margin-top:14px">
+    <div class="actions">
       <button class="btn primary" id="r_draftbtn" onclick="MA.showDraft()">ดูร่างเอกสารก่อนส่ง →</button>
     </div>
   </section>
@@ -500,6 +525,8 @@ var MA = window.MA;
     });
     clearMsg();window.scrollTo({top:0});
     document.getElementById('nav-draft').style.display = (p==='draft') ? '' : 'none';  // [V630]
+    /* [V636] หน้าสร้างคำขอใช้เต็มความกว้าง หน้าอื่นคงเดิม */
+    try{ var _w=document.querySelector('#v-ma .wrap'); if(_w) _w.classList.toggle('wide', p==='request'); }catch(e){}
     if(p==='request'){ loadRequestOptions(); mrInit(); }
     if(p==='verify'){loadDefaults();loadVerifyList2();}   // [V630]
     if(p==='result')loadResultList();
