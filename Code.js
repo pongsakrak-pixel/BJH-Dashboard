@@ -4278,21 +4278,22 @@ function maBuildPdfHtml(d, forPreview){
   var _mcList = (d.machines||[]).filter(function(m){ return String(m.brand||m.model||'').trim(); });
   var _mcTotal = 0;
   _mcList.forEach(function(m){ _mcTotal += (Number(m.qty)||0); });
+  /* [V633] เปลี่ยนจากตารางเป็นรายการข้อความ — ตารางหนักเกินไปสำหรับ 2-3 เครื่อง
+     รูปแบบ:  <ชื่อโครงการ> ประกอบด้วย
+                1) HOLOGIC 3Dimensions จำนวน 1 เครื่อง
+                2) ...
+     บรรทัดปิดท้ายคงไว้ — เป็นตัวจำกัดขอบเขตกรณีคีย์เครื่องไม่ครบ (ตกลงกันไว้ตอนออกแบบ flow) */
   var machinesHtml = '';
   if(_mcList.length){
-    machinesHtml = '<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 4px">'
-      + '<tr><th style="border:1px solid #999;padding:3px 6px;background:#f0f0f0;width:26px">#</th>'
-      + '<th style="border:1px solid #999;padding:3px 6px;background:#f0f0f0;text-align:left">ยี่ห้อ</th>'
-      + '<th style="border:1px solid #999;padding:3px 6px;background:#f0f0f0;text-align:left">รุ่น</th>'
-      + '<th style="border:1px solid #999;padding:3px 6px;background:#f0f0f0;width:64px">จำนวน</th></tr>';
+    machinesHtml = ' ประกอบด้วย';
     _mcList.forEach(function(m,i){
-      machinesHtml += '<tr><td style="border:1px solid #999;padding:3px 6px;text-align:center">'+(i+1)+'</td>'
-        + '<td style="border:1px solid #999;padding:3px 6px">'+maEscapeHtml(m.brand||'')+'</td>'
-        + '<td style="border:1px solid #999;padding:3px 6px">'+maEscapeHtml(m.model||'')+'</td>'
-        + '<td style="border:1px solid #999;padding:3px 6px;text-align:center">'+(Number(m.qty)||0)+'</td></tr>';
+      var nm = [String(m.brand||'').trim(), String(m.model||'').trim()].filter(Boolean).join(' ');
+      var qy = Number(m.qty)||0;
+      machinesHtml += '<div style="margin-left:14px">'+(i+1)+') '+maEscapeHtml(nm||'—')
+        + (qy ? ' จำนวน '+qy+' เครื่อง' : '') + '</div>';
     });
-    machinesHtml += '</table>'
-      + '<div style="font-size:11px">รวม '+_mcTotal+' เครื่อง — ข้อเสนอนี้ครอบคลุมเฉพาะเครื่องตามรายการข้างต้นเท่านั้น</div>';
+    machinesHtml += '<div style="font-size:11px;margin-top:2px">รวม '+_mcTotal
+      + ' เครื่อง — ข้อเสนอนี้ครอบคลุมเฉพาะเครื่องตามรายการข้างต้นเท่านั้น</div>';
   }
   var txt1raw=pick('ov_clause1','clause1');
   var c1parts=txt1raw.split('||');
