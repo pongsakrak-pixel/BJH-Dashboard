@@ -367,12 +367,8 @@
             <span class="chip sel" data-t="partial">รวมอะไหล่ยกเว้น</span>
             <span class="chip sel" data-t="full">รวมอะไหล่ทุกชิ้น</span>
           </div></td></tr>
-        <tr><th>Template สำรอง<span class="sub">ใช้เมื่อรุ่นไม่มีในกลุ่มราคา</span></th>
-          <td style="padding:7px 8px"><span style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
-            <select id="v_level" style="max-width:150px"><option value="1">Level 1</option><option value="2" selected>Level 2</option>
-              <option value="3">Level 3</option><option value="4">Level 4</option><option value="5">Level 5</option></select>
-            <button class="btn" style="padding:7px 13px;font-size:12px" onclick="MA.pullTemplate()">↓ ดึงจาก Template</button>
-          </span></td></tr>
+        <!-- [V635] ตัดแถว Template สำรองออก — ไม่ใช้แล้ว
+             รุ่นที่ไม่มีในกลุ่มราคา ให้ Manager กรอกราคาในตารางเอง (สรุปด้านบนจะขึ้น "ยังว่าง — ต้องกรอก") -->
       </table>
       <div id="v_prsum" style="margin-bottom:7px"></div>
       <div class="ptbl-wrap"><table class="ptbl" id="v_priceTable"></table></div>
@@ -416,9 +412,10 @@
     <div class="stage-title">⚙ Config — จัดการข้อมูลตั้งต้น</div>
     <div class="stage-desc">ตั้งราคา Template และฐานข้อมูลรุ่นเครื่อง</div>
     <div class="tabs">
-      <div class="tab on" id="ctabT" onclick="MA.cSwitch('T')">ราคา Template (5 Level)</div>
+      <!-- [V635] ซ่อนแท็บ Template (ไม่ใช้แล้ว) — เนื้อหา/logic บันทึกยังอยู่ครบ ไม่ได้ลบ -->
+      <div class="tab" id="ctabT" style="display:none" onclick="MA.cSwitch('T')">ราคา Template (5 Level)</div>
+      <div class="tab on" id="ctabS" onclick="MA.cSwitch('S')">ข้อความเอกสาร (Default)</div>
       <div class="tab" id="ctabM" onclick="MA.cSwitch('M')">ฐานข้อมูลรุ่นเครื่อง</div>
-      <div class="tab" id="ctabS" onclick="MA.cSwitch('S')">ข้อความเอกสาร (Default)</div>
     </div>
     <div id="cpaneT">
       <div class="card">
@@ -506,7 +503,7 @@ var MA = window.MA;
     if(p==='request'){ loadRequestOptions(); mrInit(); }
     if(p==='verify'){loadDefaults();loadVerifyList2();}   // [V630]
     if(p==='result')loadResultList();
-    if(p==='config')loadConfig();
+    if(p==='config'){ loadConfig(); cSwitch('S'); }   // [V635] เปิดมาที่ข้อความเอกสาร (แท็บ Template ซ่อนแล้ว)
   }
   function showMsg(t,ok){var m=document.getElementById('msg');m.textContent=t;m.className='msg '+(ok?'ok':'err');window.scrollTo({top:0});}
   function clearMsg(){var m=document.getElementById('msg');m.className='msg';m.textContent='';}
@@ -693,6 +690,8 @@ var MA = window.MA;
   }
   function fillPrices(prices){prices.forEach(function(p){var i=document.querySelector('#v_priceTable input[data-type="'+p.type+'"][data-year="'+p.contract_year+'"]');if(i&&p.amount&&Number(String(p.amount).replace(/,/g,''))>0)i.value=Number(String(p.amount).replace(/,/g,'')).toLocaleString('en-US');});}
   function pullTemplate(){
+    /* [V635] ปุ่มถูกถอดแล้ว — เหลือฟังก์ชันไว้เผื่อเรียกจาก console · ไม่มี v_level ก็ไม่พัง */
+    if(!document.getElementById('v_level')){ showMsg('เลิกใช้ Template แล้ว — กรอกราคาในตารางได้เลย',false); return; }
     var lv=document.getElementById('v_level').value,w=Number(document.getElementById('v_warranty').value)||Number(vCur.warranty_years)||0;
     google.script.run.withSuccessHandler(function(tpl){
       ['none','partial','full'].forEach(function(tp){(tpl[tp]||[]).forEach(function(amt,i){
