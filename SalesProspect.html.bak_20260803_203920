@@ -947,8 +947,6 @@ window.spApplyTabPermissions = function(){
     sp_ordsc:{admin:true,manager:true,sales:true},
     sp_billing:{admin:true,manager:true,sales:true},
     sp_ar:{admin:true,manager:true,sales:true},
-    sp_bg:{admin:true,manager:true,sales:true},       /* [V654] */
-    sp_weekly:{admin:true,manager:true,sales:true},   /* [V654] */
     sp_forecast:{admin:false,manager:false,sales:false},   /* [V597] ปิดใช้ */
     sp_pipeline:{admin:false,manager:false,sales:false}   /* [V597] ปิดใช้ */
   };
@@ -967,8 +965,7 @@ window.spApplyTabPermissions = function(){
     sp_alert:'alert', sp_install:'install', sp_renewal:'renewal',
     sp_scquote:'scquote', sp_spquote:'spquote', sp_contract:'contract',
     sp_ordsp:'ordsp', sp_ordsc:'ordsc', sp_billing:'billing',
-    sp_ar:'ar',   /* [V597] ตัด sp_forecast, sp_pipeline — ปิดใช้แล้ว */
-    sp_bg:'bg', sp_weekly:'weekly'   /* [V654] ปุ่ม sp-tab-bg / sp-tab-weekly มีอยู่แล้ว แต่ไม่เคยคุมสิทธิ์ */
+    sp_ar:'ar'   /* [V597] ตัด sp_forecast, sp_pipeline — ปิดใช้แล้ว */
   };
   var visible = [];
   Object.keys(map).forEach(function(permKey){

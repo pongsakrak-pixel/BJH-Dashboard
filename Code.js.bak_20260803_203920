@@ -1156,16 +1156,6 @@ function _getConfig_() {
       });
     }
 
-    // [V654] Clear รายการ Critical Down — { SR: '2026-08-03 ชื่อคนกด' }
-    //   V601 เขียนฝั่ง client ไว้อย่างเดียว — backend ไม่มี section นี้ กดแล้วจึงไม่จำ
-    if (ckv.cd_cleared && Object.keys(ckv.cd_cleared).length > 0) {
-      config.cd_cleared = {};
-      Object.keys(ckv.cd_cleared).forEach(function(k){
-        var v = String(ckv.cd_cleared[k]||'').trim();
-        if (v) config.cd_cleared[k] = v;
-      });
-    }
-
     return { ok: true, config: config };
   } catch (err) {
     return { ok: false, error: err.message };
@@ -2206,7 +2196,7 @@ function saveConfigSection(payloadStr) {
     // [V479] Sales Retention — config แยกฝ่ายขาย (รุ่น→กลุ่ม / รพ.→กลุ่ม)
     if (section === 'sales_model_group' || section === 'sales_hosp_group'
         || section === 'sa_hosp_group' || section === 'sa_area_override'
-        || section === 'quote_notes' || section === 'cd_cleared') {
+        || section === 'quote_notes') {
       var srMap = {};
       Object.keys(data||{}).forEach(function(k){
         var v = String(data[k]||'').trim();

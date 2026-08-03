@@ -401,8 +401,6 @@
       <div class="card" style="padding:0;overflow-x:auto;margin-bottom:2px">
         <table class="ltbl" id="v_models"></table>
       </div>
-      <!-- [V654] ไฟล์แนบจากหน้าสร้างคำขอ — เดิมหน้านี้ไม่เคยอ่าน attach_urls -->
-      <div id="v_attach" class="card" style="display:none;padding:9px 12px;margin-bottom:2px"></div>
 
       <!-- [V638] ครอบไว้เพื่อซ่อนทั้งบล็อกตอนใบถูกล็อก -->
       <div id="v_sec3">
@@ -573,22 +571,7 @@ var MA = window.MA;
 
   // ===== Navigation =====
   var PAGES=['request','draft','verify','result','config'];   // [V630] +draft
-  /* [V654] สิทธิ์หน้าใน MA — ผูกกับ tab_permissions (ma_verify / ma_config)
-     เดิม MA ไม่มี role check เลย — ใครเปิดเข้าได้ก็อนุมัติ/แก้ Config ได้หมด */
-  function maCanPage(p){
-    var key = (p==='verify') ? 'ma_verify' : (p==='config' ? 'ma_config' : '');
-    if(!key) return true;
-    var perms = window._TAB_PERMISSIONS || {};
-    if(!Object.keys(perms).length) return true;   // config ยังไม่โหลด — ไม่ล็อค (กันซ่อนหมด)
-    var role = window._USER_ROLE || (window._currentUser && window._currentUser.role) || 'sales';
-    if(typeof window._tpCan==='function') return window._tpCan(key, role);
-    var pp = perms[key]; return pp ? !!pp[role] : true;
-  }
   function go(p){
-    if(!maCanPage(p)) p='request';   // [V654] กันเรียกตรงจาก console/ลิงก์
-    ['verify','config'].forEach(function(x){   // [V654] ซ่อนปุ่มที่ไม่มีสิทธิ์
-      var b=document.getElementById('nav-'+x); if(b) b.style.display = maCanPage(x) ? '' : 'none';
-    });
     PAGES.forEach(function(x){
       document.getElementById('page-'+x).classList.toggle('hidden',x!==p);
       document.getElementById('nav-'+x).classList.toggle('on',x===p);
@@ -1305,20 +1288,6 @@ var MA = window.MA;
       '<div style="padding:7px;color:var(--ylw2);font-weight:600">'+esc(req.discount)+'</div>'
       +'<div class="mini" style="padding:0 7px 7px">เหตุผล: '+esc(req.discount_reason||'-')+'</div>';
     vRenderModels(req.machines||[]);
-    vRenderAttach(req.attach_urls);   // [V654]
-  }
-  /* [V654] ไฟล์แนบ — attach_urls เก็บเป็น CSV ของ URL ไม่ได้เก็บชื่อไฟล์
-     จึงแสดงเป็น "ไฟล์แนบ 1/2" — เปิดดูจึงจะรู้ว่าเป็นใบเสนอราคาหรือสเปค */
-  function vRenderAttach(csv){
-    var el=document.getElementById('v_attach'); if(!el) return;
-    var urls=String(csv==null?'':csv).split(',').map(function(s){return s.trim();}).filter(Boolean);
-    if(!urls.length){ el.style.display='none'; el.innerHTML=''; return; }
-    el.style.display='';
-    el.innerHTML='<div class="mini" style="margin-bottom:5px">ไฟล์แนบจากผู้ขอ</div>'
-      + urls.map(function(u,i){
-          return '<a href="'+esc(u)+'" target="_blank" rel="noopener" '
-            + 'style="color:var(--ac2);margin-right:16px;display:inline-block">ไฟล์แนบ '+(i+1)+'</a>';
-        }).join('');
   }
   function vRenderModels(list){
     var el=document.getElementById('v_models'); if(!el) return;

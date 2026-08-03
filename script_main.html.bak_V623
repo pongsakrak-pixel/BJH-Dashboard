@@ -1179,15 +1179,11 @@ function cfgTabPermInit(){
     {key:'sp_ordsc',     label:'└ 📥 ติดตามเข้า SC', group:'sub'},
     {key:'sp_billing',   label:'└ 🧾 ติดตามเปิดบิล', group:'sub'},
     {key:'sp_ar',        label:'└ 💰 AR Monitor', group:'sub'},
-    {key:'sp_bg',        label:'└ 📊 BG Monitor', group:'sub'},      // [V654]
-    {key:'sp_weekly',    label:'└ 📝 Weekly Report', group:'sub'},   // [V654]
     //  [V545] แยกหัวข้อ Tools — เดิมต่อท้ายเมนูหลักเลย ดูแล้วงง
     {key:'__hdr_tools',  label:'🛠 Tools', group:'hdr'},
     {key:'tool_pricetbl', label:'💵 ตั้งราคาสัญญาบริการ', group:'nav'},
     {key:'tool_saleforecast', label:'💰 ประมาณการยอดขาย', group:'nav'}, // [v412]
     {key:'tool_ma', label:'🔧 MA After Sales', group:'nav'}, // [v445]
-    {key:'ma_verify', label:'└ ✅ ตรวจสอบ/อนุมัติ', group:'sub'}, // [V654]
-    {key:'ma_config', label:'└ ⚙ Config (MA)', group:'sub'}, // [V654]
     {key:'tool_retention', label:'🔄 Sales Retention Report', group:'nav'}, // [V545] เดิมไม่มีในลิสต์ -> คุมสิทธิ์ไม่ได้ ทุกคนเห็น
     {key:'tool_pricebook', label:'💵 ราคาอ้างอิง SC/SP', group:'nav'} // [V611]
   ];
@@ -2710,11 +2706,7 @@ function resolveFadStatus(bn, px){
 function ipCls(ip){if(ip==='Cancel PM')return 'bip-excluded';if(ip==='Bill Not Print')return 'bip-excluded';if(ip==='SC Cancel')return 'bip-excluded';if(ip==='PM Completed')return 'bip-sc-comp';if(ip==='Waiting PM')return 'bip-sc-wait-pm';if(ip==='SC Billed')return 'bip-sp-bill';if(ip==='SP Billed')return 'bip-sp-bill';if(ip==='SC Billing')return 'bip-sc-wait-bill';if(ip==='SP Billing')return 'bip-sc-inprog';if(ip==='Waiting Bill')return 'bip-sc-wait-bill';if(ip==='SC:Contract In Progress')return 'bip-sc-inprog';if(ip==='PM Completed')return 'bip-sc-cont';if(ip==='SC:Bill Confirmed'||ip==='SP:Bill Confirmed')return 'bip-sp-bill';if(ip==='SC:FAD Net Zero'||ip==='SP:FAD Net Zero')return 'bip-rp-proc';if(ip==='RP:Stock In')return 'bip-rp-si';if(ip==='RP:Wait Stock-In')return 'bip-rp-wsi';return 'bip-rp-proc';}
 function fM(v,dec){dec=dec||2;return v?(v/1e6).toFixed(dec)+'M':'—';}
 function fMC(v){return v?(v/1e6).toFixed(2):'—';}
-/* [V649] ต้นเหตุ "(s || \"\").replace is not a function" — โมดัลรายละเอียดเด้ง
-   เดิม (s||'') — ถ้า s เป็นตัวเลข/Date/boolean จะได้ค่านั้นกลับมา ซึ่งไม่มี .replace
-   (ตัวอื่นในไฟล์นี้ใส่ String() หมด — มีตัวนี้ตัวเดียวที่ตกหล่น)
-   null/undefined ยังคืน '' เหมือนเดิม ไม่กลายเป็น "null" */
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function trunc(s,w){s=s||'';return '<span class="trunc" title="'+esc(s)+'" style="max-width:'+(w||120)+'px">'+esc(s)+'</span>';}
 function prd(r){return periodLabel(r);}
 function fmt000(v){if(v==null||v==='')return '—';return Number(v||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -3270,11 +3262,9 @@ function periodLabel(r){
       if(_lShift){
         var _lIco=_lShift==='logic'?'🔄':'✋';
         var _lShCol=_lShift==='logic'?'#fbbf24':'#4ade80';
-        /* [V645] เหมือนบล็อก High/Medium — เหลือเดือนเดียว */
-        var _lTip=(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')
-          +(_lOrig?(' · '+_lOrig+' → '+_moLbl):(' → '+_moLbl));
-        _lOut+='<span title="'+_lTip+'">'+_lIco+' </span>';
-        _lOut+='<span title="'+_lTip+'" style="color:'+_lShCol+';font-weight:600">'+(_lOrig||_moLbl)+'</span>';
+        _lOut+='<span title="'+(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_lIco+' </span>';
+        if(_lOrig) _lOut+='<span style="color:var(--mu);font-size:11px">'+_lOrig+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
+        _lOut+='<span style="color:'+_lShCol+';font-weight:600">'+_moLbl+'</span>';
       } else {
         _lOut+='<span style="color:var(--ac2);font-weight:600">'+_moLbl+'</span>';
       }
@@ -3313,13 +3303,10 @@ function periodLabel(r){
         if(_shiftBy){
           var _ico=_shiftBy==='logic'?'🔄':'✋';
           var _shCol=_shiftBy==='logic'?'#fbbf24':'#4ade80';
-          /* [V645] แสดงเดือนเดียว — เดิมแสดง "ต้นทาง → ปลายทาง" คอลัมน์ล้น
-             ปลายทาง = เดือนที่กรองอยู่ ทุกแถวซ้ำกัน ไม่ให้ข้อมูลเพิ่ม
-             ย้ายไปไว้ใน tooltip ข้อมูลไม่หาย */
-          var _tip=(_shiftBy==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')
-            +(_origMoLbl?(' · '+_origMoLbl+' → '+_moHM):(' → '+_moHM));
-          _out+='<span title="'+_tip+'">'+_ico+' </span>';
-          _out+='<span title="'+_tip+'" style="color:'+_shCol+';font-weight:600">'+(_origMoLbl||_moHM)+'</span>';
+          _out+='<span title="'+(_shiftBy==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_ico+' </span>';
+          // เดือนจริง → เดือนที่จะเปิดบิล
+          if(_origMoLbl) _out+='<span style="color:var(--mu);font-size:11px">'+_origMoLbl+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
+          _out+='<span style="color:'+_shCol+';font-weight:600">'+_moHM+'</span>';
         } else {
           // ไม่เลื่อน → เดือนเดียว
           _out+='<span style="color:var(--ac2);font-weight:600">'+_moHM+'</span>';
@@ -6224,29 +6211,16 @@ window._TAB_PERM_DEFAULT = {
   sp_forecast: {admin:false, manager:false, sales:false},   /* [V597] ปิดใช้ */
   sp_pipeline: {admin:false, manager:false, sales:false},   /* [V597] ปิดใช้ */
   sp_install:  {admin:true, manager:true, sales:true},
-  sp_bg:       {admin:true, manager:true, sales:true},   /* [V654] BG Monitor */
-  sp_weekly:   {admin:true, manager:true, sales:true},   /* [V654] Weekly Report */
   // MD Collection (Tools menu)
   nav_mdcol:   {admin:true, manager:false, sales:false},
   tool_pricetbl: {admin:true, manager:true, sales:false}, // [v406]
   tool_saleforecast: {admin:true, manager:true, sales:true}, // [v412] ประมาณการยอดขาย — sales ใช้ได้ด้วย
   tool_ma: {admin:true, manager:true, sales:true}, // [v445] MA After Sales — เดิมไม่มีสิทธิ์เลย (เห็นทุกคน) ตั้งเป็น all-true ให้เหมือนพฤติกรรมเดิม แก้ทีหลังได้ที่ Config
   tool_retention: {admin:true, manager:true, sales:false}, // [V545] เหมือน tool_pricetbl
-  tool_pricebook: {admin:true, manager:true, sales:false}, // [V611] ราคาอ้างอิง SC/SP
-  ma_verify: {admin:true, manager:true, sales:false}, // [V654] MA หน้าตรวจสอบ/อนุมัติ
-  ma_config: {admin:true, manager:false, sales:false} // [V654] MA หน้า Config
-};
-/* [V654] key ใหม่ที่ยังไม่มีในชีต _config_kv — ใช้ค่านี้แทน all-false
-   ถ้าไม่มี พอเพิ่ม key ลง _TAB_PERM_KEYS ทุกคนจะมองไม่เห็นแท็บทันทีตอนอัป — จนกว่าแอดมินจะเข้าไปติ๊ก
-   เข้าชีตเมื่อแอดมินกด Save ครั้งแรก จากนั้นค่าในชีตคุมตามปกติ */
-window._TAB_PERM_NEWKEYS_DEF = {
-  sp_bg:     {admin:true, manager:true, sales:true},
-  sp_weekly: {admin:true, manager:true, sales:true},
-  ma_verify: {admin:true, manager:true, sales:false},
-  ma_config: {admin:true, manager:false, sales:false}
+  tool_pricebook: {admin:true, manager:true, sales:false} // [V611] ราคาอ้างอิง SC/SP
 };
 // keys ทั้งหมดที่ระบบรู้จัก (ลำดับ = ลำดับใน config UI)
-window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook','sp_bg','sp_weekly','ma_verify','ma_config']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook
+window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook
 // helper: เช็คสิทธิ์ 1 key สำหรับ role — ไม่มี admin bypass (admin ตาม config เหมือน role อื่น)
 window._tpCan = function(key, role){
   // [v225+v247] sheet ก่อน — ถ้า key ไม่มีใน sheet fallback _TAB_PERM_DEFAULT
@@ -8183,11 +8157,7 @@ function applyConfig(cfg){
       if(src && typeof src==='object'){
         tp[tab] = { admin:!!src.admin, manager:!!src.manager, sales:!!src.sales };
       } else {
-        // [V654] key ใหม่ที่ยังไม่เคยมีในชีต — ใช้ NEWKEYS_DEF กันแท็บหายทันทีตอนอัป
-        //   key เก่าคงเดิม: ไม่มีใน sheet = ปิดหมด (ไม่ fallback default)
-        var _nd = (window._TAB_PERM_NEWKEYS_DEF||{})[tab];
-        tp[tab] = _nd ? { admin:!!_nd.admin, manager:!!_nd.manager, sales:!!_nd.sales }
-                      : { admin:false, manager:false, sales:false };
+        tp[tab] = { admin:false, manager:false, sales:false }; // ไม่มีใน sheet = ปิดหมด (ไม่ fallback default)
       }
     });
     window._TAB_PERMISSIONS = tp;

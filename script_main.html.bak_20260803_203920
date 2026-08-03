@@ -1179,15 +1179,11 @@ function cfgTabPermInit(){
     {key:'sp_ordsc',     label:'└ 📥 ติดตามเข้า SC', group:'sub'},
     {key:'sp_billing',   label:'└ 🧾 ติดตามเปิดบิล', group:'sub'},
     {key:'sp_ar',        label:'└ 💰 AR Monitor', group:'sub'},
-    {key:'sp_bg',        label:'└ 📊 BG Monitor', group:'sub'},      // [V654]
-    {key:'sp_weekly',    label:'└ 📝 Weekly Report', group:'sub'},   // [V654]
     //  [V545] แยกหัวข้อ Tools — เดิมต่อท้ายเมนูหลักเลย ดูแล้วงง
     {key:'__hdr_tools',  label:'🛠 Tools', group:'hdr'},
     {key:'tool_pricetbl', label:'💵 ตั้งราคาสัญญาบริการ', group:'nav'},
     {key:'tool_saleforecast', label:'💰 ประมาณการยอดขาย', group:'nav'}, // [v412]
     {key:'tool_ma', label:'🔧 MA After Sales', group:'nav'}, // [v445]
-    {key:'ma_verify', label:'└ ✅ ตรวจสอบ/อนุมัติ', group:'sub'}, // [V654]
-    {key:'ma_config', label:'└ ⚙ Config (MA)', group:'sub'}, // [V654]
     {key:'tool_retention', label:'🔄 Sales Retention Report', group:'nav'}, // [V545] เดิมไม่มีในลิสต์ -> คุมสิทธิ์ไม่ได้ ทุกคนเห็น
     {key:'tool_pricebook', label:'💵 ราคาอ้างอิง SC/SP', group:'nav'} // [V611]
   ];
@@ -6224,29 +6220,16 @@ window._TAB_PERM_DEFAULT = {
   sp_forecast: {admin:false, manager:false, sales:false},   /* [V597] ปิดใช้ */
   sp_pipeline: {admin:false, manager:false, sales:false},   /* [V597] ปิดใช้ */
   sp_install:  {admin:true, manager:true, sales:true},
-  sp_bg:       {admin:true, manager:true, sales:true},   /* [V654] BG Monitor */
-  sp_weekly:   {admin:true, manager:true, sales:true},   /* [V654] Weekly Report */
   // MD Collection (Tools menu)
   nav_mdcol:   {admin:true, manager:false, sales:false},
   tool_pricetbl: {admin:true, manager:true, sales:false}, // [v406]
   tool_saleforecast: {admin:true, manager:true, sales:true}, // [v412] ประมาณการยอดขาย — sales ใช้ได้ด้วย
   tool_ma: {admin:true, manager:true, sales:true}, // [v445] MA After Sales — เดิมไม่มีสิทธิ์เลย (เห็นทุกคน) ตั้งเป็น all-true ให้เหมือนพฤติกรรมเดิม แก้ทีหลังได้ที่ Config
   tool_retention: {admin:true, manager:true, sales:false}, // [V545] เหมือน tool_pricetbl
-  tool_pricebook: {admin:true, manager:true, sales:false}, // [V611] ราคาอ้างอิง SC/SP
-  ma_verify: {admin:true, manager:true, sales:false}, // [V654] MA หน้าตรวจสอบ/อนุมัติ
-  ma_config: {admin:true, manager:false, sales:false} // [V654] MA หน้า Config
-};
-/* [V654] key ใหม่ที่ยังไม่มีในชีต _config_kv — ใช้ค่านี้แทน all-false
-   ถ้าไม่มี พอเพิ่ม key ลง _TAB_PERM_KEYS ทุกคนจะมองไม่เห็นแท็บทันทีตอนอัป — จนกว่าแอดมินจะเข้าไปติ๊ก
-   เข้าชีตเมื่อแอดมินกด Save ครั้งแรก จากนั้นค่าในชีตคุมตามปกติ */
-window._TAB_PERM_NEWKEYS_DEF = {
-  sp_bg:     {admin:true, manager:true, sales:true},
-  sp_weekly: {admin:true, manager:true, sales:true},
-  ma_verify: {admin:true, manager:true, sales:false},
-  ma_config: {admin:true, manager:false, sales:false}
+  tool_pricebook: {admin:true, manager:true, sales:false} // [V611] ราคาอ้างอิง SC/SP
 };
 // keys ทั้งหมดที่ระบบรู้จัก (ลำดับ = ลำดับใน config UI)
-window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook','sp_bg','sp_weekly','ma_verify','ma_config']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook
+window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook
 // helper: เช็คสิทธิ์ 1 key สำหรับ role — ไม่มี admin bypass (admin ตาม config เหมือน role อื่น)
 window._tpCan = function(key, role){
   // [v225+v247] sheet ก่อน — ถ้า key ไม่มีใน sheet fallback _TAB_PERM_DEFAULT
@@ -8183,11 +8166,7 @@ function applyConfig(cfg){
       if(src && typeof src==='object'){
         tp[tab] = { admin:!!src.admin, manager:!!src.manager, sales:!!src.sales };
       } else {
-        // [V654] key ใหม่ที่ยังไม่เคยมีในชีต — ใช้ NEWKEYS_DEF กันแท็บหายทันทีตอนอัป
-        //   key เก่าคงเดิม: ไม่มีใน sheet = ปิดหมด (ไม่ fallback default)
-        var _nd = (window._TAB_PERM_NEWKEYS_DEF||{})[tab];
-        tp[tab] = _nd ? { admin:!!_nd.admin, manager:!!_nd.manager, sales:!!_nd.sales }
-                      : { admin:false, manager:false, sales:false };
+        tp[tab] = { admin:false, manager:false, sales:false }; // ไม่มีใน sheet = ปิดหมด (ไม่ fallback default)
       }
     });
     window._TAB_PERMISSIONS = tp;

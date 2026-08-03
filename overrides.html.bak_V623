@@ -183,14 +183,6 @@
         }
       }catch(e){}
     }
-    /* [V647] ย่อช่วงเดือน — ปีเดียวกันตัดปีทิ้ง ข้ามปีจึงใส่ปี 2 หลัก
-       เม.ย. 2026 → ส.ค. 2026  กลายเป็น  เม.ย.→ส.ค.
-       ธ.ค. 2025 → ส.ค. 2026  กลายเป็น  ธ.ค. 25→ส.ค. 26 */
-    function _mmShort(fMo,fYr,tMo,tYr){
-      var f=(MO[fMo]||fMo), t=(MO[tMo]||tMo);
-      if(Number(fYr)===Number(tYr)) return f+'\u2192'+t;
-      return f+' '+String(fYr).slice(-2)+'\u2192'+t+' '+String(tYr).slice(-2);
-    }
     // Low Prospect — แสดง "Low Prospect → ธ.ค. 2026" สีเหลือง
     if(r&&r._isLow){
       var _lMo=Number(r.mo||0), _lYr=Number(r.yr||0);
@@ -200,22 +192,15 @@
       if(_lMo && _lKey<_lNowKey){ _lOrig=(MO[_lMo]||_lMo)+' '+(_lYr||''); _lShift=r._manual_edit?'manual':'logic'; _lMo=_lNowMo; _lYr=_lNowYr; }
       else if(r._manual_edit && _lMo){ _lShift='manual'; _lOrig=(r._orig_mo?(MO[r._orig_mo]||r._orig_mo)+' '+(r._orig_yr||_lYr):''); }
       var _moLblL=_lMo?((MO[_lMo]||_lMo)+' '+(_lYr||'')):'';
-      var _lOut='<span style="color:#fbbf24;font-weight:600" title="Low">L</span>';
+      var _lOut='<span style="color:#fbbf24;font-weight:600">Low</span>';
       if(_moLblL){
         _lOut+='<span style="color:var(--mu);font-size:10px">&nbsp;&nbsp;</span>';
         if(_lShift){
           var _lIco=_lShift==='logic'?'🔄':'✋';
           var _lShCol=_lShift==='logic'?'#fbbf24':'#4ade80';
-          /* [V646] แสดงเดือนเดียว เดือนปลายทางไปอยู่ใน tooltip
-             ต้องแก้ที่ overrides.html — โหลดทีหลัง script_main จึงทับเสมอ */
-          var _lTipX=(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')
-            +(_lOrig?(' · '+_lOrig+' → '+_moLblL):(' → '+_moLblL));
-          _lOut+='<span title="'+_lTipX+'">'+_lIco+' </span>';
-          /* [V647] เก็บทั้ง 2 เดือน แต่ย่อ — ตัดเดือนปลายทางออกจะเข้าใจผิดว่าแถวอยู่เดือนต้นทาง */
-          var _lFm=(r._manual_edit&&r._orig_mo)?Number(r._orig_mo):Number(r.mo||0);
-          var _lFy=(r._manual_edit&&r._orig_mo)?Number(r._orig_yr||_lYr):Number(r.yr||0);
-          var _lRange=_lOrig ? _mmShort(_lFm,_lFy,_lMo,_lYr) : _moLblL;
-          _lOut+='<span title="'+_lTipX+'" style="color:'+_lShCol+';font-weight:600">'+_lRange+'</span>';
+          _lOut+='<span title="'+(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_lIco+' </span>';
+          if(_lOrig) _lOut+='<span style="color:var(--mu);font-size:11px">'+_lOrig+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
+          _lOut+='<span style="color:'+_lShCol+';font-weight:600">'+_moLblL+'</span>';
         } else { _lOut+='<span style="color:var(--ac2);font-weight:600">'+_moLblL+'</span>'; }
       }
       return _lOut;
@@ -228,8 +213,7 @@
       var _hmStgX=(_scKeyX?_hmMapX[_scKeyX]:null)||(_qsKeyX?_hmMapX[_qsKeyX]:null)||null;
       if(_hmStgX==='H'||_hmStgX==='M'){
         var _hmColX=_hmStgX==='H'?'#f87171':'#fb923c';
-        var _hmLblX=_hmStgX==='H'?'H':'M';   /* [V647] ย่อเหลือตัวเดียว */
-        var _hmFullX=_hmStgX==='H'?'High':'Medium';
+        var _hmLblX=_hmStgX==='H'?'High':'Medium';
         var _hmMoX=Number(r.rbmo||r.carry_from_mo||r.om||r.mo||0);
         var _hmYrX=Number(r.rbyr||r.carry_from_yr||r.oy||r.yr||0);
         var _nowDX=new Date(); var _nowMoX=_nowDX.getMonth()+1, _nowYrX=_nowDX.getFullYear();
@@ -238,22 +222,15 @@
         if(_hmMoX && _hmKeyX<_nowKeyX){ _origX=(MO[_hmMoX]||_hmMoX)+' '+(_hmYrX||''); _shiftX=r._manual_edit?'manual':'logic'; _hmMoX=_nowMoX; _hmYrX=_nowYrX; }
         else if(r._manual_edit && _hmMoX){ _shiftX='manual'; _origX=(r._orig_mo?(MO[r._orig_mo]||r._orig_mo)+' '+(r._orig_yr||_hmYrX):''); }
         var _moHMX=_hmMoX?((MO[_hmMoX]||_hmMoX)+' '+(_hmYrX||'')):'';
-        var _outX='<span style="color:'+_hmColX+';font-weight:600" title="'+_hmFullX+'">'+_hmLblX+'</span>';
+        var _outX='<span style="color:'+_hmColX+';font-weight:600">'+_hmLblX+'</span>';
         if(_moHMX){
           _outX+='<span style="color:var(--mu);font-size:10px">&nbsp;&nbsp;</span>';
           if(_shiftX){
             var _icoX=_shiftX==='logic'?'🔄':'✋';
             var _shColX=_shiftX==='logic'?'#fbbf24':'#4ade80';
-            /* [V646] แสดงเดือนเดียว เดือนปลายทางไปอยู่ใน tooltip */
-            var _tipX=(_shiftX==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')
-              +(_origX?(' · '+_origX+' → '+_moHMX):(' → '+_moHMX));
-            _outX+='<span title="'+_tipX+'">'+_icoX+' </span>';
-            /* [V647] เก็บทั้ง 2 เดือน แต่ย่อ */
-            var _fMo=Number(r.rbmo||r.carry_from_mo||r.om||r.mo||0);
-            var _fYr=Number(r.rbyr||r.carry_from_yr||r.oy||r.yr||0);
-            if(r._manual_edit && r._orig_mo){ _fMo=Number(r._orig_mo); _fYr=Number(r._orig_yr||_fYr); }
-            var _rangeX=_origX ? _mmShort(_fMo,_fYr,_hmMoX,_hmYrX) : _moHMX;
-            _outX+='<span title="'+_tipX+'" style="color:'+_shColX+';font-weight:600">'+_rangeX+'</span>';
+            _outX+='<span title="'+(_shiftX==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_icoX+' </span>';
+            if(_origX) _outX+='<span style="color:var(--mu);font-size:11px">'+_origX+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
+            _outX+='<span style="color:'+_shColX+';font-weight:600">'+_moHMX+'</span>';
           } else { _outX+='<span style="color:var(--ac2);font-weight:600">'+_moHMX+'</span>'; }
         }
         return _outX;
@@ -1670,42 +1647,6 @@ function dpFmtDate(v){
     try { if(typeof _applyNavPermissions==='function') _applyNavPermissions(); } catch(e){}
   };
 
-
-  /* ═══ [V648] กันโมดัลแสดงข้อมูลของใบอื่น ═══════════════════════════════
-     อาการ: กดแถว A แล้วหัวโมดัลเป็น A แต่เนื้อในเป็นของแถว B ที่กดก่อนหน้า
-     ต้นเหตุ: selRow() ตั้งหัวเรื่องก่อน แล้วค่อยเรียก renderSCDetail(r)
-              ถ้า render throw กลางทาง เนื้อในจะไม่ถูกเขียนทับ = ค้างของเก่า
-              (พบในแถวที่มีขอบเหลือง = แถวที่เคยแก้ status เอง)
-     แก้: ล้างเนื้อในก่อนทุกครั้ง + หุ้ม try/catch
-          พังเมื่อไหร่จะเห็นข้อความแจ้ง ไม่ใช่ข้อมูลลูกค้าอื่น
-          console.error บอกจุดที่พังจริง เอาไปแก้ต้นเหตุรอบหน้า */
-  (function(){
-    function _dpGuard(name){
-      /* renderSCDetail / renderSPDetail เป็น global function declaration ใน script_main
-         และถูก reassign ใน overrides -> อ่านผ่าน window ได้ตรงๆ ไม่ต้องใช้ eval */
-      var orig = window[name];
-      if(typeof orig !== 'function') return;
-      window[name] = function(r){
-        var body = document.getElementById('dp-body');
-        if(body) body.innerHTML = '<div style="padding:26px;text-align:center;color:var(--mu);font-size:12px">กำลังโหลด...</div>';
-        try {
-          orig(r);
-        } catch(e) {
-          try { console.error('[V648] '+name+' พัง — ใบ '+((r&&r.qn)||'')+' / '+((r&&r.cu)||''), e, r); } catch(_e){}
-          if(body) body.innerHTML =
-            '<div style="padding:26px;text-align:center;color:#e69aa0;font-size:12.5px;line-height:1.8">'
-            + 'แสดงรายละเอียดไม่สำเร็จ<br>'
-            + '<span style="color:var(--mu);font-size:11px">'
-            + ((r&&r.qn)?('ใบ '+String(r.qn)+' · '):'')
-            + String((e&&e.message)||e).slice(0,120)
-            + '</span><br><span style="color:var(--mu);font-size:10px">กด F12 → Console เพื่อดูรายละเอียด</span></div>';
-        }
-      };
-    }
-    _dpGuard('renderSCDetail');
-    _dpGuard('renderSPDetail');
-  })();
-
   var RULES_DATA = [
 
     {group:'RAW_SC_BILL', field:'CONTRACT_PROCESS_STATUS_NAME → sc_contract', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'CONTRACT_PROCESS_STATUS_NAME', note:'ตัดสิน Offer/Excluded/Contract Done — Contract Completed, PO Completed, ตรวจสอบเรียบร้อย, รอตรวจสอบข้อมูล = สัญญาเสร็จ | ยกเลิกสัญญา = Excluded'},
@@ -1848,8 +1789,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V654.0';
-    var _BUILD_TIME='3 ส.ค. 2569 (V654 Clear Alert จำจริง + สิทธิ์ BG/Weekly/MA + ไฟล์แนบ)';
+    var _BUILD_VER='V624.0';
+    var _BUILD_TIME='30 ก.ค. 2569 (V624 Sale Order chip + Contract Monitor + Package เฉพาะหลายยี่ห้อ)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
