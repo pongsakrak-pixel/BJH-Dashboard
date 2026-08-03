@@ -1,5 +1,5 @@
 # STATE — BJH Revenue Dashboard
-อัปเดต: 3 ส.ค. 2569 · เวอร์ชันล่าสุด **V655.1**
+อัปเดต: 3 ส.ค. 2569 · เวอร์ชันล่าสุด **V655.2**
 
 ---
 
@@ -16,7 +16,7 @@
 
 ---
 
-## รอบนี้ (V655.1) — 5 เรื่อง · แตะ 5 ไฟล์ + `.gitignore` ใหม่ · **ไม่แตะ `Code.js`**
+## รอบนี้ (V655.2) — 6 เรื่อง · แตะ 5 ไฟล์ + `.gitignore` ใหม่ · **ไม่แตะ `Code.js`**
 
 ### 1. ฟอนต์ในตารางหลักไม่เท่ากัน + คอลัมน์ Bill ล้น
 ตารางเดียวมี **5 ขนาดปนกัน** เพราะ `.dtbl td` ไม่เคยตั้ง `font-size` เลย → รับ 14px จาก `body` ขณะที่ badge ตั้ง inline ไว้ 9 / 10 / 11 / 12.5px
@@ -42,7 +42,11 @@
 เลขในการ์ดขัดกันเอง — Service 1: `ยังไม่จบ 67 + จบ 17 + ยกเลิก 0 = 84` แต่มุมขวาเขียน `SC 94 · SP 2 = 96` · Service 2 ก็ `54 vs 57`
 บนล่างมาคนละ filter → ลบทั้งบล็อกออก (`hb-sech` + `div#hb-svc-row`)
 JS ที่ render มี `if(svcEl)` guard อยู่แล้ว **ไม่ต้องแก้ JS** · CSS `.hb-svc-*` ปล่อยไว้เฉยๆ
-การ์ด **Pending 4 ใบ + Critical Down ยังอยู่ครบ**
+**[V655.2] ถอดการ์ด `📌 งานค้างเดือนนี้ — Pending` (4 ใบ) ออกด้วย** ตามคำขอ
+ตัวเซ็ตค่าทั้งหมดมี guard อยู่แล้ว (`_set` / `_urgSet` เช็ค `if(e)`) → **ไม่ต้องแก้ JS สักบรรทัด**
+popup `#hb-modal` + `hbShowPending()` คงไว้ — Critical Down ใช้ร่วมกัน
+subtitle หัวหน้าเพจแก้จาก `Daily Sales · งานค้างเดือนนี้ที่ต้องตาม (Pending)` → `Daily Sales`
+**Daily Board ตอนนี้เหลือ: Daily Sales KPI + Critical Down** (บล็อก "คอขวด" ถูกลบไปแล้วตั้งแต่ C16)
 
 ### 4. ชิป Medical Device Status ใช้คำเดียวกับการ์ด Critical Down
 - `🔴 Critical Down` → **ใช้ไม่ได้** · `🟡 Partial Down` → **ตรวจสอบ** · `🟣 Monitoring` → **เฝ้าระวัง** · `⚫ EOL` / `✅ Clear` คงเดิม
@@ -60,20 +64,20 @@ JS ที่ render มี `if(svcEl)` guard อยู่แล้ว **ไม�
 
 ## ทดสอบ
 - `node --check` 5 บล็อกผ่านหมด
-- jsdom/vm **66/66 ผ่าน** — ตัดโค้ดจากไฟล์ที่ patch แล้วมารันจริง
+- jsdom/vm **76/76 ผ่าน** — ตัดโค้ดจากไฟล์ที่ patch แล้วมารันจริง
   - `renderTbl()` รันจริงพร้อมโหลด `style.html` เข้า jsdom แล้ว **วัด `getComputedStyle` ทุกช่อง** → td ทั้ง 13 = 12px · badge ทุกตัว = 10px · ไม่มี inline font-size ค่าอื่นหลงเหลือ
   - Bill/Delivery = `overflow:hidden` + ellipsis + `title` ข้อความเต็ม ไม่มีแท็ก HTML / `&nbsp;` ปนใน tooltip
   - `editStatus()` รันจริง 2 เคส — ใบที่เคยแก้ได้กล่องเดียว + แสดง `ส.ค. 2026` · ใบที่ไม่เคยแก้ไม่มีกล่อง
-  - `svcEl = null` ไม่ throw · การ์ด Pending + Critical Down ยังอยู่
+  - `svcEl = null` ไม่ throw · `_set`/`_urgSet` เรียกกับ element ที่ถูกลบแล้วไม่ throw · Critical Down + popup ยังอยู่
   - ชิปสถานะเครื่องครบ 2 จุด · badge ในแถว + Weekly Report เป็นไทยตรงกัน · dropdown ค่าข้อมูลไม่โดนแตะ
   - `overrides.html` ไม่มีตัวทับ `renderTbl` / `editStatus` / `periodLabel`
 
 ## วิธีลง
 ```powershell
 cd C:\bjh-dashboard
-& .\patch_V655.ps1
+& .\patch_V655_2.ps1
 ```
-guard: รับ **V654.x หรือ V655.x** (ยิงทับได้ ไม่ว่า V655.0 จะลงไปแล้วหรือยัง) · **ไม่แตะ `Code.js`** แต่ยัง create-deployment เพราะ deployment พินไว้ต้องมี version ใหม่ถึงจะเห็น HTML ที่แก้
+guard: รับ **V654.x หรือ V655.x** (ยิงทับได้ ไม่ว่าจะลง V655.0 / V655.1 ไปแล้วหรือยัง) · **ไม่แตะ `Code.js`** แต่ยัง create-deployment เพราะ deployment พินไว้ต้องมี version ใหม่ถึงจะเห็น HTML ที่แก้
 หลังลง: Ctrl+Shift+R
 
 ---
@@ -111,6 +115,13 @@ margin 50% → 42 รุ่น · 395 เครื่องต่ำกว่า
 - ชื่อไฟล์แนบ — ต้องแก้ format `attach_urls` (กระทบใบเก่า) แยกรอบ
 - **text layer ใน PDF เพี้ยน** — ก็อปได้ `ปีที่ปีที่` `เป็นป็` (หน้าจอถูก) จากการฝังฟอนต์ไทย
 
+**🔴 รอตัดสินใจ — SP ไม่มี carry-forward (เจอ 3 ส.ค. 69)**
+`normalizeStatusV51()` ใน `overrides.html`: ฝั่ง SC มี `if(isPast(src)) { st='SC Carry'; mo=CUR_MO }` แต่ **ฝั่ง SP จบแค่ `r.mo = src.mo`** ไม่มี carry
+→ ใบ SP ที่สั่งไปเดือนก่อนแล้วยังไม่จบ ยังนอนอยู่เดือนเก่า · การ์ดรายเดือน ส.ค. เลยขึ้น **SP ORDERED ฿0 / SP FORECAST ฿0** ทั้งที่ทั้งปีมี SP Ordered 26 ใบ ฿2.50M + SP Prospect (Customer Accept) 10 ใบ ฿4.59M ค้างอยู่จริง
+- Customer Accept (`st='Prospect'`) **ไม่ได้ถูกดันไป ธ.ค.** — `_applyNoBillDiv4()` บังคับ ธ.ค. เฉพาะ `st==='Offer'` เท่านั้น
+- ถ้าแก้: ให้ SP ใช้กติกาเดียวกับ SC · **ผลข้างเคียง = ยอดเดือนย้อนหลังเปลี่ยน** (ของค้างหายจากเดือนเก่า มากองเดือนปัจจุบัน)
+- **คำถามที่ยังไม่ตอบ:** จะแยก status ใหม่ (`SP Carry` แบบ `SC Carry`) หรือดันเดือนเฉยๆ ไม่เปลี่ยน status
+
 **อื่นๆ**
 - แท็บ 4 อะไหล่: UI ตาม mockup v5 · ปุ่มรายงาน 1 หน้า A4 · Battery ชื่อซ้ำ
 - Performance: sheets 4.7s + ETL 3.9s · 6 mobile menus · Renewal.html · M3 SR (blocked) · M8 mobile black screen
@@ -123,7 +134,7 @@ margin 50% → 42 รุ่น · 395 เครื่องต่ำกว่า
 ## ดองไว้ตั้งใจ — ห้ามเสนอซ้ำ
 - V610 "อะไหล่รอในคลัง" + "ติดตามสัญญา" · % โอกาสเสียรายปี · ใบเสนอราคาเข้าหน้าราคาอ้างอิง
 - Template 5 Level (V635) · ช่องขอส่วนลด (V640) · คอลัมน์ "รวมอะไหล่" ในตัวแก้ไขกลุ่ม (V644)
-- การ์ดทีม Service 1/2/3 ใน Daily Board (V655 — ถอดออกแล้ว เลขไม่ตรง)
+- การ์ดทีม Service 1/2/3 + การ์ด Pending 4 ใบ ใน Daily Board (V655 — ถอดออกแล้ว)
 - B20 hospital→sales mapping · SP reconciliation · MDCollection.html · ServiceMix.html · AR Monitor · NOTE_LOG SmartFlow parameter
 
 ---
@@ -135,4 +146,5 @@ margin 50% → 42 รุ่น · 395 เครื่องต่ำกว่า
 - **ตัวเลขที่ "ผลรวมไม่ตรงกันในการ์ดเดียว" = คนละ query ไม่ใช่คำนวณผิด** — `67+17+0=84` ถูกในตัวเอง แต่ `SC 94 · SP 2` มาจากอีก filter · เจอแบบนี้อย่าไปไล่แก้สูตร ให้ดูว่านับมาจากชุดไหน
 - **`rows` vs `rowsAll` พลาดง่ายมาก** — ชิป Units ใช้ `rows.length` (หลังกรอง) เลยเท่ากับชิปที่กดอยู่เสมอ ดูเหมือนถูกจนกว่าจะกดตัวอื่น
 - **แก้คำที่เดียวไม่พอ** — เปลี่ยนชิปเป็นไทยแล้วเหลือ badge ในแถวกับ Weekly Report เป็นอังกฤษ กลายเป็นระบบเดียวใช้ 2 ภาษาปนกัน · ป้ายเดียวกันมักถูกเขียนซ้ำหลายที่ ให้ `grep` คำเดิมให้ครบก่อนแก้ · แต่ต้องแยกให้ออกว่าอันไหนเป็น **ป้ายแสดงผล** อันไหนเป็น **ค่าข้อมูลที่ใช้เทียบ** (dropdown filter ห้ามแตะ)
+- **ลบ UI ออกไม่ต้องแตะ JS ถ้า setter เขียน guard ไว้ตั้งแต่แรก** — ทั้ง `_set`/`_urgSet`/`if(svcEl)` มี `if(e)` ครบ เลยถอดบล็อกทิ้งได้เลย · guard ที่ดูเกินความจำเป็นตอนเขียน คือสิ่งที่ทำให้รื้อทีหลังได้ถูก
 - **jsdom โหลด CSS จริงเข้าไปแล้ววัด `getComputedStyle` ได้** — เทสฟอนต์ไม่ต้องเดาจาก regex อีก · วิธีนี้จับได้ทั้ง inline ที่ลืมลบ และ cascade ที่ไม่คาดคิด

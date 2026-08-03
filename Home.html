@@ -383,7 +383,7 @@ html[data-theme="light"] #v-home .hb-modal-foot{ font-weight:800; }
   <div class="hbh">
     <div class="ttl">
       <h1><span class="hb-ico">🏁</span> BJH Service Commercial — Daily Board</h1>
-      <div class="sub">Daily Sales · งานค้างเดือนนี้ที่ต้องตาม (Pending)</div>
+      <div class="sub">Daily Sales</div>
     </div>
     <div class="hb-live">LIVE</div>
     <button class="hb-refresh" onclick="bjhHardRefresh()">🔄 รีเฟรช</button>
@@ -468,74 +468,9 @@ html[data-theme="light"] #v-home .hb-modal-foot{ font-weight:800; }
        แต่มุมขวาเขียน SC 94 · SP 2 = 96 (Service 2 ก็ 54 vs 57)
        คนละชุด filter กัน — JS มี if(svcEl) guard อยู่แล้ว ไม่ต้องแก้ -->
 
-  <!-- PENDING 4 -->
-  <div class="hb-sech">📌 งานค้างเดือนนี้ที่ต้องตาม — Pending</div>
-  <div class="hb-pending">
-    <!-- Pending Quotation -->
-    <div class="hb-pcard pquo" style="cursor:pointer" onclick="hbShowPending('quo')">
-      <svg class="hb-pmascot m-bounce" width="54" height="54" viewBox="0 0 54 54">
-        <rect x="15" y="24" width="24" height="24" rx="8" fill="#f87171"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
-        <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
-        <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
-        <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#7f1d1d"/>
-        <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
-        <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-        <g transform="rotate(8 42 34)"><rect x="37" y="27" width="13" height="17" rx="1.5" fill="#fecaca" stroke="#b91c1c" stroke-width="1.3"/><line x1="40" y1="32" x2="47" y2="32" stroke="#b91c1c" stroke-width="1"/><line x1="40" y1="36" x2="47" y2="36" stroke="#b91c1c" stroke-width="1"/><line x1="40" y1="40" x2="44" y2="40" stroke="#b91c1c" stroke-width="1"/></g>
-      </svg>
-      <div class="ph2"><div class="ptag">🧾 Pending Quotation</div><div class="psub">Team Sales</div></div>
-      <div class="pbig"><span id="hb-pen-quo">0</span> <span class="punit">ใบ</span></div>
-      <div class="pmoney2"><div class="pm-row"><span class="pm-lbl">SC</span><span class="pm-val1" id="hb-pen-quo-sc">0 ใบเสนอราคา</span></div><div class="pm-row"><span class="pm-lbl">SP</span><span class="pm-val1" id="hb-pen-quo-sp">0 ใบเสนอราคา</span></div></div>
-    </div>
-    <!-- Pending Contract -->
-    <div class="hb-pcard contract" style="cursor:pointer" onclick="hbShowPending('contract')">
-      <svg class="hb-pmascot m-wiggle" width="54" height="54" viewBox="0 0 54 54">
-        <rect x="15" y="24" width="24" height="24" rx="8" fill="#fb923c"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
-        <rect x="29" y="26" width="9" height="6" rx="1" fill="#fff"/>
-        <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
-        <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
-        <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#3a2a1a"/>
-        <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
-        <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-        <g transform="rotate(10 42 34)"><rect x="37" y="28" width="13" height="16" rx="1.5" fill="#fed7aa" stroke="#c2410c" stroke-width="1.3"/><line x1="40" y1="33" x2="47" y2="33" stroke="#c2410c" stroke-width="1"/><line x1="40" y1="37" x2="47" y2="37" stroke="#c2410c" stroke-width="1"/></g>
-      </svg>
-      <div class="ph2"><div class="ptag">📋 Pending Contract</div><div class="psub">Team Sales</div></div>
-      <div class="pbig"><span id="hb-pen-contract">0</span> <span class="punit">สัญญา</span></div>
-      <div class="pmoney2">
-        <div class="pm-row"><span class="pm-lbl">มูลค่าสัญญา</span><span class="pm-val full" id="hb-pen-contract-amt">฿0</span></div>
-        <div class="pm-row"><span class="pm-lbl urg" id="hb-pen-contract-urg">—</span></div>
-      </div>
-    </div>
-    <!-- Pending SC -->
-    <div class="hb-pcard psc" style="cursor:pointer" onclick="hbShowPending('sc')">
-      <svg class="hb-pmascot m-bounce" width="54" height="54" viewBox="0 0 54 54">
-        <rect x="15" y="24" width="24" height="24" rx="8" fill="#0ea5e9"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
-        <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
-        <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
-        <path d="M16 11 Q27 2 38 11 L38 13 Q27 9 16 13Z" fill="#0369a1"/><rect x="15" y="11" width="24" height="2.5" rx="1" fill="#075985"/>
-        <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
-        <path d="M24 17 Q27 19 30 17" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-        <g transform="rotate(35 42 32)"><rect x="39" y="24" width="4.5" height="16" rx="2" fill="#94a3b8"/><circle cx="41" cy="24" r="4.5" fill="none" stroke="#94a3b8" stroke-width="2.5"/></g>
-      </svg>
-      <div class="ph2"><div class="ptag">🔧 Pending SC</div><div class="psub">Team Service</div></div>
-      <div class="pbig"><span id="hb-pen-sc">0</span> <span class="punit">งาน</span></div>
-      <div class="pmoney2"><div class="pm-row"><span class="pm-lbl">มูลค่ารวม</span><span class="pm-val1" id="hb-pen-sc-amt">฿0</span></div><div class="pm-row"><span class="pm-lbl urg" id="hb-pen-sc-urg">—</span></div></div>
-    </div>
-    <!-- Pending SP -->
-    <div class="hb-pcard psp" style="cursor:pointer" onclick="hbShowPending('sp')">
-      <svg class="hb-pmascot m-busy" width="54" height="54" viewBox="0 0 54 54">
-        <rect x="15" y="24" width="24" height="24" rx="8" fill="#a78bfa"/><path d="M22 24 L27 29 L32 24Z" fill="#fff"/>
-        <rect x="24" y="18" width="6" height="7" fill="#ffe0b8"/>
-        <circle cx="27" cy="13" r="10" fill="#ffe0b8"/>
-        <path d="M18 12 Q19 4 27 3 Q35 4 36 12 Q36 8 27 7 Q18 8 18 12Z" fill="#1a1a1a"/>
-        <g class="m-eye"><circle cx="23" cy="13" r="1.8" fill="#1a1228"/><circle cx="31" cy="13" r="1.8" fill="#1a1228"/></g>
-        <path d="M24 18 Q27 19 30 18" stroke="#1a1228" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-        <g transform="rotate(-8 41 34)"><rect x="35" y="28" width="15" height="13" rx="1.5" fill="#c4b5fd" stroke="#7c3aed" stroke-width="1.3"/><line x1="35" y1="33" x2="50" y2="33" stroke="#7c3aed" stroke-width="1.2"/><line x1="42.5" y1="28" x2="42.5" y2="33" stroke="#7c3aed" stroke-width="1.2"/></g>
-      </svg>
-      <div class="ph2"><div class="ptag">📦 Pending SP</div><div class="psub">Team Product</div></div>
-      <div class="pbig"><span id="hb-pen-sp">0</span> <span class="punit">งาน</span></div>
-      <div class="pmoney2"><div class="pm-row"><span class="pm-lbl">มูลค่ารวม</span><span class="pm-val1" id="hb-pen-sp-amt">฿0</span></div><div class="pm-row"><span class="pm-lbl urg" id="hb-pen-sp-urg">—</span></div></div>
-    </div>
-  </div>
+  <!-- [V655.2] PENDING 4 การ์ด — ถอดออกตามคำขอ
+       ตัวเซ็ตค่าทั้งหมดมี guard อยู่แล้ว (_set / _urgSet เช็ค if(e)) จึงไม่ต้องแก้ JS
+       popup #hb-modal + hbShowPending() คงไว้ — Critical Down ใช้ร่วมกัน -->
 
   <!-- [C16] ลบบล็อก "คอขวด" + "ความเคลื่อนไหววันนี้" ออกตามคำขอ -->
 
