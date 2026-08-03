@@ -31,20 +31,30 @@
 
 #v-ma .wrap{max-width:1180px;margin:0 auto;padding:16px 16px 70px}
 /* [V636] หน้าสร้างคำขอ: เต็มความกว้าง + จบในหน้าเดียว */
-#v-ma .wrap.wide{max-width:1680px;padding:12px 18px 24px}
+#v-ma .wrap.wide{max-width:1680px;padding:10px 18px 14px}
 #v-ma .rq-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 #v-ma .rq-head .stage-title{margin:0}
 #v-ma .rq-head .stage-desc{margin:0}
 #v-ma .rq-top{display:grid;grid-template-columns:1.05fr .95fr .8fr;gap:12px;align-items:stretch;margin-bottom:12px}
 #v-ma .rq-top .card{margin-bottom:0;display:flex;flex-direction:column}
-#v-ma #page-request .card{padding:12px 14px}
+/* [V651] บีบให้ทั้งหน้าพอดีจอเดียว รวมการ์ดเครื่อง */
+#v-ma #page-request .card{padding:11px 13px}
+#v-ma #page-request .card h3{font-size:12.5px;margin-bottom:2px}
+#v-ma #page-request .card .hint{font-size:10.5px;margin-bottom:7px;line-height:1.5}
+#v-ma #page-request .field label{font-size:11px}
+#v-ma #page-request .field .sub{font-size:10px}
+#v-ma #page-request input,#v-ma #page-request select{padding:6px 8px;font-size:12px}
+#v-ma .rq-head{margin-bottom:8px}
+#v-ma .rq-top{margin-bottom:9px}
+/* หมายเหตุ: เดิม flex:1 ทำให้ยืดตามการ์ดที่สูงสุด — ตรึงความสูงแทน */
+#v-ma #page-request textarea{min-height:0;height:74px;resize:vertical;font-size:12px}
 #v-ma #page-request .card .hint{margin-bottom:9px}
-#v-ma #page-request .field{margin-bottom:9px;gap:4px}
+#v-ma #page-request .field{margin-bottom:7px;gap:3px}
 #v-ma #page-request .grid2{gap:10px}
 #v-ma .rq-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
-#v-ma .rq-mlist{max-height:210px;overflow-y:auto;padding-right:2px}
-#v-ma #page-request .mcard{padding:11px 12px;margin-bottom:7px}
-#v-ma #page-request .dropzone{padding:10px;font-size:11.5px}
+#v-ma .rq-mlist{max-height:150px;overflow-y:auto;padding-right:2px}
+#v-ma #page-request .mcard{padding:9px 11px;margin-bottom:6px}
+#v-ma #page-request .dropzone{padding:8px;font-size:11px}
 #v-ma #page-request textarea{min-height:44px}
 @media(max-width:1200px){#v-ma .rq-top{grid-template-columns:1fr 1fr}}
 @media(max-width:820px){#v-ma .rq-top{grid-template-columns:1fr}#v-ma .rq-3{grid-template-columns:1fr}}
@@ -84,6 +94,7 @@
 #v-ma .btn.green:hover{filter:brightness(1.12)}
 #v-ma .btn:disabled{opacity:.5;cursor:default}
 #v-ma .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap}
+#v-ma #page-request .actions{margin-top:8px}
 #v-ma .linkbtn{background:transparent;border:1px solid var(--ac);color:var(--ac2);border-radius:5px;
   padding:5px 11px;font-family:var(--font);font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap}
 #v-ma .linkbtn:hover{background:var(--sur3)}
@@ -91,7 +102,7 @@
   width:36px;height:36px;cursor:pointer;font-size:13px}
 #v-ma .iconbtn:hover{color:var(--red);border-color:var(--red)}
 #v-ma .addbtn{background:transparent;border:1px dashed var(--bd2);color:var(--ac2);border-radius:6px;
-  padding:9px;width:100%;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:600;margin-top:4px}
+  padding:7px;width:100%;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:600;margin-top:4px}
 #v-ma .addbtn:hover{border-color:var(--ac);background:var(--sur2)}
 
 /* ── ชิป ── */
@@ -301,8 +312,8 @@
         </div>
         <input type="file" id="f_quo" style="display:none" onchange="MA.upFile(this,'quo')">
         <input type="file" id="f_spec" style="display:none" onchange="MA.upFile(this,'spec')">
-        <div class="field" style="margin:0;flex:1"><label>หมายเหตุ <span class="sub">ไม่บังคับ</span></label>
-          <textarea id="r_note" rows="2" placeholder="เงื่อนไขพิเศษ / ข้อตกลงกับลูกค้า..." style="flex:1"></textarea></div>
+        <div class="field" style="margin:0"><label>หมายเหตุ <span class="sub">ไม่บังคับ</span></label>
+          <textarea id="r_note" rows="2" placeholder="เงื่อนไขพิเศษ / ข้อตกลงกับลูกค้า..."></textarea></div>
       </div>
     </div>
 

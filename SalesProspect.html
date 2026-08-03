@@ -402,17 +402,23 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
 
 <!-- ── ENTER SC PANE ── -->
 <div id="sp-pane-ordsc" style="display:none;padding:12px 16px">
-  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+  <!-- [V650] แยกแถบกรองเป็น 3 แถว — เดิม flex-wrap แถวเดียว ตัดกลางกลุ่ม
+       แถว 1 ตัวเลือก · แถว 2 สถานะบิล · แถว 3 สถานะงาน + สรุป -->
+  <div style="margin-bottom:10px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
     <select class="fsel" id="sp-ordsc-sales" onchange="spRenderOrdSC()"><option value="">All Sales</option></select>
     <select class="fsel" id="sp-ordsc-month" onchange="spRenderOrdSC()"><option value="">ทุกเดือน</option></select>
     <input class="fsel" type="text" id="sp-ordsc-search" placeholder="ค้นหา QN / ลูกค้า..." oninput="spRenderOrdSC()" style="min-width:120px">
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
     <button class="ordsc-sub-chip" data-sub="" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid #38bdf8;background:rgba(56,189,248,.15);color:#38bdf8;cursor:pointer;font-family:inherit">ทั้งหมด</button>
     <button class="ordsc-sub-chip" data-sub="BL" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#2dd4bf;cursor:pointer;font-family:inherit">🔷 Sale Order</button>
     <button class="ordsc-sub-chip" data-sub="BLConfirm" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#facc15;cursor:pointer;font-family:inherit">🟡 Sales Confirm</button>
     <button class="ordsc-sub-chip" data-sub="SCOrder" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#38bdf8;cursor:pointer;font-family:inherit">🔵 SC Order</button>
     <button class="ordsc-sub-chip" data-sub="Carry" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#a78bfa;cursor:pointer;font-family:inherit">🟣 Carry</button>
     <button class="ordsc-sub-chip" data-sub="Prospect" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#22d3ee;cursor:pointer;font-family:inherit">🔵 Prospect</button>
-    <span style="width:1px;height:24px;background:var(--bd2,#374151);margin:0 4px"></span>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
     <span style="font-size:11px;color:var(--mu);align-self:center">งาน:</span>
     <button class="ordsc-job-chip" data-job="__ALL__" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid #94a3b8;background:rgba(148,163,184,.15);color:#cbd5e1;cursor:pointer;font-family:inherit">ทั้งหมด</button>
     <button class="ordsc-job-chip" data-job="Completed" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#4ade80;cursor:pointer;font-family:inherit">✅ Completed</button>
@@ -420,8 +426,10 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
     <button class="ordsc-job-chip" data-job="Delegated" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#38bdf8;cursor:pointer;font-family:inherit">👤 Delegated</button>
     <button class="ordsc-job-chip" data-job="Canceled" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#f87171;cursor:pointer;font-family:inherit">❌ Canceled</button>
     <button class="ordsc-job-chip" data-job="__BLANK__" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#94a3b8;cursor:pointer;font-family:inherit">— ว่าง</button>
-    <span style="width:1px;height:24px;background:var(--bd2,#374151);margin:0 4px"></span>
+      <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     <span id="sp-ordsc-kpi" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></span>
+      </span>
+    </div>
   </div>
   <div id="sp-ordsc-body"></div>
 </div>
