@@ -405,15 +405,8 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
   <!-- [V650] แยกแถบกรองเป็น 3 แถว — เดิม flex-wrap แถวเดียว ตัดกลางกลุ่ม
        แถว 1 ตัวเลือก · แถว 2 สถานะบิล · แถว 3 สถานะงาน + สรุป -->
   <!-- [V652] 2 แถว: แถว 1 ตัวเลือก + สรุป · แถว 2 ชิปทั้งหมด -->
+  <!-- [V653] แถว 1 สถานะ · แถว 2 ตัวเลือก + ค้นหากว้าง + สรุป -->
   <div style="margin-bottom:10px">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
-    <select class="fsel" id="sp-ordsc-sales" onchange="spRenderOrdSC()"><option value="">All Sales</option></select>
-    <select class="fsel" id="sp-ordsc-month" onchange="spRenderOrdSC()"><option value="">ทุกเดือน</option></select>
-    <input class="fsel" type="text" id="sp-ordsc-search" placeholder="ค้นหา QN / ลูกค้า..." oninput="spRenderOrdSC()" style="min-width:120px">
-      <span id="sp-ordsc-kpi-wrap" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <span id="sp-ordsc-kpi" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></span>
-      </span>
-    </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
     <button class="ordsc-sub-chip" data-sub="" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid #38bdf8;background:rgba(56,189,248,.15);color:#38bdf8;cursor:pointer;font-family:inherit">ทั้งหมด</button>
     <button class="ordsc-sub-chip" data-sub="BL" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#2dd4bf;cursor:pointer;font-family:inherit">🔷 Sale Order</button>
@@ -429,6 +422,14 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
     <button class="ordsc-job-chip" data-job="Delegated" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#38bdf8;cursor:pointer;font-family:inherit">👤 Delegated</button>
     <button class="ordsc-job-chip" data-job="Canceled" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#f87171;cursor:pointer;font-family:inherit">❌ Canceled</button>
     <button class="ordsc-job-chip" data-job="__BLANK__" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#94a3b8;cursor:pointer;font-family:inherit">— ว่าง</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
+    <select class="fsel" id="sp-ordsc-sales" onchange="spRenderOrdSC()"><option value="">All Sales</option></select>
+    <select class="fsel" id="sp-ordsc-month" onchange="spRenderOrdSC()"><option value="">ทุกเดือน</option></select>
+    <input class="fsel" type="text" id="sp-ordsc-search" style="flex:1;min-width:200px;max-width:520px" placeholder="ค้นหา QN / ลูกค้า..." oninput="spRenderOrdSC()" style="min-width:120px">
+      <span style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <span id="sp-ordsc-kpi" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></span>
+      </span>
     </div>
   </div>
   <div id="sp-ordsc-body"></div>
@@ -8880,7 +8881,8 @@ window.spRenderOrdSC = function(){
     var nPros=rows.filter(function(r){return r.st==='Offer';}).length; // [V522]
     var tot=rows.reduce(function(s,r){return s+(parseFloat(r.px)||0);},0);
     function _mini(l,v,c){ return '<span style="font-size:12px;color:var(--mu)">'+l+' <b style="color:'+(c||'var(--tx)')+';font-size:14px">'+v+'</b></span>'; }
-    kpiEl.innerHTML=_mini('รายการ',rows.length)+_mini('BL',nBL,'#2dd4bf')+_mini('BL Conf',nBLC,'#facc15')+_mini('SC Order',nOrd,'#38bdf8')+_mini('Carry',nCarry,'#a78bfa')+_mini('Prospect',nPros,'#22d3ee')+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
+    /* [V653] ตัด BL / BL Conf / SC Order / Carry / Prospect ออก — ซ้ำกับชิปกรองด้านบนทุกตัว */
+    kpiEl.innerHTML=_mini('รายการ',rows.length)+_mini('รวม',_spFmtB(tot)+'฿','#4ade80');
   }
   if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบรายการเข้า SC</div>';return;}
   var _curMoSC=window.CUR_MO||(new Date().getMonth()+1);
