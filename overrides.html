@@ -198,9 +198,12 @@
         if(_lShift){
           var _lIco=_lShift==='logic'?'🔄':'✋';
           var _lShCol=_lShift==='logic'?'#fbbf24':'#4ade80';
-          _lOut+='<span title="'+(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_lIco+' </span>';
-          if(_lOrig) _lOut+='<span style="color:var(--mu);font-size:11px">'+_lOrig+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
-          _lOut+='<span style="color:'+_lShCol+';font-weight:600">'+_moLblL+'</span>';
+          /* [V646] แสดงเดือนเดียว เดือนปลายทางไปอยู่ใน tooltip
+             ต้องแก้ที่ overrides.html — โหลดทีหลัง script_main จึงทับเสมอ */
+          var _lTipX=(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')
+            +(_lOrig?(' · '+_lOrig+' → '+_moLblL):(' → '+_moLblL));
+          _lOut+='<span title="'+_lTipX+'">'+_lIco+' </span>';
+          _lOut+='<span title="'+_lTipX+'" style="color:'+_lShCol+';font-weight:600">'+(_lOrig||_moLblL)+'</span>';
         } else { _lOut+='<span style="color:var(--ac2);font-weight:600">'+_moLblL+'</span>'; }
       }
       return _lOut;
@@ -228,9 +231,11 @@
           if(_shiftX){
             var _icoX=_shiftX==='logic'?'🔄':'✋';
             var _shColX=_shiftX==='logic'?'#fbbf24':'#4ade80';
-            _outX+='<span title="'+(_shiftX==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_icoX+' </span>';
-            if(_origX) _outX+='<span style="color:var(--mu);font-size:11px">'+_origX+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
-            _outX+='<span style="color:'+_shColX+';font-weight:600">'+_moHMX+'</span>';
+            /* [V646] แสดงเดือนเดียว เดือนปลายทางไปอยู่ใน tooltip */
+            var _tipX=(_shiftX==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')
+              +(_origX?(' · '+_origX+' → '+_moHMX):(' → '+_moHMX));
+            _outX+='<span title="'+_tipX+'">'+_icoX+' </span>';
+            _outX+='<span title="'+_tipX+'" style="color:'+_shColX+';font-weight:600">'+(_origX||_moHMX)+'</span>';
           } else { _outX+='<span style="color:var(--ac2);font-weight:600">'+_moHMX+'</span>'; }
         }
         return _outX;
@@ -1789,8 +1794,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V645.0';
-    var _BUILD_TIME='3 ส.ค. 2569 (V645 คอลัมน์ BILL/DELIVERY สั้นลง)';
+    var _BUILD_VER='V646.0';
+    var _BUILD_TIME='3 ส.ค. 2569 (V646 แก้คอลัมน์ BILL/DELIVERY ที่ overrides)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
