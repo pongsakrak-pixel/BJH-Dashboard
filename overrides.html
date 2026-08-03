@@ -1670,6 +1670,42 @@ function dpFmtDate(v){
     try { if(typeof _applyNavPermissions==='function') _applyNavPermissions(); } catch(e){}
   };
 
+
+  /* ═══ [V648] กันโมดัลแสดงข้อมูลของใบอื่น ═══════════════════════════════
+     อาการ: กดแถว A แล้วหัวโมดัลเป็น A แต่เนื้อในเป็นของแถว B ที่กดก่อนหน้า
+     ต้นเหตุ: selRow() ตั้งหัวเรื่องก่อน แล้วค่อยเรียก renderSCDetail(r)
+              ถ้า render throw กลางทาง เนื้อในจะไม่ถูกเขียนทับ = ค้างของเก่า
+              (พบในแถวที่มีขอบเหลือง = แถวที่เคยแก้ status เอง)
+     แก้: ล้างเนื้อในก่อนทุกครั้ง + หุ้ม try/catch
+          พังเมื่อไหร่จะเห็นข้อความแจ้ง ไม่ใช่ข้อมูลลูกค้าอื่น
+          console.error บอกจุดที่พังจริง เอาไปแก้ต้นเหตุรอบหน้า */
+  (function(){
+    function _dpGuard(name){
+      /* renderSCDetail / renderSPDetail เป็น global function declaration ใน script_main
+         และถูก reassign ใน overrides -> อ่านผ่าน window ได้ตรงๆ ไม่ต้องใช้ eval */
+      var orig = window[name];
+      if(typeof orig !== 'function') return;
+      window[name] = function(r){
+        var body = document.getElementById('dp-body');
+        if(body) body.innerHTML = '<div style="padding:26px;text-align:center;color:var(--mu);font-size:12px">กำลังโหลด...</div>';
+        try {
+          orig(r);
+        } catch(e) {
+          try { console.error('[V648] '+name+' พัง — ใบ '+((r&&r.qn)||'')+' / '+((r&&r.cu)||''), e, r); } catch(_e){}
+          if(body) body.innerHTML =
+            '<div style="padding:26px;text-align:center;color:#e69aa0;font-size:12.5px;line-height:1.8">'
+            + 'แสดงรายละเอียดไม่สำเร็จ<br>'
+            + '<span style="color:var(--mu);font-size:11px">'
+            + ((r&&r.qn)?('ใบ '+String(r.qn)+' · '):'')
+            + String((e&&e.message)||e).slice(0,120)
+            + '</span><br><span style="color:var(--mu);font-size:10px">กด F12 → Console เพื่อดูรายละเอียด</span></div>';
+        }
+      };
+    }
+    _dpGuard('renderSCDetail');
+    _dpGuard('renderSPDetail');
+  })();
+
   var RULES_DATA = [
 
     {group:'RAW_SC_BILL', field:'CONTRACT_PROCESS_STATUS_NAME → sc_contract', file:'SC_BILL.mhtml', sheet:'JSON API', hdr:'—', col:'CONTRACT_PROCESS_STATUS_NAME', note:'ตัดสิน Offer/Excluded/Contract Done — Contract Completed, PO Completed, ตรวจสอบเรียบร้อย, รอตรวจสอบข้อมูล = สัญญาเสร็จ | ยกเลิกสัญญา = Excluded'},
@@ -1812,8 +1848,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V647.0';
-    var _BUILD_TIME='3 ส.ค. 2569 (V647 BILL/DELIVERY — H/M/L + ช่วงเดือนย่อ)';
+    var _BUILD_VER='V648.0';
+    var _BUILD_TIME='3 ส.ค. 2569 (V648 กันโมดัลแสดงข้อมูลใบอื่น)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
