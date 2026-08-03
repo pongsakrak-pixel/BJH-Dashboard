@@ -6052,7 +6052,7 @@ window.spRenderAlert = function(){
       var tagsArr=(m.mcTags&&m.mcTags.length)?m.mcTags:[];
       var tagsHtml=tagsArr.slice(0,3).map(function(t){return '<span style="display:inline-block;background:rgba(148,163,184,.15);color:#cbd5e1;padding:1px 6px;border-radius:4px;font-size:10px;margin:1px 2px 1px 0">'+_spEsc(String(t).slice(0,18))+'</span>';}).join('');
       // [v319] badge สถานะ 4 กลุ่ม (+watch v367)
-      var GB={dead:{c:'#f87171',bg:'rgba(248,113,113,.15)',t:'🔴 Critical Down'},check:{c:'#fbbf24',bg:'rgba(251,191,36,.15)',t:'🟡 Partial Down'},eol:{c:'#9ca3af',bg:'rgba(107,114,128,.2)',t:'⚫ EOL'},watch:{c:'#a78bfa',bg:'rgba(167,139,250,.18)',t:'🟣 Monitoring'}};
+      var GB={dead:{c:'#f87171',bg:'rgba(248,113,113,.15)',t:'🔴 ใช้ไม่ได้'},check:{c:'#fbbf24',bg:'rgba(251,191,36,.15)',t:'🟡 ตรวจสอบ'},eol:{c:'#9ca3af',bg:'rgba(107,114,128,.2)',t:'⚫ EOL'},watch:{c:'#a78bfa',bg:'rgba(167,139,250,.18)',t:'🟣 เฝ้าระวัง'}};   /* [V655.1] คำเดียวกับชิปด้านบน + การ์ด Daily Board */
       var gb=GB[m.mcGroup]||GB.check;
       var badge='<span style="font-size:11px;padding:3px 9px;border-radius:11px;font-weight:600;background:'+gb.bg+';color:'+gb.c+';white-space:nowrap">'+gb.t+'</span>';
       // [v367] สถานะงาน (SERVICE_JOB_STATUS ของ SR)
@@ -7220,7 +7220,7 @@ function _wkIssues(m, range, who){
   var out=[];
   (m.alert.list||[]).forEach(function(a){
     if(a.days!==null && a.days>=7)
-      out.push({ sev:1, ic:'🔴', cu:a.cu, txt:(a.grp==='dead'?'Critical Down':'Partial Down')+' · SN '+(a.sn||'—'),
+      out.push({ sev:1, ic:'🔴', cu:a.cu, txt:(a.grp==='dead'?'ใช้ไม่ได้':'ตรวจสอบ')+' · SN '+(a.sn||'—'),
                  day:'ค้าง '+a.days+' วัน', amt:0 });
   });
   (m.sp.list||[]).forEach(function(p){
