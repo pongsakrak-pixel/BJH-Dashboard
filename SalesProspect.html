@@ -404,11 +404,15 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
 <div id="sp-pane-ordsc" style="display:none;padding:12px 16px">
   <!-- [V650] แยกแถบกรองเป็น 3 แถว — เดิม flex-wrap แถวเดียว ตัดกลางกลุ่ม
        แถว 1 ตัวเลือก · แถว 2 สถานะบิล · แถว 3 สถานะงาน + สรุป -->
+  <!-- [V652] 2 แถว: แถว 1 ตัวเลือก + สรุป · แถว 2 ชิปทั้งหมด -->
   <div style="margin-bottom:10px">
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
     <select class="fsel" id="sp-ordsc-sales" onchange="spRenderOrdSC()"><option value="">All Sales</option></select>
     <select class="fsel" id="sp-ordsc-month" onchange="spRenderOrdSC()"><option value="">ทุกเดือน</option></select>
     <input class="fsel" type="text" id="sp-ordsc-search" placeholder="ค้นหา QN / ลูกค้า..." oninput="spRenderOrdSC()" style="min-width:120px">
+      <span id="sp-ordsc-kpi-wrap" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <span id="sp-ordsc-kpi" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></span>
+      </span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
     <button class="ordsc-sub-chip" data-sub="" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid #38bdf8;background:rgba(56,189,248,.15);color:#38bdf8;cursor:pointer;font-family:inherit">ทั้งหมด</button>
@@ -417,8 +421,7 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
     <button class="ordsc-sub-chip" data-sub="SCOrder" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#38bdf8;cursor:pointer;font-family:inherit">🔵 SC Order</button>
     <button class="ordsc-sub-chip" data-sub="Carry" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#a78bfa;cursor:pointer;font-family:inherit">🟣 Carry</button>
     <button class="ordsc-sub-chip" data-sub="Prospect" onclick="spOrdSCSub(this)" style="font-size:12px;padding:5px 11px;border-radius:14px;border:1px solid var(--bd2,#374151);background:transparent;color:#22d3ee;cursor:pointer;font-family:inherit">🔵 Prospect</button>
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
+      <span style="width:1px;height:20px;background:var(--bd2,#374151);margin:0 5px"></span>
     <span style="font-size:11px;color:var(--mu);align-self:center">งาน:</span>
     <button class="ordsc-job-chip" data-job="__ALL__" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid #94a3b8;background:rgba(148,163,184,.15);color:#cbd5e1;cursor:pointer;font-family:inherit">ทั้งหมด</button>
     <button class="ordsc-job-chip" data-job="Completed" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#4ade80;cursor:pointer;font-family:inherit">✅ Completed</button>
@@ -426,9 +429,6 @@ html[data-theme="light"] #sp-view [style*="color:#e2e8f0"]{color:#1f2328 !import
     <button class="ordsc-job-chip" data-job="Delegated" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#38bdf8;cursor:pointer;font-family:inherit">👤 Delegated</button>
     <button class="ordsc-job-chip" data-job="Canceled" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#f87171;cursor:pointer;font-family:inherit">❌ Canceled</button>
     <button class="ordsc-job-chip" data-job="__BLANK__" onclick="spOrdSCJob(this)" style="font-size:11px;padding:4px 9px;border-radius:12px;border:1px solid var(--bd2,#374151);background:transparent;color:#94a3b8;cursor:pointer;font-family:inherit">— ว่าง</button>
-      <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <span id="sp-ordsc-kpi" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></span>
-      </span>
     </div>
   </div>
   <div id="sp-ordsc-body"></div>
@@ -3399,7 +3399,7 @@ function _pgEditorHtml(){
       +(_found?_pgEsc(_pgExclLabel(_found)):'ยกเว้น '+String.fromCharCode(65+ei))+' ✏️</div></th>';
   }
   if(maxExcl<3){
-    exclHeaders += '<th style="padding:4px 6px;border:1px solid var(--bd2,#334155)"><button onclick="_pgOpenExclPicker(\''+REPR_YR+'\',null)" style="background:transparent;border:1px dashed var(--bd2,#334155);color:var(--mu);border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">+ ยกเว้น</button></th>';
+    exclHeaders += '<th style="padding:4px 6px;border:1px solid var(--bd2,#334155)"><button onclick="_pgOpenExclPicker(\''+REPR_YR+'\',null)" style="background:transparent;border:1px dashed var(--bd2,#334155);color:var(--mu);border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">+ เพิ่มประเภท</button></th>';
   }
 
   var rows=_PG_YEARS.map(function(yr){
@@ -3407,7 +3407,7 @@ function _pgEditorHtml(){
     var isY1 = (yr==='1');
     /* [V644] ถอดคอลัมน์ "รวมอะไหล่" (full) — เสนอจริงไม่ได้ เป็น 0 ทั้งแถว
        ค่า full เดิมที่บันทึกไว้ยังอยู่ในข้อมูล ไม่ได้ลบ — แค่ไม่แสดง/แก้ได้
-       รูปแบบรวมอะไหล่ ให้ใช้ "+ ยกเว้น" แทน จะได้ระบุชิ้นที่ยกเว้นได้ด้วย */
+       รูปแบบรวมอะไหล่ ให้ใช้ "+ เพิ่มประเภท" แทน จะได้ระบุชิ้นที่ยกเว้นได้ด้วย */
     var plainCell, fullCell='';
     if(isY1){
       plainCell = '<td style="padding:4px 6px;border:1px solid var(--bd2,#334155);text-align:center;color:#4ade80;font-size:11px;font-weight:600">🛡️ ในระยะประกัน (ไม่ต้องใส่ราคา)</td>';
@@ -3475,13 +3475,16 @@ function _pgExclPickerHtml(){
 
   return '<div id="pg-excl-picker-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center">'
     +'<div style="background:var(--sur,#1e293b);border:1px solid var(--bd2,#334155);border-radius:10px;padding:18px 20px;width:420px;max-width:92vw">'
-    +'<div style="font-size:13px;font-weight:700;color:#facc15;margin-bottom:12px">'+(editIdx!==null?'แก้ไข':'เพิ่ม')+'คอลัมน์ยกเว้น — ปีที่ '+yr+'</div>'
+    +'<div style="font-size:13px;font-weight:700;color:#facc15;margin-bottom:12px">'+(editIdx!==null?'แก้ไข':'เพิ่ม')+'ประเภทสัญญา — ปีที่ '+yr+'</div>'
     +'<div style="margin-bottom:12px">'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 0;color:var(--tx)"><input type="radio" name="pgexcltype" value="include_except" '+(curType==='include_except'?'checked':'')+'> รวมอะไหล่ยกเว้น <span style="color:var(--mu);font-size:10px">(รวมทั้งหมด ยกเว้นที่ติ๊ก)</span></label>'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 0;color:var(--tx)"><input type="radio" name="pgexcltype" value="exclude_except" '+(curType==='exclude_except'?'checked':'')+'> ไม่รวมอะไหล่ยกเว้น <span style="color:var(--mu);font-size:10px">(ไม่รวมเลย ยกเว้นที่ติ๊กให้รวม)</span></label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 0;color:var(--tx)"><input type="radio" name="pgexcltype" value="full" '+(curType==='full'?'checked':'')+' onchange="_pgExclTypeChg()"> รวมอะไหล่ทุกชิ้น <span style="color:var(--mu);font-size:10px">(ไม่ต้องเลือกอะไหล่)</span></label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 0;color:var(--tx)"><input type="radio" name="pgexcltype" value="include_except" '+(curType==='include_except'?'checked':'')+' onchange="_pgExclTypeChg()"> รวมอะไหล่ยกเว้น <span style="color:var(--mu);font-size:10px">(รวมทั้งหมด ยกเว้นที่ติ๊ก)</span></label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 0;color:var(--tx)"><input type="radio" name="pgexcltype" value="exclude_except" '+(curType==='exclude_except'?'checked':'')+' onchange="_pgExclTypeChg()"> ไม่รวมอะไหล่ยกเว้น <span style="color:var(--mu);font-size:10px">(ไม่รวมเลย ยกเว้นที่ติ๊กให้รวม)</span></label>'
     +'</div>'
+    +'<div id="pg-excl-parts" style="display:'+(curType==='full'?'none':'block')+'">'
     +'<div style="font-size:11px;color:var(--mu);margin-bottom:6px">เลือกอะไหล่:</div>'
     +'<div style="max-height:220px;overflow:auto;border:1px solid var(--bd2,#334155);border-radius:6px;padding:8px 10px;margin-bottom:14px">'+checks+'</div>'
+    +'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end">'
     +(editIdx!==null?'<button onclick="_pgRemoveExclCol()" style="padding:6px 14px;border-radius:6px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer;font-size:12px;margin-right:auto">ลบคอลัมน์นี้</button>':'')
     +'<button onclick="_pgCloseExclPicker()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--bd2,#334155);background:transparent;color:var(--mu);cursor:pointer;font-size:12px">ยกเลิก</button>'
@@ -3489,6 +3492,12 @@ function _pgExclPickerHtml(){
     +'</div></div></div>';
 }
 
+/** [V652] เลือก "รวมอะไหล่ทุกชิ้น" -> ไม่ต้องเลือกอะไหล่ ซ่อนกล่องไป */
+window._pgExclTypeChg = function(){
+  var t=document.querySelector('input[name="pgexcltype"]:checked');
+  var box=document.getElementById('pg-excl-parts');
+  if(box) box.style.display = (t && t.value==='full') ? 'none' : 'block';
+};
 window._pgOpenExclPicker = function(yr, idx){
   _PG_EXCL_PICKER_YR = yr;
   _PG_EXCL_EDIT_IDX = idx;
@@ -3506,6 +3515,18 @@ window._pgConfirmExclPicker = function(){
   var typeEl = document.querySelector('input[name="pgexcltype"]:checked');
   var type = typeEl ? typeEl.value : 'include_except';
   var checked = Array.prototype.slice.call(document.querySelectorAll('[data-pgexclchk]:checked')).map(function(c){ return c.value; });
+  /* [V652] รวมอะไหล่ทุกชิ้น = เปิดคอลัมน์ full ไม่ใช่การเพิ่มชุดยกเว้น
+     คอลัมน์ full โผล่เฉพาะกลุ่มที่เลือกเอง ไม่บังคับทุกกลุ่ม (ต้นเหตุ full=0 ตอน V644) */
+  if(type==='full'){
+    _PG_YEARS.forEach(function(y){
+      var row=_PG_DRAFT.data.y[y]; if(!row) return;
+      if(row.full==null || row.full==='') row.full = 0;
+    });
+    _PG_EXCL_PICKER_YR=null; _PG_EXCL_EDIT_IDX=null;
+    var ov0=document.getElementById('sp-pricegroup-modal');
+    if(ov0) ov0.querySelector('div').innerHTML = _pgEditorHtml();
+    return;
+  }
   if(!checked.length){ alert('เลือกอย่างน้อย 1 อะไหล่'); return; }
 
   var label, price;
