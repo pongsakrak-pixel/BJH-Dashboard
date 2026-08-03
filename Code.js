@@ -4249,10 +4249,24 @@ function maBuildPdfHtml(d, forPreview){
     var picked = (presentTypes.length===0) ? true : !!selectedTypes[tp];
     if(!picked) return;
     var title=typeTitle[tp];
-    if(tp==='partial'&&d.exclude_items) title+=' <span style="font-weight:400;font-size:12.5px">(ยกเว้น '+maEscapeHtml(maJoinThaiAnd(d.exclude_items))+')</span>';
+    /* [V644] รายการอะไหล่ที่ไม่รวม — แยกเป็น bullet ใต้หัวข้อ
+       เดิมต่อท้ายหัวข้อในวงเล็บ — ยาวแล้วอ่านยาก และลูกค้ามองข้าม */
+    var exclListHtml='';
+    if(tp==='partial' && d.exclude_items){
+      var _ex=String(d.exclude_items).split(/[,\n]/).map(function(x){return x.trim();}).filter(Boolean);
+      if(_ex.length){
+        exclListHtml = '<div style="font-size:12px;color:#555;margin:2px 0 6px 14px">'
+          + (_lang==='en'
+             ? 'Spare parts not included in this contract (charged separately when replacement is required)'
+             : 'รายการอะไหล่ที่ไม่รวมในสัญญา (คิดค่าใช้จ่ายตามจริงเมื่อต้องเปลี่ยน)')
+          + '</div><ul style="margin:0 0 8px 34px;padding:0;font-size:12.5px;color:#333">'
+          + _ex.map(function(x){ return '<li style="margin-bottom:2px">'+maEscapeHtml(x)+'</li>'; }).join('')
+          + '</ul>';
+      }
+    }
 
     // สร้างรายการราคารายปี แล้วยุบช่วงที่ราคาเท่ากัน
-    var items='';
+    var items=exclListHtml;
     // ช่วงในประกัน
     if(warranty>0){
       var winLabel=(warranty===1)?'ปีที่ 1':('ปีที่ 1 - '+warranty);

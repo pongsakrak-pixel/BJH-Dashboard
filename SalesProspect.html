@@ -3397,13 +3397,14 @@ function _pgEditorHtml(){
   var rows=_PG_YEARS.map(function(yr){
     var row=g.y[yr];
     var isY1 = (yr==='1');
-    var plainCell, fullCell;
+    /* [V644] ถอดคอลัมน์ "รวมอะไหล่" (full) — เสนอจริงไม่ได้ เป็น 0 ทั้งแถว
+       ค่า full เดิมที่บันทึกไว้ยังอยู่ในข้อมูล ไม่ได้ลบ — แค่ไม่แสดง/แก้ได้
+       รูปแบบรวมอะไหล่ ให้ใช้ "+ ยกเว้น" แทน จะได้ระบุชิ้นที่ยกเว้นได้ด้วย */
+    var plainCell, fullCell='';
     if(isY1){
-      plainCell = '<td colspan="2" style="padding:4px 6px;border:1px solid var(--bd2,#334155);text-align:center;color:#4ade80;font-size:11px;font-weight:600">🛡️ ในระยะประกัน (ไม่ต้องใส่ราคา)</td>';
-      fullCell = '';
+      plainCell = '<td style="padding:4px 6px;border:1px solid var(--bd2,#334155);text-align:center;color:#4ade80;font-size:11px;font-weight:600">🛡️ ในระยะประกัน (ไม่ต้องใส่ราคา)</td>';
     } else {
       plainCell = '<td style="padding:4px 6px;border:1px solid var(--bd2,#334155)"><input type="text" inputmode="numeric" value="'+_pgFmt(row.plain||0)+'" oninput="_pgFormatPriceInput(this)" onchange="_pgSetCell(\''+yr+'\',\'plain\',this.value)" style="width:100%;background:var(--sur2,#0f172a);color:var(--tx,#e6edf3);border:1px solid var(--bd2,#334155);border-radius:4px;padding:3px 5px;font-size:12px;text-align:right"></td>';
-      fullCell = '<td style="padding:4px 6px;border:1px solid var(--bd2,#334155)"><input type="text" inputmode="numeric" value="'+_pgFmt(row.full||0)+'" oninput="_pgFormatPriceInput(this)" onchange="_pgSetCell(\''+yr+'\',\'full\',this.value)" style="width:100%;background:var(--sur2,#0f172a);color:var(--tx,#e6edf3);border:1px solid var(--bd2,#334155);border-radius:4px;padding:3px 5px;font-size:12px;text-align:right"></td>';
     }
     // [v440] เอา label ออกจากแถว เหลือแค่ input ราคา (label ย้ายไปหัวตารางแล้ว)
     var exclCellsArr=[];
@@ -3434,7 +3435,7 @@ function _pgEditorHtml(){
     +'<div style="width:220px;overflow:auto;border:1px solid var(--bd2,#334155);border-radius:6px;padding:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px">เลือกรุ่นในกลุ่มนี้</div>'+modelChecks+'</div>'
     +'<div style="flex:1;overflow:auto">'
     +'<table style="width:100%;border-collapse:collapse;font-size:12px">'
-    +'<thead><tr style="color:var(--mu)"><th style="padding:4px 6px;border:1px solid var(--bd2,#334155)">ปี</th><th style="padding:4px 6px;border:1px solid var(--bd2,#334155)">ไม่รวมอะไหล่</th><th style="padding:4px 6px;border:1px solid var(--bd2,#334155)">รวมอะไหล่</th>'+exclHeaders+'</tr></thead>'
+    +'<thead><tr style="color:var(--mu)"><th style="padding:4px 6px;border:1px solid var(--bd2,#334155)">ปี</th><th style="padding:4px 6px;border:1px solid var(--bd2,#334155)">ไม่รวมอะไหล่</th>'+exclHeaders+'</tr></thead>'
     +'<tbody>'+rows+'</tbody></table>'
     +'</div></div>'
     +_pgExclPickerHtml();
