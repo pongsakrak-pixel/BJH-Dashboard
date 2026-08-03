@@ -3262,9 +3262,11 @@ function periodLabel(r){
       if(_lShift){
         var _lIco=_lShift==='logic'?'🔄':'✋';
         var _lShCol=_lShift==='logic'?'#fbbf24':'#4ade80';
-        _lOut+='<span title="'+(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_lIco+' </span>';
-        if(_lOrig) _lOut+='<span style="color:var(--mu);font-size:11px">'+_lOrig+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
-        _lOut+='<span style="color:'+_lShCol+';font-weight:600">'+_moLbl+'</span>';
+        /* [V645] เหมือนบล็อก High/Medium — เหลือเดือนเดียว */
+        var _lTip=(_lShift==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')
+          +(_lOrig?(' · '+_lOrig+' → '+_moLbl):(' → '+_moLbl));
+        _lOut+='<span title="'+_lTip+'">'+_lIco+' </span>';
+        _lOut+='<span title="'+_lTip+'" style="color:'+_lShCol+';font-weight:600">'+(_lOrig||_moLbl)+'</span>';
       } else {
         _lOut+='<span style="color:var(--ac2);font-weight:600">'+_moLbl+'</span>';
       }
@@ -3303,10 +3305,13 @@ function periodLabel(r){
         if(_shiftBy){
           var _ico=_shiftBy==='logic'?'🔄':'✋';
           var _shCol=_shiftBy==='logic'?'#fbbf24':'#4ade80';
-          _out+='<span title="'+(_shiftBy==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')+'">'+_ico+' </span>';
-          // เดือนจริง → เดือนที่จะเปิดบิล
-          if(_origMoLbl) _out+='<span style="color:var(--mu);font-size:11px">'+_origMoLbl+'</span><span style="color:var(--mu);font-size:10px"> → </span>';
-          _out+='<span style="color:'+_shCol+';font-weight:600">'+_moHM+'</span>';
+          /* [V645] แสดงเดือนเดียว — เดิมแสดง "ต้นทาง → ปลายทาง" คอลัมน์ล้น
+             ปลายทาง = เดือนที่กรองอยู่ ทุกแถวซ้ำกัน ไม่ให้ข้อมูลเพิ่ม
+             ย้ายไปไว้ใน tooltip ข้อมูลไม่หาย */
+          var _tip=(_shiftBy==='logic'?'เลื่อนอัตโนมัติ':'ย้ายเอง')
+            +(_origMoLbl?(' · '+_origMoLbl+' → '+_moHM):(' → '+_moHM));
+          _out+='<span title="'+_tip+'">'+_ico+' </span>';
+          _out+='<span title="'+_tip+'" style="color:'+_shCol+';font-weight:600">'+(_origMoLbl||_moHM)+'</span>';
         } else {
           // ไม่เลื่อน → เดือนเดียว
           _out+='<span style="color:var(--ac2);font-weight:600">'+_moHM+'</span>';
