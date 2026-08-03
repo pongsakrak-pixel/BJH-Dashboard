@@ -3724,7 +3724,8 @@ function maEnsureColumns(sh, cols){
 function maMigrateColumns(ss){
   ss = ss || SpreadsheetApp.openById(MA_SHEET_ID);
   maEnsureColumns(ss.getSheetByName(MA_TAB_REQUESTS), [
-    'ref_quotation_no','requester_name','discount','discount_reason','auto_issued','issued_at'
+    'ref_quotation_no','requester_name','discount','discount_reason','auto_issued','issued_at',
+    'doc_lang'   /* [V643] */
   ]);
 }
 
@@ -3991,7 +3992,8 @@ function maApiCreateRequest(payload){
     requester_name:payload.requester_name||'',
     discount:payload.discount||'',
     discount_reason:payload.discount_reason||'',
-    pm_times_per_year:payload.pm_times_per_year||''
+    pm_times_per_year:payload.pm_times_per_year||'',
+    doc_lang:payload.doc_lang||'th'   /* [V643] ภาษาเอกสาร */
   });
   (payload.machines||[]).forEach(function(m,idx){
     maAppendRow(MA_TAB_MACHINES,{request_id:reqId,row_no:idx+1,brand:m.brand,model:m.model,qty:m.qty,note:m.note,spec_pulled:maApiGetModelSpec(m.brand,m.model)});
@@ -4193,11 +4195,11 @@ function maBuildPdfHtml(d, forPreview){
   // ข้อความ: ใช้ override รายใบก่อน ถ้าว่างใช้ default กลางจาก Settings
   var S=maApiGetSettings();
   function pick(ovKey,defKey){ var ov=d[ovKey]; return (ov!==undefined&&ov!==null&&String(ov).trim()!=='')?String(ov):String(S[defKey]||''); }
-  var txt3=pick('ov_clause3','clause3');
-  var txt4=pick('ov_clause4','clause4').replace(/\{PM_STEP\}/g, pmStepEarly);
-  var txt5=pick('ov_clause5','clause5');
-  var txt6=pick('ov_clause6','clause6');
-  var txtNotes=pick('ov_notes','notes');
+  var txt3=pickL('ov_clause3','clause3');
+  var txt4=pickL('ov_clause4','clause4').replace(/\{PM_STEP\}/g, pmStepEarly);
+  var txt5=pickL('ov_clause5','clause5');
+  var txt6=pickL('ov_clause6','clause6');
+  var txtNotes=pickL('ov_notes','notes');
   var txtContact=String(S['contact']||'');
   var titleMain=String(S['titleMain']||'ข้อเสนอการให้บริการตรวจเช็คสภาพเครื่องและการซ่อมบำรุง (หลังหมดประกัน)');
   var companyName=String(S['companyName']||'BJH');
@@ -4296,19 +4298,35 @@ function maBuildPdfHtml(d, forPreview){
                 1) HOLOGIC 3Dimensions จำนวน 1 เครื่อง
                 2) ...
      บรรทัดปิดท้ายคงไว้ — เป็นตัวจำกัดขอบเขตกรณีคีย์เครื่องไม่ครบ (ตกลงกันไว้ตอนออกแบบ flow) */
+  /* [V643] ภาษาเอกสาร — ต้องประกาศก่อน var L เพราะ L อ่านค่านี้ */
+  var _lang = String(d.doc_lang||'th').toLowerCase()==='en' ? 'en' : 'th';
+  var L = (_lang==='en')
+    ? {comp:' comprising', unit:' unit(s)', total:'Total ', tail:' unit(s) \u2014 this proposal covers only the equipment listed above.'}
+    : {comp:' ประกอบด้วย', unit:' เครื่อง', total:'รวม ', tail:' เครื่อง \u2014 ข้อเสนอนี้ครอบคลุมเฉพาะเครื่องตามรายการข้างต้นเท่านั้น'};
   var machinesHtml = '';
   if(_mcList.length){
-    machinesHtml = ' ประกอบด้วย';
+    machinesHtml = L.comp;
     _mcList.forEach(function(m,i){
       var nm = [String(m.brand||'').trim(), String(m.model||'').trim()].filter(Boolean).join(' ');
       var qy = Number(m.qty)||0;
       machinesHtml += '<div style="margin-left:14px">'+(i+1)+') '+maEscapeHtml(nm||'—')
-        + (qy ? ' จำนวน '+qy+' เครื่อง' : '') + '</div>';
+        + (qy ? (_lang==='en' ? ' \u00d7 '+qy : ' จำนวน '+qy+' เครื่อง') : '') + '</div>';
     });
-    machinesHtml += '<div style="font-size:11px;margin-top:2px">รวม '+_mcTotal
-      + ' เครื่อง — ข้อเสนอนี้ครอบคลุมเฉพาะเครื่องตามรายการข้างต้นเท่านั้น</div>';
+    machinesHtml += '<div style="font-size:11px;margin-top:2px">'+L.total+_mcTotal+L.tail+'</div>';
   }
-  var txt1raw=pick('ov_clause1','clause1');
+  /* [V643] ภาษาเอกสาร — มาจากคำขอ (Admin เลือกตอนสร้าง)
+     pick() เดิมหา ov_xxx ก่อนค่อยถอยไป default
+     ภาษา EN: หา ov_xxx -> clauseN_en -> clauseN (ถ้า EN ว่างใช้ไทยแทน ไม่ปล่อยว่าง) */
+  function pickL(ovKey, defKey){
+    var v = String(d[ovKey]||'').trim();
+    if(v) return v;
+    if(_lang==='en'){
+      var e = String(S[defKey+'_en']||'').trim();
+      if(e) return e;
+    }
+    return String(S[defKey]||'');
+  }
+  var txt1raw=pickL('ov_clause1','clause1');
   var c1parts=txt1raw.split('||');
   var c1head=maEscapeHtml((c1parts[0]||'รายละเอียดเครื่อง').trim());
   var c1body=maEscapeHtml((c1parts[1]!==undefined?c1parts[1]:'{PROJECT}').replace(/\{PROJECT\}/g, projOneLine).trim());
@@ -4318,7 +4336,7 @@ function maBuildPdfHtml(d, forPreview){
   var clause1Html='<div class="lead">'+c1head+'</div><div>'+c1body+'</div>';
 
   // ข้อ 2: ประโยคนำ รองรับ {YEARS} {PM} {ROUNDS}
-  var txt2raw=pick('ov_clause2','clause2');
+  var txt2raw=pickL('ov_clause2','clause2');
   var ROUNDS_PH='@@ROUNDS@@';
   var clause2Html=maEscapeHtml(txt2raw.replace(/\{YEARS\}/g,warranty).replace(/\{PM\}/g,pm).replace(/\{ROUNDS\}/g,ROUNDS_PH))
                     .replace(/\n/g,'<br>')

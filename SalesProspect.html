@@ -2985,6 +2985,43 @@ function _pgAllBrands(){
   return Object.keys(set).sort();
 }
 /** [V641] นับจำนวนเครื่องต่อแบรนด์จาก Install Base — ใช้จัดอันดับ top 10 */
+/* ═══ [V642] Incident จริงต่อรุ่น — จาก Report_Billing_Summary
+   ช่วง 1 ส.ค. 2568 – 31 ก.ค. 2569 (12 เดือนเต็ม) · 1,305 เครื่อง · 33,450 รายการ
+   กรอง: สถานะงาน Completed + สัญญาบริการ (ไม่รวมอะไหล่)
+   PM = Service Contract (SC) / PM-MA · CM = Repair / On Call / Onsite / Project Onsite
+   นับ SR ไม่ซ้ำต่อเครื่อง (ช่างหลายคนไปงานเดียวถูกบันทึกหลายแถว)
+   รูปแบบ: { แบรนด์: { รุ่น: [จำนวนเครื่อง, PM, CM] } }  ═══ */
+var _INC_FROM='1 \u0e2a.\u0e04. 2568', _INC_TO='31 \u0e01.\u0e04. 2569';
+var _INC_DATA={"AC Cosmogamma":{"Cosmogamma SW 500/B Basic":[3,2,0],"Firing (evo)":[4,1,0],"US10":[4,1,0]},"AGFA":{"CR 30-Xm":[3,1,1],"DR 14s":[4,2,2]},"BARCO":{"(ไม่ระบุรุ่น)":[6,2,0],"MDCG-3221":[9,4,0],"MDMG-5221":[4,3,0]},"BRUMABA GMBH":{"(ไม่ระบุรุ่น)":[10,2,0],"Brumaba Genius STA":[4,2,0],"Brumaba Primus":[5,2,0]},"CSZ":{"Blanketrol II 222R":[27,1,0],"Blanketrol II 222S":[6,3,0],"Blanketrol III 233":[93,3,0],"WarmAir 135":[4,1,0]},"Chattanooga":{"Chattanooga Triton 4749":[10,2,0]},"DK":{"(ไม่ระบุรุ่น)":[4,1,0],"Elmo T3S (Battery)":[4,3,0]},"EMS (Litrotripsy)":{"Lithoclast Master":[5,2,0]},"EMS (Shockwave)":{"EMS Dolorclast Classic":[3,2,1],"EMS Dolorclast Master":[5,2,0],"EMS Dolorclast Smart 20":[6,2,2],"EMS Piezoclast":[6,2,1]},"Gentherm":{"Blanketrol III 233":[13,1,0]},"HOLOGIC":{"Atec Sapphire":[3,2,0],"Dimensions 2D":[17,3,2],"Dimensions TOMO":[11,1,3],"Discovery A":[3,1,3],"Discovery Ci":[10,3,1],"Discovery W":[7,1,1],"Discovery Wi":[14,2,1],"Horizon W":[3,3,4],"Horizon Wi":[6,3,1],"M-IV":[6,1,0],"Selenia":[9,1,3],"Trident":[3,4,1]},"Hitachi Aloka":{"ALPHA 10":[3,3,0],"ALPHA 6":[18,3,0],"ALPHA 7":[15,4,0],"ARIETTA  850":[8,3,2],"ARIETTA 60":[18,3,1],"ARIETTA 65":[5,3,1],"ARIETTA 70":[18,3,1],"ARIETTA PROLOGUE":[4,1,0],"NOBLUS":[15,1,0],"Prosound 6":[21,3,0],"Prosound F31":[11,3,0],"Prosound F37":[13,2,0]},"Huntleigh (Sonicaid)":{"Sonicaid Team 3A":[12,3,0]},"KLS Martin":{"(ไม่ระบุรุ่น)":[5,2,0],"Martin Operating Light MarLED E9/E15/E15":[27,3,0],"Martin Operating Light MarLED V10/V16":[24,3,0],"Martin operating Light MarLED V10/V16+Surgicam":[4,2,0]},"LABTECH":{"EC-12R":[4,1,2]},"LEICA":{"(ไม่ระบุรุ่น)":[5,2,0],"M320 F12":[5,3,1],"M525 F50":[6,2,0],"M525 OH-4":[3,2,0],"M530 OHX":[8,2,1],"M530 PROvido":[5,2,1],"M620 F20":[4,1,0],"M720 OH5":[6,2,0],"M820 F20":[3,3,0],"M822 F20":[8,1,0],"M822 F40":[6,3,0],"M844 F40":[7,3,0],"Proveo8 F42":[17,2,0]},"Laerdal":{"Baby Anne":[7,2,0],"Little Anne QCPR":[4,1,0],"MegaCode Kid Advanced":[8,1,0],"Resusci Anne QCPR":[16,1,0],"Resusci Anne QCPR Full Body":[4,2,0],"Resusci Anne Simulator":[10,2,0],"Resusci anne Advanced skilltrainer":[8,1,0],"SimCapture":[5,3,0],"SimJunior":[4,1,0],"SimMan 3G":[5,2,0],"SimMan ALS":[5,3,0],"SimMom":[7,1,0],"SimNewB":[3,2,0],"SimView":[6,2,0]},"Lisa Laser":{"Lisa Laser Sphinx Jr 30 W":[7,1,0]},"Magstim":{"Magstim tDCS stimulator":[6,2,0]},"Natus":{"Nicolet ONE(EEG)":[12,1,1],"Nicolet Synergy EDX  (EMG)":[15,2,0],"Nicolet Viking EDX  (EMG)":[11,2,1],"Sonara":[5,2,0],"Ultrapro S100 (EMG)":[4,2,0]},"NeuroLogica":{"(ไม่ระบุรุ่น)":[8,2,2]},"Optovue":{"Optovue Avanti":[6,1,1]},"Quantel Medical":{"Quantel Laser Optimis2":[5,2,0],"Quantel Laser Vitra 2":[5,2,0],"Quantel U/S  Compact Touch":[4,2,0],"Quantel U/S Aviso":[3,2,0],"Quantel U/S Axis Nano":[3,3,0]},"Richard Wolf":{"Arthroscopy Fluid Control 2204":[3,1,0],"Endocam Logic 4K 5525":[6,1,1],"Endolight LED 1.2 5161":[5,1,0],"Endolight LED 2.1 5163":[3,1,0],"Fluid Control Arthro 2204":[4,1,0],"Power Drive  2303":[4,2,0],"Power Drive ART1 2304":[3,3,0],"Power Speed AS1 2305":[3,1,0],"RADIOBLATOR RF4 2330":[5,1,0],"Suction Pump PIRANHA 2208":[4,2,0]},"SHD":{"SHD OT ROOM":[29,2,0]},"SUPERSONIC":{"Aixplorer":[4,3,0]},"Shimadzu":{"(ไม่ระบุรุ่น)":[7,0,1],"Flexavision FD":[3,0,1],"Flexavision HB":[3,1,1],"Mobile Art Evolution (12.5 KW.)":[13,1,1],"Mobile Art Evolution (32 KW.)":[13,1,1],"Mobile Art Evolution MX7":[29,1,1],"Mobile Art Evolution MX8 Analog":[4,1,2],"Mobile Dart Evolution":[6,1,1],"Mobile Dart Evolution MX7":[6,1,1],"Mobile Dart Evolution MX8":[25,1,0],"RadSpeed Auto":[5,1,2],"Radspeed DR":[11,1,1],"Radspeed MC":[22,1,1]},"WR MEDICAL":{"WR Testworks":[3,2,0]},"Ziehm Imaging":{"Vision R":[7,1,1],"Vision RFD":[8,2,1],"Vision RFD 3D":[7,2,2]}};
+/** หา Incident ของรุ่น — คืน null ถ้าไม่มีข้อมูล */
+function _incOf(brand, model){
+  var b=_INC_DATA[String(brand||'').trim()]; if(!b) return null;
+  var m=String(model||'').trim();
+  if(b[m]) return {n:b[m][0], pm:b[m][1], cm:b[m][2]};
+  var lk=m.toLowerCase(), k;
+  for(k in b){ if(k.toLowerCase()===lk) return {n:b[k][0], pm:b[k][1], cm:b[k][2]}; }
+  return null;
+}
+/** เฉลี่ยทั้งกลุ่ม — ถ่วงน้ำหนักด้วยจำนวนเครื่อง แล้วปัดขึ้น
+    เหตุผล: รุ่น 3 เครื่องไม่ควรมีน้ำหนักเท่ารุ่น 93 เครื่อง
+    ปัดขึ้นเพราะประเมินต่ำแล้วขาดทุนทันที */
+function _incOfGroup(g){
+  var rows=[], wp=0, wc=0, N=0;
+  (g && g.models || []).forEach(function(m){
+    var d=_incOf(g.brand, m);
+    if(!d) { rows.push({model:m, miss:true}); return; }
+    rows.push({model:m, n:d.n, pm:d.pm, cm:d.cm});
+    wp += d.pm*d.n; wc += d.cm*d.n; N += d.n;
+  });
+  if(!N) return {ok:false, rows:rows};
+  var pm=Math.ceil(wp/N), cm=Math.ceil(wc/N);
+  var got=rows.filter(function(r){return !r.miss;});
+  var sp=Math.max.apply(0,got.map(function(r){return r.pm;}))-Math.min.apply(0,got.map(function(r){return r.pm;}));
+  var sc=Math.max.apply(0,got.map(function(r){return r.cm;}))-Math.min.apply(0,got.map(function(r){return r.cm;}));
+  return {ok:true, rows:rows, machines:N, pm:pm, cm:cm, inc:Math.max(1,pm+cm),
+          spreadPM:sp, spreadCM:sc, warn:(sp>2||sc>2),
+          missing:rows.filter(function(r){return r.miss;}).length};
+}
 function _pgBrandCounts(){
   var c={};
   (window._spInstallRows||[]).forEach(function(r){
@@ -3032,6 +3069,7 @@ window.hdrOpenPriceGroups = function(){
     '<div style="background:var(--sur,#1e293b);border:1px solid var(--bd2,#334155);border-radius:10px;padding:16px 18px;width:98vw;max-width:1760px;height:94vh;display:flex;flex-direction:column">'
     + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
     +   '<div style="font-size:14px;font-weight:700;color:#facc15;flex:1">💵 ตั้งราคาสัญญาบริการ (แบบกลุ่ม)</div>'
+    +   '<button onclick="_pgOpenAnalysis()" style="background:transparent;border:1px solid #34d399;color:#34d399;padding:4px 12px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600">\ud83d\udcc8 Analysis</button>'
     +   '<button onclick="_pgManageFreqParts()" style="background:transparent;border:1px solid #a78bfa;color:#a78bfa;padding:4px 12px;border-radius:5px;cursor:pointer;font-size:11px">📋 รายการอะไหล่ยกเว้น</button>'
     +   '<button onclick="document.getElementById(\'sp-pricegroup-modal\').remove()" style="background:transparent;border:1px solid var(--bd2,#334155);color:var(--mu,#94a3b8);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px">✕ ปิด</button>'
     + '</div>'
@@ -3070,6 +3108,127 @@ window._pgSelectBrand = function(brand){
   _pgRenderGroupList();
 };
 
+
+/* ═══════════ [V642] Analysis — เทียบราคาที่ตั้งไว้กับราคาฐานต้นทุน ═══════════
+   ราคาฐาน = Incident/ปี × ค่าแรงต่อ Incident ÷ (1 − margin)
+   Incident = PM + CM  (จากงานจริง 12 เดือน)
+   ค่าตั้งต้น: ค่าแรง 9,700 = ช่าง 2 วัน × 3,000 + ที่พัก 700 + เดินทาง 3,000
+   ═══════════════════════════════════════════════════════════════════════ */
+var _AN = { wage:9700, m:[40,50,60], overrides:{} };
+try { var _s=localStorage.getItem('bjh_an_cfg'); if(_s) _AN=Object.assign(_AN, JSON.parse(_s)); } catch(e){}
+function _anSave(){ try{ localStorage.setItem('bjh_an_cfg', JSON.stringify(_AN)); }catch(e){} }
+function _anFmt(v){ return (v==null||isNaN(v))?'—':Math.round(v).toLocaleString('en-US'); }
+
+window._pgOpenAnalysis = function(){
+  var ov=document.getElementById('pg-analysis-modal');
+  if(ov) ov.remove();
+  ov=document.createElement('div');
+  ov.id='pg-analysis-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99998;display:flex;align-items:center;justify-content:center;padding:12px';
+  ov.innerHTML=
+    '<div style="background:var(--sur,#1e293b);border:1px solid var(--bd2,#334155);border-radius:10px;padding:16px 18px;width:98vw;max-width:1700px;height:94vh;display:flex;flex-direction:column">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+    +   '<div style="font-size:14px;font-weight:700;color:#34d399;flex:1">\ud83d\udcc8 Analysis \u00b7 \u0e23\u0e32\u0e04\u0e32\u0e17\u0e35\u0e48\u0e15\u0e31\u0e49\u0e07\u0e44\u0e27\u0e49 vs \u0e23\u0e32\u0e04\u0e32\u0e10\u0e32\u0e19\u0e15\u0e49\u0e19\u0e17\u0e38\u0e19</div>'
+    +   '<button onclick="document.getElementById(\'pg-analysis-modal\').remove()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--bd2,#334155);background:transparent;color:var(--mu,#94a3b8);cursor:pointer;font-size:12px">\u2715 \u0e1b\u0e34\u0e14</button>'
+    + '</div>'
+    + '<div id="an-cfg" style="margin-bottom:10px"></div>'
+    + '<div id="an-body" style="flex:1;overflow:auto"></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  _anRenderCfg(); _anRender();
+};
+
+function _anRenderCfg(){
+  var el=document.getElementById('an-cfg'); if(!el) return;
+  var IN='padding:5px 9px;border-radius:5px;border:1px solid var(--bd2,#334155);background:var(--sur2,#0f172a);color:var(--tx,#e6edf3);font-size:12px;text-align:right';
+  el.innerHTML=
+    '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--sur2,#0f172a);border:1px solid var(--bd2,#334155);border-radius:8px;padding:10px 13px">'
+    + '<span style="font-size:12px;color:var(--mu,#94a3b8)">\u0e04\u0e48\u0e32\u0e41\u0e23\u0e07\u0e15\u0e48\u0e2d Incident</span>'
+    + '<input id="an-wage" value="'+_AN.wage+'" oninput="_anSetWage(this.value)" style="'+IN+';width:96px">'
+    + '<span style="font-size:12px;color:var(--mu,#94a3b8);margin-left:8px">margin (%)</span>'
+    + _AN.m.map(function(v,i){ return '<input value="'+v+'" oninput="_anSetM('+i+',this.value)" style="'+IN+';width:56px">'; }).join('')
+    + '<span style="margin-left:auto;font-size:11px;color:var(--mu,#94a3b8)">'
+    +   '\u0e23\u0e32\u0e04\u0e32\u0e10\u0e32\u0e19 = Incident \u00d7 \u0e04\u0e48\u0e32\u0e41\u0e23\u0e07 \u00f7 (1 \u2212 margin) \u00b7 '
+    +   '\u0e2d\u0e49\u0e32\u0e07\u0e2d\u0e34\u0e07\u0e07\u0e32\u0e19\u0e08\u0e23\u0e34\u0e07 '+_INC_FROM+' \u2013 '+_INC_TO+'</span>'
+    + '</div>';
+}
+window._anSetWage=function(v){ _AN.wage=Math.max(0,parseFloat(String(v).replace(/,/g,''))||0); _anSave(); _anRender(); };
+window._anSetM=function(i,v){ _AN.m[i]=Math.min(95,Math.max(0,parseFloat(v)||0)); _anSave(); _anRender(); };
+window._anSetInc=function(id,k,v){
+  var o=_AN.overrides[id]||{}; o[k]=Math.max(0,parseInt(v,10)||0);
+  _AN.overrides[id]=o; _anSave(); _anRender();
+};
+window._anReset=function(id){ delete _AN.overrides[id]; _anSave(); _anRender(); };
+
+function _anRender(){
+  var el=document.getElementById('an-body'); if(!el) return;
+  var G=window._PRICE_GROUPS||{}, ids=Object.keys(G);
+  if(!ids.length){
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--mu,#94a3b8);font-size:13px">'
+      +'\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e01\u0e25\u0e38\u0e48\u0e21\u0e23\u0e32\u0e04\u0e32 \u2014 \u0e2a\u0e23\u0e49\u0e32\u0e07\u0e01\u0e25\u0e38\u0e48\u0e21\u0e01\u0e48\u0e2d\u0e19\u0e41\u0e25\u0e49\u0e27\u0e01\u0e25\u0e31\u0e1a\u0e21\u0e32\u0e14\u0e39\u0e2b\u0e19\u0e49\u0e32\u0e19\u0e35\u0e49</div>';
+    return;
+  }
+  var TH='text-align:left;font-size:11px;color:var(--mu,#94a3b8);font-weight:600;padding:7px 9px;border-bottom:1px solid var(--bd2,#334155);white-space:nowrap;position:sticky;top:0;background:var(--sur,#1e293b);z-index:2';
+  var TD='padding:7px 9px;border-bottom:1px solid rgba(51,65,85,.5);font-size:12.5px';
+  var R=';text-align:right;font-family:var(--mono,monospace)';
+  var IN='width:44px;padding:3px 5px;border-radius:4px;border:1px solid rgba(52,211,153,.4);background:rgba(52,211,153,.08);color:var(--tx,#e6edf3);font-size:12px;text-align:center';
+  var h='<table style="width:100%;border-collapse:collapse">'
+    +'<thead><tr><th style="'+TH+'">\u0e01\u0e25\u0e38\u0e48\u0e21</th><th style="'+TH+'">\u0e41\u0e1a\u0e23\u0e19\u0e14\u0e4c</th>'
+    +'<th style="'+TH+R+'">\u0e23\u0e38\u0e48\u0e19</th><th style="'+TH+R+'">\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07</th>'
+    +'<th style="'+TH+';text-align:center">PM</th><th style="'+TH+';text-align:center">CM</th>'
+    +'<th style="'+TH+R+'">Incident</th><th style="'+TH+R+'">\u0e15\u0e49\u0e19\u0e17\u0e38\u0e19</th>'
+    + _AN.m.map(function(m){ return '<th style="'+TH+R+'">@'+m+'%</th>'; }).join('')
+    +'<th style="'+TH+R+'">\u0e15\u0e31\u0e49\u0e07\u0e44\u0e27\u0e49</th><th style="'+TH+'">\u0e2a\u0e16\u0e32\u0e19\u0e30</th></tr></thead><tbody>';
+  var nLow=0, nOK=0, nNo=0;
+  ids.sort(function(a,b){ return String(G[a].brand+G[a].name).localeCompare(String(G[b].brand+G[b].name)); })
+     .forEach(function(id){
+    var g=G[id], s=_incOfGroup(g), ovr=_AN.overrides[id]||{};
+    var pm = (ovr.pm!=null) ? ovr.pm : (s.ok?s.pm:null);
+    var cm = (ovr.cm!=null) ? ovr.cm : (s.ok?s.cm:null);
+    var inc = (pm==null&&cm==null) ? null : Math.max(1,(pm||0)+(cm||0));
+    var cost = inc!=null ? inc*_AN.wage : null;
+    /* ราคาที่ตั้งไว้: ใช้ plain ปีแรกที่มีค่า */
+    var set=null;
+    Object.keys(g.y||{}).sort().forEach(function(y){
+      if(set!=null) return;
+      var r=g.y[y]||{};
+      if(r.plain!=null && r.plain!=='' && Number(r.plain)>0) set=Number(r.plain);
+    });
+    var base = cost!=null ? cost/(1-_AN.m[1]/100) : null;
+    var st;
+    if(inc==null){ st='<span style="color:var(--mu,#94a3b8)">\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e07\u0e32\u0e19</span>'; nNo++; }
+    else if(set==null){ st='<span style="color:#facc15">\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e15\u0e31\u0e49\u0e07\u0e23\u0e32\u0e04\u0e32</span>'; nNo++; }
+    else if(set<base){ st='<span style="color:#f87171;font-weight:600">\u0e15\u0e48\u0e33\u0e01\u0e27\u0e48\u0e32\u0e10\u0e32\u0e19 '+_anFmt(base-set)+'</span>'; nLow++; }
+    else { st='<span style="color:#4ade80">\u0e2a\u0e39\u0e07\u0e01\u0e27\u0e48\u0e32\u0e10\u0e32\u0e19</span>'; nOK++; }
+    var warn = s.ok && s.warn
+      ? '<div style="font-size:10px;color:#fb923c;margin-top:2px">\u26a0 \u0e43\u0e19\u0e01\u0e25\u0e38\u0e48\u0e21\u0e15\u0e48\u0e32\u0e07\u0e01\u0e31\u0e19\u0e21\u0e32\u0e01 (PM \u00b1'+s.spreadPM+' \u00b7 CM \u00b1'+s.spreadCM+') \u2014 \u0e04\u0e27\u0e23\u0e41\u0e22\u0e01\u0e01\u0e25\u0e38\u0e48\u0e21</div>' : '';
+    var miss = s.ok && s.missing
+      ? '<div style="font-size:10px;color:var(--mu,#94a3b8);margin-top:2px">'+s.missing+' \u0e23\u0e38\u0e48\u0e19\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e07\u0e32\u0e19</div>' : '';
+    var edited = (ovr.pm!=null||ovr.cm!=null);
+    h+='<tr><td style="'+TD+';font-weight:600">'+_pgEsc(g.name||'(\u0e44\u0e21\u0e48\u0e21\u0e35\u0e0a\u0e37\u0e48\u0e2d)')+warn+miss
+      +(edited?'<div style="font-size:10px;color:#34d399;margin-top:2px">\u0e41\u0e01\u0e49\u0e04\u0e48\u0e32\u0e40\u0e2d\u0e07 <span onclick="_anReset(\''+id+'\')" style="cursor:pointer;text-decoration:underline">\u0e04\u0e37\u0e19\u0e04\u0e48\u0e32\u0e40\u0e14\u0e34\u0e21</span></div>':'')+'</td>'
+      +'<td style="'+TD+'">'+_pgEsc(g.brand||'—')+'</td>'
+      +'<td style="'+TD+R+'">'+((g.models||[]).length)+'</td>'
+      +'<td style="'+TD+R+'">'+(s.ok?s.machines:'—')+'</td>'
+      +'<td style="'+TD+';text-align:center"><input value="'+(pm==null?'':pm)+'" onchange="_anSetInc(\''+id+'\',\'pm\',this.value)" style="'+IN+'"></td>'
+      +'<td style="'+TD+';text-align:center"><input value="'+(cm==null?'':cm)+'" onchange="_anSetInc(\''+id+'\',\'cm\',this.value)" style="'+IN+'"></td>'
+      +'<td style="'+TD+R+';font-weight:700">'+(inc==null?'—':inc)+'</td>'
+      +'<td style="'+TD+R+'">'+_anFmt(cost)+'</td>'
+      + _AN.m.map(function(m){
+          var p = cost!=null ? cost/(1-m/100) : null;
+          return '<td style="'+TD+R+'">'+_anFmt(p)+'</td>'; }).join('')
+      +'<td style="'+TD+R+';font-weight:700;color:'+(set==null?'var(--mu,#94a3b8)':'#e2e8f0')+'">'+_anFmt(set)+'</td>'
+      +'<td style="'+TD+'">'+st+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  var sum='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:9px;font-size:12px">'
+    +'<span style="color:#f87171">\u0e15\u0e48\u0e33\u0e01\u0e27\u0e48\u0e32\u0e10\u0e32\u0e19 '+nLow+' \u0e01\u0e25\u0e38\u0e48\u0e21</span>'
+    +'<span style="color:#4ade80">\u0e2a\u0e39\u0e07\u0e01\u0e27\u0e48\u0e32\u0e10\u0e32\u0e19 '+nOK+' \u0e01\u0e25\u0e38\u0e48\u0e21</span>'
+    +'<span style="color:var(--mu,#94a3b8)">\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e44\u0e21\u0e48\u0e04\u0e23\u0e1a '+nNo+' \u0e01\u0e25\u0e38\u0e48\u0e21</span>'
+    +'<span style="margin-left:auto;color:var(--mu,#94a3b8)">\u0e0a\u0e48\u0e2d\u0e07 PM/CM \u0e41\u0e01\u0e49\u0e44\u0e14\u0e49 \u00b7 \u0e04\u0e48\u0e32\u0e15\u0e31\u0e49\u0e07\u0e15\u0e49\u0e19\u0e21\u0e32\u0e08\u0e32\u0e01\u0e07\u0e32\u0e19\u0e08\u0e23\u0e34\u0e07 \u0e16\u0e48\u0e27\u0e07\u0e19\u0e49\u0e33\u0e2b\u0e19\u0e31\u0e01\u0e14\u0e49\u0e27\u0e22\u0e08\u0e33\u0e19\u0e27\u0e19\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07 \u0e41\u0e25\u0e49\u0e27\u0e1b\u0e31\u0e14\u0e02\u0e36\u0e49\u0e19</span></div>';
+  el.innerHTML=sum+h;
+}
+
 window._pgRenderGroupList = function(){
   var el=document.getElementById('pg-group-list'); if(!el) return;
   var qEl=document.getElementById('pg-q');
@@ -3088,8 +3247,9 @@ window._pgRenderGroupList = function(){
     var rows=Object.keys(sum).map(function(b){ return sum[b]; })
       .filter(function(r){ return !q || r.brand.toLowerCase().indexOf(q)>=0; })
       .sort(function(a,b){
-        /* ยังไม่ได้ตั้งขึ้นก่อน แล้วเรียงตามจำนวนเครื่องมาก→น้อย */
-        var da=a.groups>0?1:0, db=b.groups>0?1:0;
+        /* [V642] ตั้งราคาแล้วขึ้นบน — เห็นงานที่ทำไปแล้วก่อน
+           ในกลุ่มเดียวกันเรียงตามจำนวนเครื่องมาก→น้อย */
+        var da=a.groups>0?0:1, db=b.groups>0?0:1;
         return da-db || (b.machines-a.machines) || a.brand.localeCompare(b.brand);
       });
     var done=0, tot=0;
@@ -3378,6 +3538,20 @@ window._pgSaveGroup = function(){
   // [v435] ปีที่ 1 = ในระยะประกัน เสมอ บังคับราคา 0
   var y1=_PG_DRAFT.data.y['1'];
   if(y1){ y1.plain=0; y1.full=0; (y1.excl||[]).forEach(function(e){ e.price=0; }); }
+  /* [V642] ไม่เก็บช่องที่เป็น 0 / ว่าง — ไม่มีราคาคือไม่มี ไม่ใช่ราคาศูนย์
+     เดิมเขียน full=0 ลงทุกปี ทำให้หน้า MA ดึง 0 ไปแสดงเป็นราคาจริง (เจอตอน V631)
+     ปีที่ 1 ยกเว้น — ต้องคง 0 ไว้เพราะหมายถึง อยู่ในระยะประกัน */
+  try{
+    Object.keys(_PG_DRAFT.data.y||{}).forEach(function(y){
+      if(y==='1') return;
+      var r=_PG_DRAFT.data.y[y]; if(!r) return;
+      ['plain','full'].forEach(function(k){
+        if(r[k]==='' || r[k]==null || Number(r[k])===0) delete r[k];
+      });
+      if(r.excl) r.excl=r.excl.filter(function(e){ return e && Number(e.price)>0; });
+      if(r.excl && !r.excl.length) delete r.excl;
+    });
+  }catch(e){}
   window._PRICE_GROUPS = window._PRICE_GROUPS || {};
   window._PRICE_GROUPS[_PG_DRAFT.id] = _PG_DRAFT.data;
   _pgPersist();

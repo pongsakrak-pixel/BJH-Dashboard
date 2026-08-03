@@ -267,6 +267,10 @@
           <div class="field" style="margin:0"><label>ผู้ขอ <span class="req">*</span>
             <span class="sub" style="display:block">เจ้าของ spec ที่ส่งมา</span></label>
             <input id="r_requester" placeholder="ชื่อ · ทีม"></div>
+          <!-- [V643] ภาษาเอกสาร — เลือกตั้งแต่ตอนสร้างคำขอ -->
+          <div class="field" style="margin:0"><label>ภาษาเอกสาร
+            <span class="sub" style="display:block">ใช้ตอนออก PDF</span></label>
+            <select id="r_lang"><option value="th" selected>ไทย</option><option value="en">English</option></select></div>
         </div>
       </div>
 
@@ -508,6 +512,19 @@
         <div class="field"><label>ข้อ 6 — การติดต่อประสานงาน</label><textarea id="s_clause6" rows="3"></textarea></div>
         <div class="field"><label>หมายเหตุท้ายราคา</label><textarea id="s_notes" rows="4"></textarea></div>
         <div class="field"><label>ข้อความติดต่อท้ายเอกสาร</label><textarea id="s_contact" rows="2"></textarea></div>
+        <div style="margin:16px 0 8px;padding:8px 12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);border-radius:6px">
+          <div style="font-size:12.5px;font-weight:700;color:#93c5fd">English version (ข้อความภาษาอังกฤษ)</div>
+          <div style="font-size:11px;color:var(--mu)">เว้นว่างได้ — ถ้าว่างระบบจะใช้ข้อความภาษาไทยแทน · ตัวแปร {PROJECT} {YEARS} {PM} {ROUNDS} {PM_STEP} {MACHINES} ใช้ตัวเดิม</div>
+        </div>
+        <div class="field"><label>Document title (EN)</label><input id="s_titleMain_en"></div>
+        <div class="field"><label>Clause 1 — Equipment details <span class="sub">format: heading||body</span></label><textarea id="s_clause1_en" rows="2"></textarea></div>
+        <div class="field"><label>Clause 2 — Service period &amp; rounds</label><textarea id="s_clause2_en" rows="3"></textarea></div>
+        <div class="field"><label>Clause 3 — Maintenance service</label><textarea id="s_clause3_en" rows="3"></textarea></div>
+        <div class="field"><label>Clause 4 — Reporting</label><textarea id="s_clause4_en" rows="4"></textarea></div>
+        <div class="field"><label>Clause 5 — Exclusions</label><textarea id="s_clause5_en" rows="4"></textarea></div>
+        <div class="field"><label>Clause 6 — Contact</label><textarea id="s_clause6_en" rows="2"></textarea></div>
+        <div class="field"><label>Notes (EN)</label><textarea id="s_notes_en" rows="2"></textarea></div>
+        <div class="field"><label>Contact line (EN)</label><input id="s_contact_en"></div>
         <div class="field" style="margin:0"><label>รายการยกเว้นมาตรฐาน <span class="sub">(1 บรรทัด = 1 รายการ · Product เลือกได้หลายอันในหน้าตรวจสอบ)</span></label><textarea id="s_excludeOptions" rows="5"></textarea></div>
       </div>
       <div class="card">
@@ -876,7 +893,9 @@ var MA = window.MA;
   // ===== CONFIG =====
   var templates={},curLevel='1',cfgLoaded=false;
   function cSwitch(t){['T','M','S'].forEach(function(x){document.getElementById('ctab'+x).classList.toggle('on',x===t);document.getElementById('cpane'+x).classList.toggle('hidden',x!==t);});}
-  var SETTING_KEYS=['titleMain','companyName','logoUrl','clause1','clause2','clause3','clause4','clause5','clause6','notes','contact','excludeOptions','optPresentTypes','optWarrantyYears','maxTotalYears','excludeLevel1','excludeLevel2','excludeLevel3','excludeLevel4','excludeLevel5'];
+  var SETTING_KEYS=['titleMain','companyName','logoUrl','clause1','clause2','clause3','clause4','clause5','clause6','notes','contact',
+    /* [V643] ชุด EN — วนสร้าง/บันทึกอัตโนมัติตาม id s_<key> */
+    'titleMain_en','clause1_en','clause2_en','clause3_en','clause4_en','clause5_en','clause6_en','notes_en','contact_en','excludeOptions','optPresentTypes','optWarrantyYears','maxTotalYears','excludeLevel1','excludeLevel2','excludeLevel3','excludeLevel4','excludeLevel5'];
   function loadConfig(){
     if(cfgLoaded)return;cfgLoaded=true;
     google.script.run.withSuccessHandler(function(t){templates=t||{};buildLvBtns();renderTpl();}).maApiGetAllTemplates();
@@ -1055,6 +1074,7 @@ var MA = window.MA;
       project_title:g('r_project2'), hospital_name:g('r_hospital'),
       ref_quotation_no:g('r_refquo'), requester_name:g('r_requester'),
       pm_times_per_year:g('r_pm'), warranty_years:g('r_warranty'), ma_years:g('r_mayears'),
+      doc_lang:g('r_lang')||'th',   /* [V643] */
       discount:'', discount_reason:'',   /* [V640] เลิกใช้ช่องส่วนลด */
       note_overall:g('r_note'),
       sale_price:'', present_types:['ไม่รวมอะไหล่','รวมอะไหล่ยกเว้น','รวมอะไหล่ทุกชิ้น'],
@@ -1088,6 +1108,8 @@ var MA = window.MA;
       '<div><div class="k">เครื่องที่ครอบคลุม</div><div class="v">'+totQty+' เครื่อง</div></div>'
      +'<div><div class="k">อ้างอิงใบเสนอราคา</div><div class="v" style="font-size:14px">'+esc(p.ref_quotation_no)+'</div></div>'
      +'<div><div class="k">ระยะเวลา</div><div class="v" style="font-size:14px">'+y+' ปี · ประกัน '+w+'</div></div>'
+     +'<div><div class="k">ภาษาเอกสาร</div><div class="v" style="font-size:14px">'
+       +(p.doc_lang==='en'?'English':'ไทย')+'</div></div>'
      +'<div><div class="k">เส้นทาง</div><div class="v'+(auto?'':' warn')+'" style="font-size:14px">'
        +(auto?'ออกเอกสารได้เลย':'ต้องผ่าน Manager')+'</div></div>';
 
@@ -1242,6 +1264,9 @@ var MA = window.MA;
   function vFillExtra(req){
     var set=function(id,v){var e=document.getElementById(id); if(e) e.value=v==null?'':v;};
     set('v_refquo',req.ref_quotation_no); set('v_requester',req.requester_name);
+    /* [V643] ภาษาเอกสาร — ต่อท้ายบรรทัดผู้ส่ง */
+    var _sub2=document.getElementById('v_sub');
+    if(_sub2) _sub2.textContent += ' \u00b7 ภาษาเอกสาร: '+(String(req.doc_lang||'th')==='en'?'English':'ไทย');
     var sub=document.getElementById('v_sub');
     if(sub) sub.textContent='ส่งโดย '+(req.created_by_name||req.created_by_email||'-')
       +' · '+String(req.created_at||'').slice(0,16).replace('T',' ')+' · ช่องพื้นส้ม = แก้ไขได้';
