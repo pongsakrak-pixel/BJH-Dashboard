@@ -6030,7 +6030,7 @@ window.spRenderAlert = function(){
       if(window._cdIsCleared && window._cdIsCleared(m.sr)){ nClear++; return; }   /* [V601] นับแยก ไม่ปนชิปสี */
       if(m.mcGroup==='dead')nDead++; else if(m.mcGroup==='check')nCheck++; else if(m.mcGroup==='eol')nEol++; else if(m.mcGroup==='watch')nWatch++;
     });
-    if(kpiEl)kpiEl.innerHTML=_k(rows.length,'Units','#ef4444')+_k(nDead,'🔴 Critical Down','#ef4444','dead')+_k(nCheck,'🟡 Partial Down','#facc15','check')+_k(nWatch,'🟣 Monitoring','#a78bfa','watch')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nClear,'\u2705 Clear','#4ade80','cleared');
+    if(kpiEl)kpiEl.innerHTML=_k(rowsAll.length,'เครื่องทั้งหมด','#ef4444')+_k(nDead,'🔴 ใช้ไม่ได้','#ef4444','dead')+_k(nCheck,'🟡 ตรวจสอบ','#facc15','check')+_k(nWatch,'🟣 เฝ้าระวัง','#a78bfa','watch')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nClear,'\u2705 Clear','#4ade80','cleared');
     if(fltEl){
       var saSet={},warSet={}; rowsAll.forEach(function(m){if(m.sa)saSet[m.sa]=1;if(m.war.label)warSet[m.war.cls]=m.war.label;});
       var saOpts='<option value="">ทุกผู้แทน</option>'+Object.keys(saSet).sort().map(function(s){return '<option value="'+_spEsc(s)+'"'+(window._cdSales===s?' selected':'')+'>'+_spEsc(s)+'</option>';}).join('');
@@ -6038,7 +6038,7 @@ window.spRenderAlert = function(){
       // [V605] ตัดปุ่ม ✕ ล้างตัวกรอง — ล้างได้จาก dropdown หรือกด KPI pill ซ้ำ
       var clearBtn='';
       var selStyle='background:var(--bg2,#111722);border:1px solid var(--bd2,#374151);border-radius:8px;padding:6px 11px;color:var(--tx);font-size:12.5px;font-family:inherit';
-      var kpiPills=_k(rows.length,'Units','#ef4444')+_k(nDead,'🔴 Critical Down','#ef4444','dead')+_k(nCheck,'🟡 Partial Down','#facc15','check')+_k(nWatch,'🟣 Monitoring','#a78bfa','watch')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nClear,'\u2705 Clear','#4ade80','cleared'); // [v383] เพิ่มเฝ้าระวัง
+      var kpiPills=_k(rowsAll.length,'เครื่องทั้งหมด','#ef4444')+_k(nDead,'🔴 ใช้ไม่ได้','#ef4444','dead')+_k(nCheck,'🟡 ตรวจสอบ','#facc15','check')+_k(nWatch,'🟣 เฝ้าระวัง','#a78bfa','watch')+_k(nEol,'⚫ EOL','#9ca3af','eol')+_k(nClear,'\u2705 Clear','#4ade80','cleared'); // [v383] เพิ่มเฝ้าระวัง
       fltEl.innerHTML=kpiPills+'<span style="width:1px;height:20px;background:var(--bd2,#374151);flex-shrink:0"></span><select onchange="window.cdSetSales(this.value)" style="'+selStyle+'">'+saOpts+'</select><select onchange="window.cdKpi(this.value)" style="'+selStyle+'">'+warOpts+'</select>'+clearBtn+'<span style="font-size:11px;color:var(--mu);margin-left:auto">Open SR: '+rows.length+' เครื่อง</span>';
     }
     if(!rows.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">✅ ไม่พบเครื่องที่อยู่ระหว่างการซ่อมค้าง</div>';return;}

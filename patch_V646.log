@@ -1,0 +1,37 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260803125038
+Username: BERLI\PongsakR
+RunAs User: BERLI\PongsakR
+Configuration Name: 
+Machine: PDNB-00H192094 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoExit -ExecutionPolicy Bypass -Command cd C:\bjh-dashboard; .\start.ps1
+Process ID: 25492
+PSVersion: 5.1.26100.7705
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7705
+BuildVersion: 10.0.26100.7705
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+PS C:\bjh-dashboard> $ok=$true
+PS C:\bjh-dashboard> # ---- guard: base must be V645.x ----
+PS C:\bjh-dashboard> $cur = [IO.File]::ReadAllText('.\overrides.html')
+PS C:\bjh-dashboard> $m = [regex]::Match($cur, "_BUILD_VER='(V[0-9.]+)'")
+PS C:\bjh-dashboard> $found = '(not found)'; if($m.Success){ $found = $m.Groups[1].Value }
+PS C:\bjh-dashboard> Write-Host ('local version: ' + $found) -ForegroundColor Cyan
+local version: V646.0
+PS C:\bjh-dashboard> # accept V641.x-V644.x - this patch writes whole files
+PS C:\bjh-dashboard> if($found -notlike 'V645*'){
+  Write-Host ('ABORT: expected V645.x but found ' + $found) -ForegroundColor Red
+  Write-Host 'try: git pull    (or check the previous patch finished)' -ForegroundColor Yellow
+  Stop-Transcript | Out-Null; exit 1
+}
+ABORT: expected V645.x but found V646.0
+try: git pull    (or check the previous patch finished)
+**********************
+Windows PowerShell transcript end
+End time: 20260803125041
+**********************

@@ -463,9 +463,10 @@ html[data-theme="light"] #v-home .hb-modal-foot{ font-weight:800; }
   <div class="hb-sech">🚨 Critical Down — เครื่องที่ต้องตาม <span style="font-size:11px;font-weight:600;opacity:.6">(กดเพื่อดูรายการ)</span></div>
   <div class="hb-cd-row" id="hb-cd-row"><!-- render by JS --></div>
 
-  <!-- SERVICE 1/2/3 -->
-  <div class="hb-sech">🔧 ทีม Service 1 / 2 / 3 <span style="font-size:11px;font-weight:600;opacity:.6">(ยังไม่จบ · จบแล้ว · ยกเลิก — กดดูรายการได้)</span></div>
-  <div class="hb-svc-row" id="hb-svc-row"><!-- render by JS --></div>
+  <!-- [V655] SERVICE 1/2/3 — ถอดออก
+       เหตุ: เลขขัดกันเอง — Service 1 ขึ้น ยังไม่จบ 67 + จบ 17 + ยกเลิก 0 = 84
+       แต่มุมขวาเขียน SC 94 · SP 2 = 96 (Service 2 ก็ 54 vs 57)
+       คนละชุด filter กัน — JS มี if(svcEl) guard อยู่แล้ว ไม่ต้องแก้ -->
 
   <!-- PENDING 4 -->
   <div class="hb-sech">📌 งานค้างเดือนนี้ที่ต้องตาม — Pending</div>

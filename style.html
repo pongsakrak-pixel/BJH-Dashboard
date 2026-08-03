@@ -423,7 +423,15 @@ html,body{display:flex;flex-direction:column;height:100%;background:var(--bg);co
 .dtbl tbody tr:hover{background:var(--sur2);}
 .dtbl tbody tr.hi{background:#172040;}
 .dtbl tbody tr.edited{background:#1a1500!important;border-left:3px solid var(--ylw2)!important;}
-.dtbl td{padding:5px 4px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid var(--bd);}
+.dtbl td{padding:5px 4px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid var(--bd);font-size:12px;}
+/* [V655] ตารางหลัก — ขนาดฟอนต์ชุดเดียว
+   เดิม .dtbl td ไม่ตั้ง font-size เลย → รับ 14px จาก body ขณะที่ badge เป็น 9/10/11/12.5px
+   คุมเฉพาะ .dtbl ไม่แตะ .bdg ที่ใช้ที่อื่น */
+.dtbl .bdg{font-size:10px;}
+html[data-theme="light"] .dtbl td{font-size:12px !important;}
+html[data-theme="light"] .dtbl .bdg,
+html[data-theme="light"] .dtbl .tsc,
+html[data-theme="light"] .dtbl .tsp{font-size:11px !important;}
 /* [V621] ยกเลิกกฎ 11.5px ของ V620 — ทำให้ตารางเล็กลงทั้งแผง
    ที่ถูกคือปล่อยให้ทุกคอลัมน์ inherit 14px จาก body เหมือนคอลัมน์ส่วนใหญ่เดิม
    (ไปลบ inline font-size 5 จุดใน script_main แทน = แก้ที่ต้นเหตุ ไม่ต้องใช้ !important) */
