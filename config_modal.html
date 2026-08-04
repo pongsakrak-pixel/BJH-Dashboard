@@ -607,6 +607,12 @@
     <div id="cfg-pane-qfchips" style="display:none;padding:20px;flex:1;overflow-y:auto">
       <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">🔖 Quick Filter — แสดง/ซ่อน + แก้ชื่อ</div>
       <div style="font-size:11px;color:var(--mu2);margin-bottom:14px;line-height:1.6">ติ๊ก "แสดง" = โชว์ chip ในแถบ Quick Filter · ช่องชื่อ = แก้ป้ายที่แสดง (ว่าง = ใช้ชื่อเดิม)<br><span style="color:#fbbf24">⚠ chip "All" แสดงเสมอ แก้ไม่ได้ · เฉพาะ Admin</span></div>
+        <!-- [V660] ปุ่ม Focus (เดิม Confirm Billing) — ไม่ใช่ chip แต่ใช้ระบบชื่อเดียวกัน -->
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd);background:rgba(245,158,11,.06)">
+          <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-confirm" checked> แสดง</label>
+          <span style="font-size:11px;color:#fbbf24;min-width:140px">ปุ่ม Focus (ท้ายแถบกรอง)</span>
+          <input type="text" id="qf-label-confirm" placeholder="✅ Focus" style="flex:1;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:4px;padding:4px 8px;font-size:12px;font-family:var(--font)">
+        </div>
         <div style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px solid var(--bd)">
           <label style="display:flex;align-items:center;gap:6px;min-width:90px;font-size:12px;cursor:pointer"><input type="checkbox" id="qf-show-actual" checked> แสดง</label>
           <span style="font-size:11px;color:var(--mu2);min-width:140px">Actual FAD</span>

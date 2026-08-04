@@ -914,7 +914,20 @@ function cfgMeditInit(){
         return;
       }
       window._cfgMeditRows = d.rows || [];
-      if(info) info.textContent = 'ทั้งหมด ' + (d.total||0) + ' รายการ · แสดงล่าสุด ' + window._cfgMeditRows.length;
+      /* [V659] นับว่ายัง "มีผลอยู่" กี่ใบ — rows เรียงล่าสุดขึ้นก่อน จึงเอาตัวแรกของแต่ละ rowKey
+         ตัวเลขนี้คือจำนวนใบที่ระบบยังใช้ค่าที่แก้มือแทนค่าจาก SmartFlow */
+      var _seen = {}, _act = 0;
+      window._cfgMeditRows.forEach(function(r){
+        var k = r.rowKey || r.qn;
+        if(!k || _seen[k]) return;
+        _seen[k] = 1;
+        if(String(r.cancelled||'').indexOf('Cancelled') < 0) _act++;
+      });
+      window._cfgMeditActive = _act;
+      if(info) info.innerHTML = 'ทั้งหมด ' + (d.total||0) + ' รายการ · แสดงล่าสุด ' + window._cfgMeditRows.length
+        + ' · ' + (_act
+            ? '<b style="color:#fbbf24">ยังมีผลอยู่ ' + _act + ' ใบ</b>'
+            : '<b style="color:#4ade80">ไม่มีใบที่ยังถูกแก้มือค้างอยู่</b>');
       cfgMeditFilter();
     })
     .withFailureHandler(function(e){
@@ -1673,7 +1686,7 @@ function cfgSaveBudgetToSheet(){
       return;
     }
   }
-  _cfgSaveToSheet('budget',budget,'bud-log');
+  _cfgSaveToSheet('budget',budget,'bud-log',function(){ window._cfgReapply({budget:budget}); });   // [V660]
 }
 
 function cfgSaveSaBudToSheet(){
@@ -1873,12 +1886,25 @@ function emInsert(tok){
   window._emFocus=el;
 }
 
-function _cfgSaveToSheet(section, data, logId){
+/* [V660] ใช้ค่าที่เพิ่งบันทึกทันที — budget/forecast มาจาก config ล้วน ไม่ได้มาจาก ETL
+   จึงไม่ต้องโหลดข้อมูลใหม่ แค่ apply ค่าแล้ว render ซ้ำ
+   applyConfig มี if(cfg.X) คุมทุกส่วน → ส่งเฉพาะ key ที่จะ apply ได้ */
+window._cfgReapply = function(partial){
+  try{ if(partial && typeof applyConfig==='function') applyConfig(partial); }catch(e){ console.error(e); }
+  try{ if(typeof buildSummary==='function') buildSummary(); }catch(e){}
+  try{ if(typeof af==='function') af(); }catch(e){}
+  try{ if(typeof window.dbRender==='function') window.dbRender(); }catch(e){}
+  try{ if(typeof renderBVF==='function' && document.getElementById('v-bvf')) renderBVF(); }catch(e){}
+};
+
+function _cfgSaveToSheet(section, data, logId, after){
   var log=document.getElementById(logId);
   if(log) log.innerHTML='⏳ กำลังบันทึก...';
   function onDone(r){
     var d=typeof r==='string'?JSON.parse(r):r;
     if(log) log.innerHTML=d.ok?'✅ บันทึก '+section+' ลง Sheet แล้ว':'❌ '+(d.error||'error');
+    /* [V660] บันทึกสำเร็จ -> ให้มีผลทันที ไม่ต้อง refresh */
+    if(d.ok && typeof after==='function'){ try{ after(); }catch(e){ console.error(e); } }
     setTimeout(function(){if(log)log.innerHTML='';},2500);
   }
   function onError(e){ if(log) log.innerHTML='❌ '+e.message; }
@@ -3783,7 +3809,7 @@ function buildSummary(){
 // ─── FILTER ───
 var _pillSavedMo=null, _pillSavedYr=null;
 var _pillAll=true; // Default = Monthly Forecast (เหมือนกด All)
-var _QF_KEYS=['actual','billed','backlog','backlog-conf','ordered','co-ready','co-notready','spf-ord','spf-proc','pend','excluded','data']; // [v390] +data
+var _QF_KEYS=['actual','billed','backlog','backlog-conf','ordered','co-ready','co-notready','spf-ord','spf-proc','pend','excluded','data','confirm']; // [v390] +data · [V660] +confirm (ปุ่ม Focus — ไม่มี chip คู่ ใช้แค่ label/show)
 // [v390] Label Config — รวมจุดแก้เป็นที่เดียว (Quick Filter list) แทน stlb_/mfclb_ แยกของ v387
 //   mapping สถานะ → qf id ใช้กรุ๊ปเดียวกับ af()/_qfPillOf (v388) — Actual FAD/Not Found/CN แยกกันตามที่ Eak confirm ไม่รวม
 var _QF_ST_MAP={
@@ -3818,6 +3844,63 @@ window._mfcLbl=function(id,fb){
     return (c&&String(c).trim())?String(c).trim():fb;
   }catch(e){ return fb; }
 };
+/* [V660] ปุ่ม Focus (เดิม Confirm Billing) — ชื่อ + ซ่อน/แสดง อ่านจาก config ชุดเดียวกับ Quick Filter chips
+   ต้องเรียก 2 จังหวะ: ตอน apply role และตอน config โหลดเสร็จ (มาคนละเวลา) */
+window._cbApplyBtn = function(){
+  var b = document.getElementById('btn-confirm-billing');
+  if(!b) return;
+  var c = window._QF_CFG || {};
+  var lb = c['qf_confirm_label'];
+  b.textContent = (lb && String(lb).trim()) ? String(lb).trim() : '\u2705 Focus';
+  var show = (window._CB_ROLE_OK !== false);
+  var sv = c['qf_confirm_show'];
+  if(sv === 'false' || sv === false) show = false;
+  b.style.display = show ? '' : 'none';
+};
+
+// ═══════════════════════════════════════════════════════════════
+// [V660] Daily Snapshot — ถ่ายภาพสถานะวันละครั้ง สำหรับหน้า Order Tracking
+//   ทำที่ฝั่ง client เพราะการจัดสถานะ (normalizeStatusV51) อยู่ในเบราว์เซอร์ทั้งหมด
+//   ถ้าไปทำที่ server ต้องเขียนตรรกะซ้ำ แล้วเลขจะไม่ตรงกับที่คนเห็นบนจอ
+//   ฝั่ง server กันซ้ำเอง (มีข้อมูลวันนี้แล้ว = ข้าม) จึงยิงซ้ำได้ไม่เสียหาย
+// ═══════════════════════════════════════════════════════════════
+window._SNAP_TRACK = {
+  'Billed':1, 'Backlog':1, 'Backlog (Confirmed)':1,
+  'SC Ordered':1, 'SC Carry':1, 'SC Carry (Pending)':1
+};
+window.bjhDailySnapshot = function(force){
+  try{
+    if(window._snapDone && !force) return;
+    var D = window.D || [];
+    if(!D.length) return;
+    if(!(typeof google!=='undefined' && google.script && google.script.run)) return;
+    var yrNow = Number(window.CUR_YR) || (new Date().getFullYear());
+    var rows = [];
+    D.forEach(function(r){
+      if(!r || !window._SNAP_TRACK[String(r.st||'')]) return;
+      if(Number(r.yr||0) !== yrNow) return;
+      rows.push({
+        k: String(r.qn||'') + '|' + String(r.id||''),
+        qn: String(r.qn||''), cu: String(r.cu||''),
+        t: String(r.t||''), st: String(r.st||''), ip: String(r.ip||''),
+        sn: String(r.sn||''), mo: Number(r.mo||0), yr: Number(r.yr||0),
+        om: Number(r.overdue_mo||0), oy: Number(r.overdue_yr||0),
+        px: Number(r.px||0), sa: String(r.sa||''), tm: String(r.tm||'')
+      });
+    });
+    if(!rows.length) return;
+    window._snapDone = true;
+    var d = new Date(), p = function(n){ return (n<10?'0':'')+n; };
+    var ds = d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+    google.script.run
+      .withSuccessHandler(function(res){
+        try{ window._snapResult = JSON.parse(res); }catch(e){ window._snapResult = {ok:false}; }
+      })
+      .withFailureHandler(function(){ window._snapDone = false; })
+      .saveDailySnapshot(JSON.stringify({date: ds, rows: rows}));
+  }catch(e){ /* ห้ามให้ snapshot ทำหน้าเว็บพัง */ }
+};
+
 function cfgQfInit(){
   var cfg=window._QF_CFG||{};
   _QF_KEYS.forEach(function(k){
@@ -4070,7 +4153,13 @@ function renderTbl(){
       ?(function(){ var _c=(window._QF_CFG||{})['qf_pend_label']; return (_c&&String(_c).trim())?String(_c).trim():'Prospect'; })()
       :(typeof window._stLbl==='function'?window._stLbl(r.st):r.st);
     var _isCN=(r.is_cn===1||r.ip==='CN Bill');
-    var _stClick=' onclick="event.stopPropagation();editStatus('+r.id+')" style="cursor:pointer" title="คลิกเพื่อเปลี่ยน Status"';
+    /* [V659] ปิดการแก้ Status ด้วยมือ — ตัดเฉพาะ "ทางเข้า" ไม่ลบฟังก์ชัน
+       editStatus / confirmEditStatus / rollbackEditStatus ยังอยู่ครบ · ระบบยังอ่าน sales_manual_edit เหมือนเดิม
+       → ยอดทุกการ์ดไม่ขยับ แค่ไม่มีใครแก้เพิ่มได้อีก
+       ปุ่ม "↩ กลับไป Status เดิม" ยังใช้ได้ปกติ (อยู่ในกล่องรายละเอียดใบ overrides.html:1054 / :1343)
+       เปิดกลับ: เอาบรรทัดที่คอมเมนต์ไว้ด้านล่างมาใช้แทน */
+    var _stClick='';
+    // var _stClick=' onclick="event.stopPropagation();editStatus('+r.id+')" style="cursor:pointer" title="คลิกเพื่อเปลี่ยน Status"';
     var stb=_isCN
       ?'<span class="bdg bst-cn">CN Bill</span>'
       :'<span class="bdg '+stCls(r.st)+'"'+_stClick+'>'+stLbl+'</span>'+((r.fad_state && window.BJH_FAD_BADGE)?'<br><span class="bdg fad-tag '+fadCls(r.fad_state)+'">'+r.fad_state+'</span>':'');
@@ -6344,8 +6433,8 @@ function _applyRoleUI() {
   var cfgBtn = document.querySelector('.hdr-btn-upload');
   if (cfgBtn) cfgBtn.style.display = isAdmin() ? '' : 'none';
   // แสดง Confirm Billing สำหรับ sales และ manager
-  var cbBtn = document.getElementById('btn-confirm-billing');
-  if (cbBtn) cbBtn.style.display = (isSales() || isManager()) ? '' : 'none';
+  window._CB_ROLE_OK = (isSales() || isManager());   // [V660]
+  try{ window._cbApplyBtn(); }catch(e){}
   // ล็อค Sales filter สำหรับ sales role
   if (isSales() && _currentUser && _currentUser.name) {
     window._SALES_LOCK = _currentUser.name;
@@ -8216,6 +8305,7 @@ function applyConfig(cfg){
   try{ window._SALES_REGION = cfg.sales_region || {}; if(window._applySalesRegion) window._applySalesRegion(); }catch(e){} // [B10]
   try{ window._PARTS_STATUS = cfg.parts_status || {}; }catch(e){}   // [V562] Parts Status Mapping
   try{ window._JOB_STATUS = cfg.job_status || {}; }catch(e){}       // [V658] Job Status Mapping
+  try{ if(window._cbApplyBtn) window._cbApplyBtn(); }catch(e){}     // [V660] ปุ่ม Focus ตาม config
   window._PRICE_TBL = cfg.price_table || {}; // [v403] Price table config (brand||model)
   window._PRICE_GROUPS = cfg.price_groups || {}; // [v433] Price table แบบกลุ่ม
   window._QSP_EXCEPTIONS = cfg.qsp_exceptions || {}; // [v448] QSP23/24 ที่ยกเว้นไม่ filter ออก

@@ -2907,6 +2907,168 @@ function getManualEdits() {
 
 /* [V657] ดึงประวัติการแก้ Status ทั้งหมด (รวมที่ยกเลิกแล้ว) — สำหรับหน้า Config
    ต่างจาก getManualEdits() ที่คืนเฉพาะค่าล่าสุดที่ยังมีผลเอาไปคำนวณ */
+/* ═══════════════════════════════════════════════════════════════
+   [V660] Daily Snapshot — เก็บภาพสถานะรายวันสำหรับหน้า Order Tracking
+
+   ยิงมาจาก client (bjhDailySnapshot) เพราะการจัดสถานะอยู่ฝั่ง browser ทั้งหมด
+   ยิงซ้ำได้ — ถ้ามีข้อมูลของวันนั้นแล้วจะข้ามทันที
+
+   3 ชีต
+     snap_state    ภาพล่าสุด 1 แถว = 1 ใบ  (เขียนทับทุกวัน ไม่โต)
+     daily_summary 1 แถว = วัน x สถานะ      (+4-6 แถว/วัน)
+     daily_change  เฉพาะใบที่ขยับ           (ใหม่ / เปลี่ยน / บิลแล้ว / หายไป)
+
+   ลำดับเขียนสำคัญ: change -> summary -> snap_state
+   ถ้าพังกลางทาง snap_state ยังเป็นภาพเมื่อวาน วันถัดไปจะจับส่วนต่าง 2 วันรวด
+   ดีกว่าเขียน snap_state ก่อนแล้วส่วนต่างหายไปเลย
+   ═══════════════════════════════════════════════════════════════ */
+var SNAP_STATE_HDR = ['rowKey','qn','customer','type','st','ip','jobStatus','mo','yr','overdueMo','overdueYr','amount','sales','team','sinceDate','lastSeen'];
+var SNAP_SUM_HDR   = ['date','st','count','amount','countSC','amountSC','countSP','amountSP','carriedIn'];
+var SNAP_CHG_HDR   = ['date','kind','rowKey','qn','customer','type','fromSt','toSt','mo','yr','amount','sales','team','daysInPrev'];
+
+function _snapSheet(ss, name, hdr) {
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.getRange(1, 1, 1, hdr.length).setValues([hdr]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function _snapDayDiff(a, b) {
+  try {
+    var d1 = new Date(a + 'T00:00:00'), d2 = new Date(b + 'T00:00:00');
+    if (isNaN(d1) || isNaN(d2)) return '';
+    return Math.round((d2 - d1) / 86400000);
+  } catch (e) { return ''; }
+}
+
+function saveDailySnapshot(payloadStr) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(20000)) return JSON.stringify({ ok: false, error: 'busy' });
+  } catch (e) {}
+  try {
+    var p = JSON.parse(payloadStr || '{}');
+    var day = String(p.date || '').trim();
+    var rows = p.rows || [];
+    if (!day || !rows.length) return JSON.stringify({ ok: false, error: 'empty payload' });
+
+    var ss = getSpreadsheet();
+    var shState = _snapSheet(ss, 'snap_state', SNAP_STATE_HDR);
+    var shSum   = _snapSheet(ss, 'daily_summary', SNAP_SUM_HDR);
+    var shChg   = _snapSheet(ss, 'daily_change', SNAP_CHG_HDR);
+
+    // ── กันซ้ำ: มีข้อมูลของวันนี้แล้วหรือยัง ──
+    var sumLast = shSum.getLastRow();
+    if (sumLast > 1) {
+      var dts = shSum.getRange(2, 1, sumLast - 1, 1).getValues();
+      for (var di = dts.length - 1; di >= 0; di--) {
+        if (String(dts[di][0]).slice(0, 10) === day) {
+          return JSON.stringify({ ok: true, skipped: true, reason: 'already saved today' });
+        }
+      }
+    }
+
+    // ── ภาพเมื่อวาน ──
+    var prev = {}, prevLast = shState.getLastRow();
+    if (prevLast > 1) {
+      var pv = shState.getRange(2, 1, prevLast - 1, SNAP_STATE_HDR.length).getValues();
+      pv.forEach(function (r) {
+        var k = String(r[0] || '');
+        if (k) prev[k] = { st: String(r[4] || ''), since: String(r[14] || '').slice(0, 10) };
+      });
+    }
+
+    // ── ส่วนต่าง ──
+    var chg = [], seen = {}, stateRows = [];
+    rows.forEach(function (r) {
+      var k = String(r.k || '');
+      if (!k || seen[k]) return;
+      seen[k] = 1;
+      var st = String(r.st || '');
+      var was = prev[k];
+      var since = day, kind = '';
+      if (!was) {
+        kind = 'new';
+      } else if (was.st !== st) {
+        kind = (st === 'Billed') ? 'billed' : 'moved';
+      } else {
+        since = was.since || day;   // ไม่ขยับ -> คงวันที่เข้าสถานะเดิมไว้
+      }
+      if (kind) {
+        chg.push([day, kind, k, String(r.qn || ''), String(r.cu || ''), String(r.t || ''),
+          was ? was.st : '', st, Number(r.mo || 0), Number(r.yr || 0), Number(r.px || 0),
+          String(r.sa || ''), String(r.tm || ''),
+          was ? _snapDayDiff(was.since || day, day) : '']);
+      }
+      stateRows.push([k, String(r.qn || ''), String(r.cu || ''), String(r.t || ''), st,
+        String(r.ip || ''), String(r.sn || ''), Number(r.mo || 0), Number(r.yr || 0),
+        Number(r.om || 0), Number(r.oy || 0), Number(r.px || 0),
+        String(r.sa || ''), String(r.tm || ''), since, day]);
+    });
+    // ใบที่หายไปจากระบบ
+    Object.keys(prev).forEach(function (k) {
+      if (seen[k]) return;
+      chg.push([day, 'gone', k, '', '', '', prev[k].st, '', 0, 0, 0, '', '',
+        _snapDayDiff(prev[k].since || day, day)]);
+    });
+
+    // ── สรุปรายวัน ──
+    var agg = {};
+    rows.forEach(function (r) {
+      var st = String(r.st || '');
+      if (!agg[st]) agg[st] = { c: 0, a: 0, cSC: 0, aSC: 0, cSP: 0, aSP: 0, carry: 0 };
+      var g = agg[st], amt = Number(r.px || 0), isSP = String(r.t || '').toUpperCase() === 'SP';
+      g.c++; g.a += amt;
+      if (isSP) { g.cSP++; g.aSP += amt; } else { g.cSC++; g.aSC += amt; }
+      if (Number(r.om || 0) > 0) g.carry++;
+    });
+    var sumRows = Object.keys(agg).map(function (st) {
+      var g = agg[st];
+      return [day, st, g.c, Math.round(g.a), g.cSC, Math.round(g.aSC), g.cSP, Math.round(g.aSP), g.carry];
+    });
+
+    // ── เขียน: change -> summary -> state ──
+    if (chg.length) shChg.getRange(shChg.getLastRow() + 1, 1, chg.length, SNAP_CHG_HDR.length).setValues(chg);
+    if (sumRows.length) shSum.getRange(shSum.getLastRow() + 1, 1, sumRows.length, SNAP_SUM_HDR.length).setValues(sumRows);
+
+    if (shState.getLastRow() > 1) shState.getRange(2, 1, shState.getLastRow() - 1, SNAP_STATE_HDR.length).clearContent();
+    if (stateRows.length) shState.getRange(2, 1, stateRows.length, SNAP_STATE_HDR.length).setValues(stateRows);
+
+    return JSON.stringify({ ok: true, date: day, tracked: stateRows.length, changes: chg.length });
+  } catch (e) {
+    return JSON.stringify({ ok: false, error: e.message });
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
+}
+
+/* [V660] อ่านข้อมูล snapshot สำหรับหน้า Order Tracking (ยังไม่มีหน้าจอ — เตรียมไว้)
+   คืน summary + change ของช่วงวันที่ที่ขอ */
+function getSnapshotRange(fromDay, toDay) {
+  try {
+    var ss = getSpreadsheet();
+    var shSum = ss.getSheetByName('daily_summary');
+    var shChg = ss.getSheetByName('daily_change');
+    var f = String(fromDay || '').slice(0, 10), t = String(toDay || '').slice(0, 10);
+    function pick(sh, hdr) {
+      if (!sh || sh.getLastRow() < 2) return [];
+      var dat = sh.getRange(2, 1, sh.getLastRow() - 1, hdr.length).getValues();
+      return dat.filter(function (r) {
+        var d = String(r[0] || '').slice(0, 10);
+        return d && (!f || d >= f) && (!t || d <= t);
+      }).map(function (r) {
+        var o = {}; hdr.forEach(function (h, i) { o[h] = r[i]; }); return o;
+      });
+    }
+    return JSON.stringify({ ok: true, summary: pick(shSum, SNAP_SUM_HDR), changes: pick(shChg, SNAP_CHG_HDR) });
+  } catch (e) {
+    return JSON.stringify({ ok: false, error: e.message });
+  }
+}
+
 function getManualEditLog(limitStr) {
   try {
     var lim = parseInt(limitStr, 10); if (!(lim > 0)) lim = 300;

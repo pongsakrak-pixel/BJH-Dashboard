@@ -6096,19 +6096,35 @@ window.dbPrintPPT = function(){
       if(tp==='SP') pivSP[mo-1]+=amtEx;
       else pivSC[mo-1]+=amtEx;
     });
-    var pivRows = [['เดือน','SC (฿ Ex.VAT)','SP (฿ Ex.VAT)','Total (฿ Ex.VAT)']];
-    var totSC=0, totSP=0;
+    /* [V660] SP Forecast คงเหลือ = ค่า config FCSP_FIXED − SP ที่เปิดบิลแล้วในเดือนนั้น
+       - ค่า 5 ล้านมาจาก config (ตั้งมือที่ Budget & Actual) ไม่ใช่ใบจริง จึงไม่เคยโผล่ใน Excel มาก่อน
+       - "เปิดบิลแล้ว" = st==='Billed' เท่านั้น (ตามที่ตกลง)
+       - หักจนถึง 0 แล้วหยุด ไม่ติดลบ */
+    var fcspRaw=[0,0,0,0,0,0,0,0,0,0,0,0], spBilled=[0,0,0,0,0,0,0,0,0,0,0,0];
+    for(var fm=1;fm<=12;fm++){ fcspRaw[fm-1] = Number(fcspCfg[String(fm)]||0) * 1000; }
+    D.forEach(function(r){
+      if(!r || String(r.t||'').toUpperCase()!=='SP') return;
+      if(String(r.st||'')!=='Billed') return;
+      if(Number(r.yr||0)!==yr) return;
+      var bmo=Number(r.mo||0); if(bmo<1||bmo>12) return;
+      spBilled[bmo-1] += (r._sp_fix_exvat!=null) ? Number(r._sp_fix_exvat||0) : Number(r.px||0)/1.07;
+    });
+
+    var pivRows = [['เดือน','SC (฿ Ex.VAT)','SP (฿ Ex.VAT)','Total (฿ Ex.VAT)','SP Forecast (ตั้งไว้)','SP เปิดบิลแล้ว','SP Forecast คงเหลือ']];
+    var totSC=0, totSP=0, totFc=0, totFcB=0, totFcL=0;
     for(var pm=0;pm<12;pm++){
       var sc=Math.round(pivSC[pm]), sp=Math.round(pivSP[pm]);
-      totSC+=sc; totSP+=sp;
-      pivRows.push([MO_TH_PV[pm]+' '+yr, sc, sp, sc+sp]);
+      var fcT=Math.round(fcspRaw[pm]), fcB=Math.round(spBilled[pm]);
+      var fcL=Math.max(0, fcT-fcB);
+      totSC+=sc; totSP+=sp; totFc+=fcT; totFcB+=fcB; totFcL+=fcL;
+      pivRows.push([MO_TH_PV[pm]+' '+yr, sc, sp, sc+sp, fcT, fcB, fcL]);
     }
-    pivRows.push(['รวมทั้งปี', totSC, totSP, totSC+totSP]);
+    pivRows.push(['รวมทั้งปี', totSC, totSP, totSC+totSP, totFc, totFcB, totFcL]);
     var wsPv = XLSX.utils.aoa_to_sheet(pivRows);
-    wsPv['!cols'] = [{wch:14},{wch:18},{wch:18},{wch:18}];
-    // number format columns B,C,D
+    wsPv['!cols'] = [{wch:14},{wch:18},{wch:18},{wch:18},{wch:20},{wch:18},{wch:22}];
+    // number format columns B..G
     for(var pvi=2; pvi<=pivRows.length; pvi++){
-      ['B','C','D'].forEach(function(col){
+      ['B','C','D','E','F','G'].forEach(function(col){
         var addr=col+pvi;
         if(wsPv[addr] && typeof wsPv[addr].v==='number'){ wsPv[addr].t='n'; wsPv[addr].z='#,##0'; }
       });
