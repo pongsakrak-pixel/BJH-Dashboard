@@ -278,7 +278,7 @@
     <!-- Sub-tabs -->
     <div style="display:none">  <!-- [v234] tab row ซ่อน — ย้าย Budget&Forecast เป็นปุ่มใน filter bar -->
       <button id="db-st-dashboard" onclick="dbSwitchTab('dashboard')" style="min-width:0;padding:8px 14px;border:none;background:transparent;color:var(--cyn);font-size:12px;cursor:pointer;border-bottom:2px solid var(--cyn);font-family:var(--font);font-weight:600;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📊 Dashboard</button>
-      <button id="db-st-table" onclick="dbSwitchTab('table')" style="min-width:0;padding:8px 14px;border:none;background:transparent;color:var(--mu);font-size:12px;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--font);font-weight:500;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📋 Budget &amp; Forecast</button>
+      <button id="db-st-table" onclick="dbSwitchTab('table')" style="min-width:0;padding:8px 14px;border:none;background:transparent;color:var(--mu);font-size:12px;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--font);font-weight:500;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📋 Budget &amp; Actual</button>
       <button id="db-st-salesrep" onclick="dbSwitchTab('salesrep')" style="min-width:0;padding:8px 14px;border:none;background:transparent;color:var(--mu);font-size:12px;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--font);font-weight:500;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">👤 Sales Rep</button>
       <button id="db-st-sabud" onclick="dbSwitchTab('sabud')" style="min-width:0;padding:8px 14px;border:none;background:transparent;color:var(--mu);font-size:12px;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--font);font-weight:500;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">💰 Budget Sales</button>
       <button id="db-st-analysis" onclick="dbSwitchTab('analysis')" style="min-width:0;padding:8px 14px;border:none;background:transparent;color:var(--mu);font-size:12px;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--font);font-weight:500;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📈 Analysis</button>
@@ -301,7 +301,7 @@
       <div id="db-export-dd" style="position:relative;display:inline-block"><button onclick="(function(){var m=document.getElementById('db-export-menu');m.style.display=m.style.display==='none'?'block':'none';})()" style="padding:4px 12px;border-radius:5px;border:1px solid #a78bfa;background:rgba(167,139,250,0.12);color:#c4b5fd;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">📤 Export ▾</button><div id="db-export-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--sur,#1e2330);border:1px solid var(--bd2,#374151);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4);min-width:160px;z-index:999"><div onclick="dbExportToFAD();document.getElementById('db-export-menu').style.display='none'" style="padding:10px 14px;cursor:pointer;font-size:12px;color:#c4b5fd;border-bottom:1px solid var(--bd,#2d3748)" onmouseover="this.style.background='var(--bd)'" onmouseout="this.style.background='transparent'">📤 Export to FAD</div><div onclick="dbPrintPPT();document.getElementById('db-export-menu').style.display='none'" style="padding:10px 14px;cursor:pointer;font-size:12px;color:#a78bfa" onmouseover="this.style.background='var(--bd)'" onmouseout="this.style.background='transparent'">🖨 Print PPT</div></div></div>
        <!-- [v454] -->
       <span class="db-sep" style="width:1px;height:18px;background:var(--bd2);margin:0 2px"></span>
-      <button id="db-fbtn-table" onclick="dbSwitchTab('table')" style="padding:4px 12px;border-radius:5px;border:1px solid #34d399;background:rgba(52,211,153,0.12);color:#6ee7b7;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">📋 Budget &amp; Forecast</button>
+      <button id="db-fbtn-table" onclick="dbSwitchTab('table')" style="padding:4px 12px;border-radius:5px;border:1px solid #34d399;background:rgba(52,211,153,0.12);color:#6ee7b7;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">📋 Budget &amp; Actual</button>
       <button id="db-fbtn-salesarea" onclick="dbSwitchTab('salesarea')" style="padding:4px 12px;border-radius:5px;border:1px solid #38bdf8;background:rgba(56,189,248,0.12);color:#7dd3fc;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">🗺 Sales Areas</button>
       <!--  [V548] ฉายเฉพาะบล็อก STORY เต็มจอ (โปรเจกเตอร์) -->
       <button id="db-btn-present" onclick="dbPresent()" title="ฉายเต็มจอ (ESC เพื่อออก)" style="padding:4px 12px;border-radius:5px;border:1px solid #f59e0b;background:rgba(245,158,11,0.12);color:#fbbf24;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">🖥 Present</button>
@@ -1426,15 +1426,19 @@
       if(_sfBtn){
         var _sfAct=!!(window._sumStatusApplies && window._sumStatusApplies());
         var _sfN=(window._sumStatusFilter||[]).length, _sfT=(window._SUM_PILLS||[]).length;
+        /* [V658.2] หน้านี้ใช้ present — ห้ามเด่น
+           เหลือแค่ ⚙ เฉยๆ + tooltip พอให้รู้ว่ากรองอยู่ ไม่ใช้สีส้ม/ตัวเลขบนปุ่ม */
         if(_sfAct){
-          _sfBtn.textContent='\u2699 \u0e01\u0e23\u0e2d\u0e07 '+_sfN+'/'+_sfT;
-          _sfBtn.style.borderColor='#fb923c'; _sfBtn.style.color='#fb923c';
-          _sfBtn.style.background='rgba(251,146,60,.12)';
-          _sfBtn.title='\u0e01\u0e33\u0e25\u0e31\u0e07\u0e01\u0e23\u0e2d\u0e07 status \u0e2d\u0e22\u0e39\u0e48 \u2014 \u0e22\u0e2d\u0e14\u0e17\u0e35\u0e48\u0e40\u0e2b\u0e47\u0e19\u0e44\u0e21\u0e48\u0e43\u0e0a\u0e48\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14';
+          _sfBtn.textContent='\u2699';
+          _sfBtn.style.borderColor='var(--bd2)'; _sfBtn.style.color='var(--mu2)';
+          _sfBtn.style.background='var(--sur2)';
+          _sfBtn.style.opacity='.85';
+          _sfBtn.title='\u0e01\u0e33\u0e25\u0e31\u0e07\u0e01\u0e23\u0e2d\u0e07 status '+_sfN+'/'+_sfT+' \u2014 \u0e22\u0e2d\u0e14\u0e17\u0e35\u0e48\u0e40\u0e2b\u0e47\u0e19\u0e44\u0e21\u0e48\u0e43\u0e0a\u0e48\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14';
         } else {
           _sfBtn.textContent='\u2699';
           _sfBtn.style.borderColor='var(--bd2)'; _sfBtn.style.color='var(--tx)';
           _sfBtn.style.background='var(--sur2)';
+          _sfBtn.style.opacity='';
           _sfBtn.title='\u0e40\u0e25\u0e37\u0e2d\u0e01 Status';
         }
       }
