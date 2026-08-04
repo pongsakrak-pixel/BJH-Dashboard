@@ -45,6 +45,7 @@
       <button id="cfg-tab-hmstage" onclick="cfgTab('hmstage')" class="cfg-tab-btn">🎯 HM Stage</button>
       <button id="cfg-tab-sgroup" onclick="cfgTab('sgroup')" class="cfg-tab-btn">📊 Status Group</button>
       <button id="cfg-tab-tabperm" onclick="cfgTab('tabperm')" class="cfg-tab-btn">🔐 Tab Permissions</button>
+      <button id="cfg-tab-medit" onclick="cfgTab('medit')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">📝 ประวัติแก้ Status</button><!-- [V657] -->
       <button id="cfg-tab-email" onclick="cfgTab('email')" class="cfg-tab-btn">📧 Email เบิกอะไหล่</button>
       <button id="cfg-tab-armon" onclick="cfgTab('armon')" class="cfg-tab-btn">💰 AR Monitor</button>
       <button id="cfg-tab-mblinks" onclick="cfgTab('mblinks')" class="cfg-tab-btn cfg-tab-adminonly" style="display:none">☎️ ลิงก์มือถือ</button>
@@ -399,6 +400,33 @@
           <div id="cfg-sg-log" style="font-size:11px;color:var(--mu2);flex:1"></div>
         </div>
       </div>
+    </div>
+
+    <!-- Tab: 📝 ประวัติแก้ Status (admin) — [V657] -->
+    <div id="cfg-pane-medit" style="display:none;padding:20px;flex:1;overflow-y:auto">
+      <div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:6px">📝 ประวัติการแก้ Status</div>
+      <div style="font-size:11px;color:var(--mu2);margin-bottom:14px;line-height:1.6">
+        ทุกครั้งที่มีคนกด <b style="color:var(--tx)">✏️ แก้ไข Status</b> จะถูกบันทึกไว้ที่นี่ — ชีต <b style="color:var(--tx)">sales_manual_edit</b><br>
+        <span style="color:var(--mu)">การแก้มือจะทับข้อมูลจาก SmartFlow ทั้ง Status / เดือน / ปี / IP — แถวที่จางคือค่าที่ใช้งานอยู่จริง</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <input id="cfg-medit-q" oninput="cfgMeditFilter()" placeholder="ค้น QN / ลูกค้า / คนแก้" style="flex:1;min-width:180px;background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--font)">
+        <button onclick="cfgMeditInit()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--bd2);background:var(--sur2);color:var(--tx);cursor:pointer;font-size:12px;font-family:var(--font)">🔄 รีเฟรช</button>
+        <span id="cfg-medit-info" style="font-size:11px;color:var(--mu2)"></span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--bd2)">
+            <th style="text-align:left;padding:8px 10px;color:var(--mu2);white-space:nowrap">เมื่อไร</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--mu2);white-space:nowrap">ใครแก้</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--mu2)">ใบ / ลูกค้า</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--mu2)">จาก → เป็น</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--mu2);white-space:nowrap">เดือน/ปี</th>
+            <th style="text-align:left;padding:8px 10px;color:var(--mu2);white-space:nowrap">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="cfg-medit-body"></tbody>
+      </table>
     </div>
 
     <!-- Tab: Tab Permissions -->

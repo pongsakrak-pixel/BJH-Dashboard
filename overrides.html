@@ -34,12 +34,31 @@
     var _nbS = window._scBillQnSet;
     if(!_nbS){ try{ _nbS={}; for(var _i=0;_i<_raw.length;_i++){ var _q=_raw[_i]&&_raw[_i].QH_DOC_NUMBER?String(_raw[_i].QH_DOC_NUMBER).trim():''; if(_q)_nbS[_q]=1; } window._scBillQnSet=_nbS; }catch(e){ _nbS=null; } }
     if(!_nbS || !window.D) return;
+    /* [V656] กลุ่มที่ "ใกล้ปิด" — ยกเว้นไม่ต้องดันไป ธ.ค.
+       SP: qs/sc = 'Customer Accept' (ลูกค้าตอบรับแล้ว รอ PO) · SC: HM stage = 'H'
+       เดิม Prospect ถูกดันไป ธ.ค. ทั้งก้อน → การ์ดรายเดือนขึ้น ฿0 ตลอด 11 เดือน
+       ส่วน Medium / Low / Other ยังกอง ธ.ค. เหมือนเดิม (ยังไม่แน่นอนพอ)
+       หมายเหตุ: ไม่แตะ px÷4 และ _isEstimate — เปลี่ยนแค่เดือนที่ไปลง */
+    var _CA_TXT='Customer Accept';
+    function _isCAr(r){
+      return String(r.qs||'').trim()===_CA_TXT || String(r.sc||'').trim()===_CA_TXT
+          || String(r.status||'').trim()===_CA_TXT;
+    }
+    function _hmStageOf(r){
+      var m = window._FC_HM_STATUS_LOCAL || {};
+      var _sc=String(r.sc||'').trim(), _qs=String(r.qs||'').trim();
+      return (_sc&&m[_sc]) || (_qs&&m[_qs]) || null;
+    }
+    function _isHotProspect(r){
+      if(r._isLow) return false;
+      return (r.t==='SP') ? _isCAr(r) : (_hmStageOf(r)==='H');
+    }
     window.D.forEach(function(r){
       if(!r || r.st!=='Offer') return;
       var _qn=String(r.qn||'').trim();
       var _isNb = (r.t==='SC') && _qn && !_nbS[_qn];
       if(_isNb && !r._isLow && !r._nbDiv4){ r.px=Number(r.px||0)/4; r._nbDiv4=true; }
-      var _toDec = _isNb || (r.t==='SP') || r._isLow;
+      var _toDec = (_isNb || (r.t==='SP') || r._isLow) && !_isHotProspect(r);   /* [V656] */
       if(_toDec && !r._estMo){ r._origMo=r.mo; r._origYr=r.yr; r.mo=12; r.yr=(window.CUR_YR||r.yr); r.fmo=12; r.fyr=r.yr; r.fm=12; r.fy=r.yr; r._estMo=true; } // [v377] sync fmo/fyr — เดิม MFC (อ่าน fmo) ยังนับเดือนเก่า
       if(_isNb || r._isLow){ r._isEstimate=true; }
     });
@@ -1848,8 +1867,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V655.2';
-    var _BUILD_TIME='3 ส.ค. 2569 (V655.2 ฟอนต์ตารางเท่ากัน + กล่องซ้อน + สถานะเครื่องไทย + ถอดการ์ด Daily Board)';
+    var _BUILD_VER='V657.0';
+    var _BUILD_TIME='3 ส.ค. 2569 (V657 ประวัติแก้ Status + ปี 2026 เป็นต้นไป + CA/High ไม่โดนดันไป ธ.ค.)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน

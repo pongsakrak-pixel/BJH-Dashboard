@@ -1086,8 +1086,11 @@
         if(window.BUD_YEARS) Object.keys(window.BUD_YEARS).forEach(function(y){ if(parseInt(y)>0) yrSet[y]=1; });
         if(window.ACTUAL_FAD_YEARS) Object.keys(window.ACTUAL_FAD_YEARS).forEach(function(y){ if(parseInt(y)>0) yrSet[y]=1; });
       } catch(e){}
-      var yrs=Object.keys(yrSet).map(Number).sort(function(a,b){return a-b;});
-      if(!yrs.length) yrs=[CUR_YR];
+      /* [V657] ตัดปีก่อน 2026 ออก — BUD_YEARS / ACTUAL_FAD_YEARS ลาก 2023-2025 เข้ามาด้วย
+         ใช้ค่าคงที่ ไม่ใช้ CUR_YR — ไม่งั้นปีหน้าจะซ่อน 2026 ทิ้งเอง */
+      var _YR_MIN = 2026;
+      var yrs=Object.keys(yrSet).map(Number).filter(function(y){ return y>=_YR_MIN; }).sort(function(a,b){return a-b;});
+      if(!yrs.length) yrs=[Math.max(CUR_YR,_YR_MIN)];
       fyr.innerHTML = yrs.map(function(y){
         var lbl = String(y) + (y > CUR_YR ? ' (วางแผน)' : '');
         return '<option value="'+y+'"'+(y===CUR_YR?' selected':'')+'>'+lbl+'</option>';
@@ -1416,6 +1419,26 @@
     setText('db-spord', fmtM(_spOrdMerged));
     setText('db-spord-pct', pctFmt(_spOrdMerged,sumBud));
     setText('db-spord-cnt', fmtN(_cntR('spOrdProc'))+' items');
+    /* [V656] เตือนว่ากำลังกรอง status อยู่ — เคยหลงว่าการ์ด SP เป็น ฿0 เพราะไม่มีของ
+       ที่จริงคือลืมติ๊ก status คืน (_sfOn บังคับเป็น 0 เงียบๆ) */
+    try{
+      var _sfBtn=document.getElementById('db-sumst-btn');
+      if(_sfBtn){
+        var _sfAct=!!(window._sumStatusApplies && window._sumStatusApplies());
+        var _sfN=(window._sumStatusFilter||[]).length, _sfT=(window._SUM_PILLS||[]).length;
+        if(_sfAct){
+          _sfBtn.textContent='\u2699 \u0e01\u0e23\u0e2d\u0e07 '+_sfN+'/'+_sfT;
+          _sfBtn.style.borderColor='#fb923c'; _sfBtn.style.color='#fb923c';
+          _sfBtn.style.background='rgba(251,146,60,.12)';
+          _sfBtn.title='\u0e01\u0e33\u0e25\u0e31\u0e07\u0e01\u0e23\u0e2d\u0e07 status \u0e2d\u0e22\u0e39\u0e48 \u2014 \u0e22\u0e2d\u0e14\u0e17\u0e35\u0e48\u0e40\u0e2b\u0e47\u0e19\u0e44\u0e21\u0e48\u0e43\u0e0a\u0e48\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14';
+        } else {
+          _sfBtn.textContent='\u2699';
+          _sfBtn.style.borderColor='var(--bd2)'; _sfBtn.style.color='var(--tx)';
+          _sfBtn.style.background='var(--sur2)';
+          _sfBtn.title='\u0e40\u0e25\u0e37\u0e2d\u0e01 Status';
+        }
+      }
+    }catch(e){}
     // hidden (กัน setText error เดิม)
     setText('db-sccarry', fmtM(sumScCarry));
     setText('db-spproc', fmtM(sumSpProcOnly));

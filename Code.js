@@ -2857,26 +2857,13 @@ function saveManualEdit(payloadStr) {
     var rows = JSON.parse(payloadStr);
     var sh   = getManualEditSheet();
     var now  = new Date().toISOString();
-    var lastRow = sh.getLastRow();
-    var existMap = {};
-    if (lastRow > 1) {
-      // column 13 = rowKey (เฉพาะแถว) — match ด้วย rowKey
-      var existing = sh.getRange(2, 1, lastRow-1, 13).getValues();
-      existing.forEach(function(r, i) {
-        var k = String(r[12]||''); // rowKey
-        if (k) existMap[k] = i+2;
-      });
-    }
+    // [V657] append ทุกครั้ง — เดิมทับแถวเดิมตาม rowKey ทำให้ประวัติหาย
+    //   ใบเดียวแก้ซ้ำ = เห็นแค่คนสุดท้าย และ OldStatus กลายเป็นค่าที่คนก่อนตั้ง ไม่ใช่ค่าจริง
+    //   getManualEdits() หยิบแถวล่าสุดต่อ rowKey มาใช้ → พฤติกรรมเดิมทุกอย่าง
     rows.forEach(function(r) {
-      var rowData = [r.qn||'', r.customer||'', r.editorId||'', r.editorName||'',
+      sh.appendRow([r.qn||'', r.customer||'', r.editorId||'', r.editorName||'',
         r.oldStatus||'', r.newStatus||'', r.newMonth||'', r.newYear||'',
-        r.newIp||'', r.salesName||'', now, '', r.rowKey||''];
-      var k = String(r.rowKey||'');
-      if (k && existMap[k]) {
-        sh.getRange(existMap[k], 1, 1, 13).setValues([rowData]);
-      } else {
-        sh.appendRow(rowData);
-      }
+        r.newIp||'', r.salesName||'', now, '', r.rowKey||'']);
     });
     return JSON.stringify({ ok: true, saved: rows.length });
   } catch(e) {
@@ -2895,8 +2882,40 @@ function getManualEdits() {
         editorName: String(r[3]), oldStatus: String(r[4]), newStatus: String(r[5]),
         newMonth: r[6], newYear: r[7], newIp: String(r[8]), salesName: String(r[9]),
         editedAt: String(r[10]), cancelled: String(r[11]), rowKey: String(r[12]||'') };
-    }).filter(function(r){ return r.qn && r.cancelled !== 'Cancelled'; });
+    });
+    // [V657] append-only → 1 ใบมีหลายแถว เก็บแถวล่างสุด (=ล่าสุด) ต่อ rowKey ก่อน
+    //   ต้อง dedupe ก่อนกรอง Cancelled — ไม่งั้นแถวเก่าที่ยัง active จะโผล่ขึ้นมาแทนใบที่ยกเลิกไปแล้ว
+    var _latest = {};
+    edits.forEach(function(e){ if (e.qn) _latest[e.rowKey || e.qn] = e; });
+    edits = Object.keys(_latest).map(function(k){ return _latest[k]; })
+      .filter(function(e){ return String(e.cancelled||'').indexOf('Cancelled') < 0; });
     return JSON.stringify({ ok: true, edits: edits });
+  } catch(e) {
+    return JSON.stringify({ ok: false, error: e.message });
+  }
+}
+
+/* [V657] ดึงประวัติการแก้ Status ทั้งหมด (รวมที่ยกเลิกแล้ว) — สำหรับหน้า Config
+   ต่างจาก getManualEdits() ที่คืนเฉพาะค่าล่าสุดที่ยังมีผลเอาไปคำนวณ */
+function getManualEditLog(limitStr) {
+  try {
+    var lim = parseInt(limitStr, 10); if (!(lim > 0)) lim = 300;
+    if (lim > 1000) lim = 1000;
+    var sh = getManualEditSheet();
+    var lastRow = sh.getLastRow();
+    if (lastRow < 2) return JSON.stringify({ ok: true, rows: [], total: 0 });
+    var total = lastRow - 1;
+    var start = lastRow - lim + 1; if (start < 2) start = 2;
+    var dat = sh.getRange(start, 1, lastRow - start + 1, 13).getValues();
+    var out = dat.map(function(r) {
+      return { qn: String(r[0]||''), customer: String(r[1]||''),
+        editorId: String(r[2]||''), editorName: String(r[3]||''),
+        oldStatus: String(r[4]||''), newStatus: String(r[5]||''),
+        newMonth: r[6], newYear: r[7], newIp: String(r[8]||''),
+        salesName: String(r[9]||''), editedAt: String(r[10]||''),
+        cancelled: String(r[11]||''), rowKey: String(r[12]||'') };
+    }).filter(function(r){ return r.qn; }).reverse();   // ล่าสุดขึ้นก่อน
+    return JSON.stringify({ ok: true, rows: out, total: total });
   } catch(e) {
     return JSON.stringify({ ok: false, error: e.message });
   }
@@ -2910,14 +2929,17 @@ function cancelManualEdit(payloadStr) {
     if (lastRow < 2) return JSON.stringify({ ok: true });
     var dat = sh.getRange(2, 1, lastRow-1, 13).getValues();
     rows.forEach(function(p) {
+      // [V657] mark เฉพาะแถวล่าสุดของ key นั้น และไม่ทับ EditedAt อีกต่อไป
+      //   ของเดิม mark ทุกแถวที่ match + เขียนทับเวลาแก้ → ประวัติหายหมด
+      var _last = -1;
       for (var i = 0; i < dat.length; i++) {
         // match ด้วย rowKey (เฉพาะแถว) ถ้ามี, fallback qn (ข้อมูลเก่า)
         var rowK = String(dat[i][12]||'').trim();
         var match = p.rowKey ? (rowK === String(p.rowKey).trim()) : (String(dat[i][0]).trim() === String(p.qn).trim());
-        if (match) {
-          sh.getRange(i+2, 12).setValue('Cancelled');
-          sh.getRange(i+2, 11).setValue(new Date().toISOString()+' [Cancelled by '+(p.editorName||'')+']');
-        }
+        if (match) _last = i;
+      }
+      if (_last >= 0) {
+        sh.getRange(_last+2, 12).setValue('Cancelled ' + new Date().toISOString() + ' by ' + (p.editorName||''));
       }
     });
     return JSON.stringify({ ok: true });

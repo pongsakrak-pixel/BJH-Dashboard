@@ -254,7 +254,7 @@ window.CFG_GROUPS = [
   {g:'sp',     keys:['armon','email']},
   {g:'area',   keys:['provrep','bkksales','hospgrp','areaovr']},   // [C10] Sales Areas · [V524] +bkksales (ต่อจาก provrep)
   {g:'status', keys:['sgroup','hmstage','ctype','pstatus']},   // [C17] +ประเภทสัญญา · [V562] +สถานะอะไหล่
-  {g:'sys',    keys:['users','tabperm','mbusers','mblinks','stats','apicfg','dataquery']}   // [C20] เอา upload ออก · [V535] +mbusers · [V545] +mblinks (เดิมไม่อยู่หมวดไหน -> โผล่ทุกหมวด)
+  {g:'sys',    keys:['users','tabperm','medit','mbusers','mblinks','stats','apicfg','dataquery']}   // [C20] เอา upload ออก · [V535] +mbusers · [V545] +mblinks (เดิมไม่อยู่หมวดไหน -> โผล่ทุกหมวด)
 ];
 // [C19] tab ที่เลิกใช้แล้ว — ห้ามโชว์เด็ดขาด (ต่างจาก cfg-tab-adminonly ที่แค่ซ่อนตาม role)
 //   fad/spfix/fcfad/budget = ซ้ำกับ Dashboard inline edit (md-bud-body / md-fad-body)
@@ -776,12 +776,87 @@ function cfgTab(t){
   if(t==='pending') cfgPendingInit();
   if(t==='fcfad') cfgFcfadInit();
   if(t==='tabperm') cfgTabPermInit();
+  if(t==='medit') cfgMeditInit(); // [V657] ประวัติแก้ Status
   if(t==='stats') cfgLoadAccessStats(); // ★ Access Stats auto-load
   if(t==='apicfg') cfgApiInit(); // ★ API Config init
   if(t==='email') cfgEmailInit(); // [v242]
   if(t==='qfchips') cfgQfInit(); // ★ Quick Filter chips config
   if(t==='dataquery') cfgDataQueryInit(); // [v217] Data Query
 }
+
+// ─── [V657] ประวัติการแก้ Status — อ่านจากชีต sales_manual_edit ─────
+//   saveManualEdit() เปลี่ยนเป็น append-only แล้ว จึงเห็นได้ทุกครั้งที่มีคนกด
+window._cfgMeditRows = [];
+function _meditTs(iso){
+  if(!iso) return '—';
+  var d = new Date(String(iso).replace(/ \[.*$/,''));
+  if(isNaN(d.getTime())) return String(iso).slice(0,16).replace('T',' ');
+  var p = function(n){ return (n<10?'0':'')+n; };
+  return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2)+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function cfgMeditInit(){
+  var body = document.getElementById('cfg-medit-body');
+  if(!body) return;
+  var info = document.getElementById('cfg-medit-info');
+  body.innerHTML = '<tr><td colspan="6" style="padding:14px;color:var(--mu2)">กำลังโหลด…</td></tr>';
+  if(info) info.textContent = '';
+  if(!(typeof google!=='undefined' && google.script && google.script.run)){
+    body.innerHTML = '<tr><td colspan="6" style="padding:14px;color:var(--mu2)">โหลดไม่ได้ในโหมดนี้</td></tr>';
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(res){
+      var d = {}; try{ d = JSON.parse(res)||{}; }catch(e){}
+      if(!d.ok){
+        body.innerHTML = '<tr><td colspan="6" style="padding:14px;color:#f87171">โหลดไม่สำเร็จ</td></tr>';
+        return;
+      }
+      window._cfgMeditRows = d.rows || [];
+      if(info) info.textContent = 'ทั้งหมด ' + (d.total||0) + ' รายการ · แสดงล่าสุด ' + window._cfgMeditRows.length;
+      cfgMeditFilter();
+    })
+    .withFailureHandler(function(e){
+      body.innerHTML = '<tr><td colspan="6" style="padding:14px;color:#f87171">โหลดไม่สำเร็จ: '+esc((e&&e.message)||'')+'</td></tr>';
+    })
+    .getManualEditLog('300');
+}
+function cfgMeditFilter(){
+  var body = document.getElementById('cfg-medit-body');
+  if(!body) return;
+  var qEl = document.getElementById('cfg-medit-q');
+  var q = String((qEl&&qEl.value)||'').trim().toLowerCase();
+  var rows = window._cfgMeditRows || [];
+  if(q){
+    rows = rows.filter(function(r){
+      return (String(r.qn||'')+' '+String(r.customer||'')+' '+String(r.editorName||'')+' '+String(r.salesName||''))
+        .toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  if(!rows.length){
+    body.innerHTML = '<tr><td colspan="6" style="padding:14px;color:var(--mu2)">'+(q?'ไม่พบรายการที่ค้น':'ยังไม่มีการแก้ Status')+'</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function(r){
+    var cancelled = String(r.cancelled||'').indexOf('Cancelled') >= 0;
+    var mo = (r.newMonth||'') ? (r.newMonth+'/'+(r.newYear||'')) : '—';
+    return '<tr style="border-bottom:1px solid var(--bd)'+(cancelled?';opacity:.5':'')+'">'
+      + '<td style="padding:7px 10px;white-space:nowrap;font-family:var(--mono);color:var(--mu2)">'+esc(_meditTs(r.editedAt))+'</td>'
+      + '<td style="padding:7px 10px;white-space:nowrap">'+esc(r.editorName||r.editorId||'—')+'</td>'
+      + '<td style="padding:7px 10px"><span style="font-family:var(--mono)">'+esc(r.qn||'')+'</span>'
+        + (r.customer?'<br><span style="font-size:11px;color:var(--mu2)">'+esc(r.customer)+'</span>':'')+'</td>'
+      + '<td style="padding:7px 10px"><span style="color:var(--mu2)">'+esc(r.oldStatus||'—')+'</span>'
+        + ' <span style="color:var(--mu)">→</span> <b>'+esc(r.newStatus||'—')+'</b></td>'
+      + '<td style="padding:7px 10px;white-space:nowrap;font-family:var(--mono)">'+esc(mo)+'</td>'
+      + '<td style="padding:7px 10px;white-space:nowrap">'
+        + (cancelled
+            ? '<span style="color:#f87171">คืนค่าเดิมแล้ว</span>'
+            : '<span style="color:#4ade80">ใช้งานอยู่</span>')
+        + '</td>'
+      + '</tr>';
+  }).join('');
+}
+window.cfgMeditInit = cfgMeditInit;
+window.cfgMeditFilter = cfgMeditFilter;
 
 // ─── [V506] Mobile links config (admin) ────────────────────────────
 function cfgMblInit(){
