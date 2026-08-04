@@ -6077,8 +6077,52 @@ window.dbPrintPPT = function(){
     // [V515] +เลขบิล +ประเภทสัญญา  ·  [V518] +วันที่บิล  => 22 คอลัมน์
     var COL_W = [{wch:4},{wch:10},{wch:10},{wch:12},{wch:18},{wch:16},{wch:12},{wch:32},{wch:18},{wch:30},{wch:20},{wch:14},{wch:14},{wch:14},{wch:16},{wch:12},{wch:12},{wch:14},{wch:14},{wch:18},{wch:10},{wch:16}];
 
+    /* [V660] SP Forecast คงเหลือ = ค่า config FCSP_FIXED − SP ที่เปิดบิลแล้วในเดือนนั้น
+       - ค่า 5 ล้านมาจาก config (ตั้งมือที่ Budget & Actual) ไม่ใช่ใบจริง จึงไม่เคยโผล่ใน Excel มาก่อน
+       - "เปิดบิลแล้ว" = st==='Billed' เท่านั้น (ตามที่ตกลง)
+       - หักจนถึง 0 แล้วหยุด ไม่ติดลบ */
+    var fcspRaw=[0,0,0,0,0,0,0,0,0,0,0,0], spBilled=[0,0,0,0,0,0,0,0,0,0,0,0];
+    for(var fm=1;fm<=12;fm++){ fcspRaw[fm-1] = Number(fcspCfg[String(fm)]||0) * 1000; }
+    D.forEach(function(r){
+      if(!r || String(r.t||'').toUpperCase()!=='SP') return;
+      if(String(r.st||'')!=='Billed') return;
+      if(Number(r.yr||0)!==yr) return;
+      var bmo=Number(r.mo||0); if(bmo<1||bmo>12) return;
+      spBilled[bmo-1] += (r._sp_fix_exvat!=null) ? Number(r._sp_fix_exvat||0) : Number(r.px||0)/1.07;
+    });
+
     // Sheet 1: Ordered
     var oRows = _buildRows(orderedRecs);
+    /* [V660.1] แถว SP Forecast คงเหลือ — ต่อท้ายตารางเป็นบรรทัดปกติ ให้รวมยอดในชีตได้เลย
+       ยอด = FCSP_FIXED[เดือน] (config, หน่วยพันบาท) − SP ที่ st='Billed' เดือนนั้น  ตัดที่ 0
+       ใส่ที่ oRows เท่านั้น ไม่ยัดเข้า orderedRecs → ชีต Pivot ไม่นับซ้ำ */
+    (function(){
+      var fcNo = oRows.length;   // header 1 แถว + ข้อมูล -> running number ต่อจากของเดิม
+      for(var fm=1; fm<=12; fm++){
+        var fcT = Number(fcspCfg[String(fm)]||0) * 1000;
+        if(!(fcT > 0)) continue;
+        var net = Math.max(0, fcT - spBilled[fm-1]);
+        if(!(net > 0)) continue;
+        var netEx = Math.round(net);
+        oRows.push([
+          fcNo++,                                    // NO
+          '',                                        // Team
+          'SE',                                      // MD Group
+          '',                                        // Order date
+          'SP-FORECAST-' + MO_EN[fm-1] + '-' + String(yr).slice(2),   // PO/Contract number
+          '',                                        // เลขบิล
+          '',                                        // วันที่บิล
+          'SP Forecast (หักที่เปิดบิลแล้ว)',          // Hospital
+          '', '', '',                                // Brand / Model / ประเภทสัญญา
+          Math.round(netEx * 1.07),                  // Amount (Inc.Vat)
+          netEx,                                     // Grand Total (Ex.Vat)
+          '', '', '', '', '', '',
+          MO_EN[fm-1] + '-' + String(yr).slice(2),   // Period
+          '',                                        // Risk
+          'SP Forecast'                              // Status (Quick Filter)
+        ]);
+      }
+    })();
     var wsO = XLSX.utils.aoa_to_sheet(oRows);
     wsO['!cols'] = COL_W;
     _applyNumberFormat(wsO, oRows.length);
@@ -6096,20 +6140,6 @@ window.dbPrintPPT = function(){
       if(tp==='SP') pivSP[mo-1]+=amtEx;
       else pivSC[mo-1]+=amtEx;
     });
-    /* [V660] SP Forecast คงเหลือ = ค่า config FCSP_FIXED − SP ที่เปิดบิลแล้วในเดือนนั้น
-       - ค่า 5 ล้านมาจาก config (ตั้งมือที่ Budget & Actual) ไม่ใช่ใบจริง จึงไม่เคยโผล่ใน Excel มาก่อน
-       - "เปิดบิลแล้ว" = st==='Billed' เท่านั้น (ตามที่ตกลง)
-       - หักจนถึง 0 แล้วหยุด ไม่ติดลบ */
-    var fcspRaw=[0,0,0,0,0,0,0,0,0,0,0,0], spBilled=[0,0,0,0,0,0,0,0,0,0,0,0];
-    for(var fm=1;fm<=12;fm++){ fcspRaw[fm-1] = Number(fcspCfg[String(fm)]||0) * 1000; }
-    D.forEach(function(r){
-      if(!r || String(r.t||'').toUpperCase()!=='SP') return;
-      if(String(r.st||'')!=='Billed') return;
-      if(Number(r.yr||0)!==yr) return;
-      var bmo=Number(r.mo||0); if(bmo<1||bmo>12) return;
-      spBilled[bmo-1] += (r._sp_fix_exvat!=null) ? Number(r._sp_fix_exvat||0) : Number(r.px||0)/1.07;
-    });
-
     var pivRows = [['เดือน','SC (฿ Ex.VAT)','SP (฿ Ex.VAT)','Total (฿ Ex.VAT)','SP Forecast (ตั้งไว้)','SP เปิดบิลแล้ว','SP Forecast คงเหลือ']];
     var totSC=0, totSP=0, totFc=0, totFcB=0, totFcL=0;
     for(var pm=0;pm<12;pm++){

@@ -1556,7 +1556,7 @@ function cfgSaveFadToSheet(){
     var el=document.getElementById('fad-val-'+i);
     if(el&&el.value.trim()!=='') fad[String(i)]=parseFloat(el.value)||0;
   }
-  _cfgSaveToSheet('fad',fad,'fad-log');
+  _cfgSaveToSheet('fad',fad,'fad-log',function(){ window._cfgReapply({fad:fad}); });   // [V660.1]
 }
 
 function cfgSaveSpfixToSheet(){
@@ -1607,7 +1607,7 @@ function cfgSaveFcspToSheet(){
     if(el&&!el.disabled&&el.value.trim()!=='') fcsp[String(i)]=parseFloat(el.value)||0;
   }
   window.FCSP_FIXED = fcsp;
-  _cfgSaveToSheet('fcsp',fcsp,'spfix-log');
+  _cfgSaveToSheet('fcsp',fcsp,'spfix-log',function(){ window._cfgReapply(); });   // [V660.1]
   try{ if(typeof dbRender==='function') dbRender(); }catch(e){}
 }
 
@@ -1653,7 +1653,7 @@ function cfgSaveFcfadToSheet(){
     if(el&&!el.disabled&&el.value.trim()!=='') fcfad[String(i)]=parseFloat(el.value)||0;
   }
   window.FCFAD_FIXED = fcfad;
-  _cfgSaveToSheet('fcfad',fcfad,'fcfad-log');
+  _cfgSaveToSheet('fcfad',fcfad,'fcfad-log',function(){ window._cfgReapply(); });   // [V660.1]
   try{ if(typeof dbRender==='function') dbRender(); }catch(e){}
 }
 
@@ -1686,7 +1686,17 @@ function cfgSaveBudgetToSheet(){
       return;
     }
   }
-  _cfgSaveToSheet('budget',budget,'bud-log',function(){ window._cfgReapply({budget:budget}); });   // [V660]
+  _cfgSaveToSheet('budget',budget,'bud-log',function(){
+    /* [V660.1] applyConfig ต้องการ cfg.budget[ปี][team][type] แต่ payload ที่ save เป็น flat {team:{SC,SP}}
+       (backend เติมปีปัจจุบันให้เอง — Code.js:1998 legacy branch)
+       ถ้าส่ง flat เข้าไปตรงๆ BUD_YEARS จะได้ key เป็นชื่อทีม → curBud ว่าง → BUD ไม่เปลี่ยน → แถบ Quarterly/Monthly Budget ค้าง
+       จึงต้องห่อปีก่อน และ merge ของปีอื่นไว้ ไม่ให้หาย */
+    var _y = String(new Date().getFullYear());
+    var _m = {};
+    try{ Object.keys(window.BUD_YEARS||{}).forEach(function(k){ _m[k] = window.BUD_YEARS[k]; }); }catch(e){}
+    _m[_y] = budget;
+    window._cfgReapply({budget:_m});
+  });   // [V660]
 }
 
 function cfgSaveSaBudToSheet(){
@@ -1696,7 +1706,7 @@ function cfgSaveSaBudToSheet(){
     var el=document.getElementById('sabud-'+n);
     if(el) sa_bud[n]=parseFloat(el.value)||0;
   });
-  _cfgSaveToSheet('sa_bud',sa_bud,'sabud-log');
+  _cfgSaveToSheet('sa_bud',sa_bud,'sabud-log',function(){ window._cfgReapply({sa_bud:sa_bud}); });   // [V660.1]
 }
 
 // ── [v242] Email เบิกอะไหล่ config (section email_req) ──
@@ -3851,7 +3861,10 @@ window._cbApplyBtn = function(){
   if(!b) return;
   var c = window._QF_CFG || {};
   var lb = c['qf_confirm_label'];
-  b.textContent = (lb && String(lb).trim()) ? String(lb).trim() : '\u2705 Focus';
+  var nm = (lb && String(lb).trim()) ? String(lb).trim() : '\u2705 Focus';
+  b.textContent = nm;
+  var t = document.getElementById('cb-title-lbl');   // [V660.3] หัวโมดัลใช้ชื่อเดียวกัน
+  if(t) t.textContent = nm;
   var show = (window._CB_ROLE_OK !== false);
   var sv = c['qf_confirm_show'];
   if(sv === 'false' || sv === false) show = false;

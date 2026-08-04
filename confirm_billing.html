@@ -1,7 +1,7 @@
 <div id="cb-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:8000;align-items:flex-start;justify-content:center;padding:20px 12px;overflow-y:auto">
   <div style="background:var(--sur);border:1px solid var(--bd2);border-radius:12px;width:min(1100px,96vw);box-shadow:0 24px 80px #000c;display:flex;flex-direction:column;max-height:90vh">
     <div style="display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid var(--bd);background:var(--sur2);border-radius:12px 12px 0 0">
-      <div style="font-size:14px;font-weight:700;color:var(--tx);flex:1">✅ Confirm Billing — <span id="cb-month-label" style="color:#fbbf24"></span></div>
+      <div style="font-size:14px;font-weight:700;color:var(--tx);flex:1"><span id="cb-title-lbl">✅ Focus</span> — <span id="cb-month-label" style="color:#fbbf24"></span></div><!-- [V660.3] ชื่อตามปุ่ม (Config > Quick Filter chips) -->
       <button onclick="closeConfirmBilling()" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:22px;line-height:1;padding:0 4px">×</button>
     </div>
     <div style="padding:10px 20px;border-bottom:1px solid var(--bd);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -80,7 +80,7 @@ function openConfirmBilling() {
   document.getElementById('cb-note').value = '';
   document.getElementById('cb-err').textContent = '';
   document.getElementById('cb-ok').textContent = '';
-  document.getElementById('cb-filter-st').value = '';
+  document.getElementById('cb-filter-st').value = 'Backlog (Confirmed)';   // [V660.3] เปิดมากรองให้เลย (ป้ายตาม Config — ตอนนี้คือ Sales Focus)
   var _ipReset = document.getElementById('cb-filter-ip'); if(_ipReset) _ipReset.value = '';
   document.getElementById('cb-search').value = '';
   // Populate Sales dropdown from D[] (unique sa values)
