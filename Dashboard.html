@@ -6082,7 +6082,9 @@ window.dbPrintPPT = function(){
        - "เปิดบิลแล้ว" = st==='Billed' เท่านั้น (ตามที่ตกลง)
        - หักจนถึง 0 แล้วหยุด ไม่ติดลบ */
     var fcspRaw=[0,0,0,0,0,0,0,0,0,0,0,0], spBilled=[0,0,0,0,0,0,0,0,0,0,0,0];
-    for(var fm=1;fm<=12;fm++){ fcspRaw[fm-1] = Number(fcspCfg[String(fm)]||0) * 1000; }
+    /* [V660.4] FCSP_FIXED เก็บเป็น "บาท" อยู่แล้ว — ห้าม x1000
+       (ต่างจาก BUD ที่เก็บเป็นพันบาทและมี *1000 ตอนใช้ · getStats:936 อ่าน fcspCfg ตรงๆ ไม่คูณ) */
+    for(var fm=1;fm<=12;fm++){ fcspRaw[fm-1] = Number(fcspCfg[String(fm)]||0); }
     D.forEach(function(r){
       if(!r || String(r.t||'').toUpperCase()!=='SP') return;
       if(String(r.st||'')!=='Billed') return;
@@ -6099,7 +6101,7 @@ window.dbPrintPPT = function(){
     (function(){
       var fcNo = oRows.length;   // header 1 แถว + ข้อมูล -> running number ต่อจากของเดิม
       for(var fm=1; fm<=12; fm++){
-        var fcT = Number(fcspCfg[String(fm)]||0) * 1000;
+        var fcT = Number(fcspCfg[String(fm)]||0);   // [V660.4] บาทอยู่แล้ว ไม่คูณ
         if(!(fcT > 0)) continue;
         var net = Math.max(0, fcT - spBilled[fm-1]);
         if(!(net > 0)) continue;
@@ -6123,9 +6125,17 @@ window.dbPrintPPT = function(){
         ]);
       }
     })();
+    /* [V660.4] แถวรวมด้านบน — SUBTOTAL(9) นับเฉพาะแถวที่ผ่านตัวกรองของ Excel
+       แทรกเป็นแถวที่ 2 (header=1, ข้อมูลเริ่ม 3) ให้ตรงกับสูตร L3:L9999 */
+    oRows.splice(1, 0, ['', '', '', '', '', '', '', 'รวมทั้งหมด (ตามตัวกรอง)', '', '', '',
+                        '', '', '', '', '', '', '', '', '', '', '']);
     var wsO = XLSX.utils.aoa_to_sheet(oRows);
     wsO['!cols'] = COL_W;
     _applyNumberFormat(wsO, oRows.length);
+    ['L','M'].forEach(function(col){
+      wsO[col+'2'] = { t:'n', f:'SUBTOTAL(9,'+col+'3:'+col+'9999)', z:'#,##0' };
+    });
+    wsO['!autofilter'] = { ref: 'A1:V' + oRows.length };   // เปิดตัวกรองให้เลย SUBTOTAL จะได้มีความหมาย
     XLSX.utils.book_append_sheet(wb, wsO, 'Ordered');
 
     // Sheet 2: Pivot (เดือน × SC/SP/Total) จาก orderedRecs (ข้อมูลเดียวกับ Sheet 1)
