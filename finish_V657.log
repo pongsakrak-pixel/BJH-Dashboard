@@ -1,0 +1,135 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260804132307
+Username: BERLI\PongsakR
+RunAs User: BERLI\PongsakR
+Configuration Name: 
+Machine: PDNB-00H192094 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoExit -ExecutionPolicy Bypass -Command cd C:\bjh-dashboard; .\start.ps1
+Process ID: 44520
+PSVersion: 5.1.26100.7705
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7705
+BuildVersion: 10.0.26100.7705
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+PS C:\bjh-dashboard> $MSG = 'V657 manual-edit history log + year dropdown from 2026 (folds in V655.x/V656)'
+PS C:\bjh-dashboard> function Say($t, $c) { Write-Host $t -ForegroundColor $c }
+PS C:\bjh-dashboard> # ---------- verify: disk must already be V657.0 ----------
+PS C:\bjh-dashboard> $ovPath = Join-Path $ROOT 'overrides.html'
+PS C:\bjh-dashboard> if (-not (Test-Path $ovPath)) { Say 'ABORT: overrides.html not found' Red; exit 1 }
+PS C:\bjh-dashboard> $m = [regex]::Match([IO.File]::ReadAllText($ovPath), "_BUILD_VER\s*=\s*'([^']+)'")
+PS C:\bjh-dashboard> $curVer = if ($m.Success) { $m.Groups[1].Value } else { '?' }
+PS C:\bjh-dashboard> Say ("disk _BUILD_VER : " + $curVer) Yellow
+disk _BUILD_VER : V657.0
+PS C:\bjh-dashboard> if ($curVer -ne 'V657.0') {
+  Say 'ABORT: disk is not V657.0 - run patch_V657.ps1 first' Red
+  exit 1
+}
+PS C:\bjh-dashboard> # ---------- verify: the V657 code is really on disk ----------
+PS C:\bjh-dashboard> $codePath = Join-Path $ROOT 'Code.js'
+PS C:\bjh-dashboard> if (([IO.File]::ReadAllText($codePath)).IndexOf('function getManualEditLog') -lt 0) {
+  Say 'ABORT: Code.js has no getManualEditLog - files are incomplete, re-run patch_V657.ps1' Red
+  exit 1
+}
+PS C:\bjh-dashboard> Say 'disk looks complete' Green
+disk looks complete
+PS C:\bjh-dashboard> Write-Host ''
+
+PS C:\bjh-dashboard> Say 'untracking backup files (kept on disk)...' Cyan
+untracking backup files (kept on disk)...
+PS C:\bjh-dashboard> git rm --cached --ignore-unmatch -q -- *.bak_* *.broken_* last.log 2>$null
+
+PS C:\bjh-dashboard> Write-Host ''
+
+PS C:\bjh-dashboard> Say 'clasp push...' Cyan
+clasp push...
+PS C:\bjh-dashboard> clasp push
+
+PS C:\bjh-dashboard> if ($LASTEXITCODE -ne 0) {
+  Say '' Red
+  Say 'clasp push FAILED - this is where the first run stopped.' Red
+  Say 'Common causes:' Yellow
+  Say '   - not logged in        -> run:  clasp login' Yellow
+  Say '   - wrong folder         -> check .clasp.json exists here' Yellow
+  Say '   - node not on PATH     -> run:  .\start.ps1  first' Yellow
+  Say 'Copy the error above and send it over.' Yellow
+  try { Stop-Transcript | Out-Null } catch {}
+  exit 1
+}
+PS C:\bjh-dashboard> Say 'clasp push OK' Green
+clasp push OK
+PS C:\bjh-dashboard> Write-Host ''
+
+PS C:\bjh-dashboard> Say 'create deployment (Code.js changed -> New Version required)...' Cyan
+create deployment (Code.js changed -> New Version required)...
+PS C:\bjh-dashboard> clasp create-deployment -i AKfycbzO7LW1DPUOzosAxpZsJPvX8PoW4eJ8rDHuZI-GXwHpT9yXDERnrEdPVvdOoffQLVF-kw -d $MSG
+
+PS C:\bjh-dashboard> if ($LASTEXITCODE -ne 0) { Say 'WARN: create-deployment failed - deploy manually from the editor' Yellow }
+PS C:\bjh-dashboard> else { Say 'deployment OK' Green }
+else : The term 'else' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the 
+spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ else { Say 'deployment OK' Green }
++ ~~~~
+    + CategoryInfo          : ObjectNotFound: (else:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+else : The term 'else' is not recognized as the name of a cmdlet, function, script file, or operable program. Check
+the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ else { Say 'deployment OK' Green }
++ ~~~~
+    + CategoryInfo          : ObjectNotFound: (else:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\bjh-dashboard> Write-Host ''
+
+PS C:\bjh-dashboard> Say 'git commit + push...' Cyan
+git commit + push...
+PS C:\bjh-dashboard> git add -A
+
+PS C:\bjh-dashboard> git commit -m $MSG
+
+PS C:\bjh-dashboard> git push origin main
+
+PS C:\bjh-dashboard> if ($LASTEXITCODE -ne 0) { Say 'WARN: git push failed (check network / credentials)' Yellow }
+PS C:\bjh-dashboard> else { Say 'git push OK' Green }
+else : The term 'else' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the 
+spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ else { Say 'git push OK' Green }
++ ~~~~
+    + CategoryInfo          : ObjectNotFound: (else:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+else : The term 'else' is not recognized as the name of a cmdlet, function, script file, or operable program. Check
+the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ else { Say 'git push OK' Green }
++ ~~~~
+    + CategoryInfo          : ObjectNotFound: (else:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+
+PS C:\bjh-dashboard> Write-Host ''
+
+PS C:\bjh-dashboard> Say 'DONE - V657.0 pushed' Green
+DONE - V657.0 pushed
+PS C:\bjh-dashboard> Write-Host ''
+
+PS C:\bjh-dashboard> Say 'NEXT STEPS' Yellow
+NEXT STEPS
+PS C:\bjh-dashboard> Say '  1. Ctrl+Shift+R, then press Load Data' Yellow
+  1. Ctrl+Shift+R, then press Load Data
+PS C:\bjh-dashboard> Say '  2. the badge top-left should read V657.0' Yellow
+  2. the badge top-left should read V657.0
+PS C:\bjh-dashboard> Say '  3. Year dropdown should list only 2026 / 2027' Yellow
+  3. Year dropdown should list only 2026 / 2027
+PS C:\bjh-dashboard> Say '  4. Config -> History of Status edits' Yellow
+  4. Config -> History of Status edits
+PS C:\bjh-dashboard> try { Stop-Transcript | Out-Null } catch {}
+**********************
+Windows PowerShell transcript end
+End time: 20260804153643
+**********************

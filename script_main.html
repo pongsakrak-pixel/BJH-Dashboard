@@ -248,12 +248,42 @@ window._psGroup = function(g){
   Object.keys(m).forEach(function(k){ if(m[k] === g) o[k] = 1; });
   return o;
 };
+
+// ════════════════════════════════════════════════════════
+// [V658] Job Status Mapping — r.sn (JOB_STATUS) -> done | pending | cancel
+//   ใช้ตัดสิน IP ของใบที่ยังไม่มีเลขบิล: done -> SC/SP Billing · pending -> SC Pending / RP Pending
+//   เก็บใน _config_kv section 'job_status' = { 'ชื่อสถานะ':'done'|'pending'|'cancel' }
+//   สำคัญ: SC ใช้ 'Completed' แต่ SP ใช้ 'PO Completed' — จึงเทียบตรงๆ ไม่ได้
+// ════════════════════════════════════════════════════════
+window._JS_DEFAULT = {
+  'Completed':'done',
+  'PO Completed':'done',
+  'Contract Completed':'done',
+  'Canceled':'cancel',
+  'Rejected':'cancel',
+  'Delegated':'pending'
+};
+window._jsMap = function(){
+  var m = {};
+  Object.keys(window._JS_DEFAULT).forEach(function(k){ m[k] = window._JS_DEFAULT[k]; });
+  try{
+    var c = window._JOB_STATUS;
+    if(c && typeof c === 'object') Object.keys(c).forEach(function(k){ if(c[k]) m[k] = c[k]; });
+  }catch(e){}
+  return m;
+};
+// ค่าที่ไม่รู้จัก = pending (ปลอดภัยกว่า done — กันนับเงินเข้า Billing ทั้งที่งานยังไม่จบ)
+window._jsClass = function(sn){
+  var k = String(sn||'').trim();
+  if(!k) return 'pending';
+  return window._jsMap()[k] || 'pending';
+};
 window.CFG_GROUPS = [
   {g:'home',   keys:['pending']},
   {g:'sco',    keys:['qfchips']},
   {g:'sp',     keys:['armon','email']},
   {g:'area',   keys:['provrep','bkksales','hospgrp','areaovr']},   // [C10] Sales Areas · [V524] +bkksales (ต่อจาก provrep)
-  {g:'status', keys:['sgroup','hmstage','ctype','pstatus']},   // [C17] +ประเภทสัญญา · [V562] +สถานะอะไหล่
+  {g:'status', keys:['sgroup','hmstage','jobst','ctype','pstatus']},   // [V658] +jobst   // [C17] +ประเภทสัญญา · [V562] +สถานะอะไหล่
   {g:'sys',    keys:['users','tabperm','medit','mbusers','mblinks','stats','apicfg','dataquery']}   // [C20] เอา upload ออก · [V535] +mbusers · [V545] +mblinks (เดิมไม่อยู่หมวดไหน -> โผล่ทุกหมวด)
 ];
 // [C19] tab ที่เลิกใช้แล้ว — ห้ามโชว์เด็ดขาด (ต่างจาก cfg-tab-adminonly ที่แค่ซ่อนตาม role)
@@ -777,12 +807,84 @@ function cfgTab(t){
   if(t==='fcfad') cfgFcfadInit();
   if(t==='tabperm') cfgTabPermInit();
   if(t==='medit') cfgMeditInit(); // [V657] ประวัติแก้ Status
+  if(t==='jobst') cfgJobStInit(); // [V658] สถานะงาน
   if(t==='stats') cfgLoadAccessStats(); // ★ Access Stats auto-load
   if(t==='apicfg') cfgApiInit(); // ★ API Config init
   if(t==='email') cfgEmailInit(); // [v242]
   if(t==='qfchips') cfgQfInit(); // ★ Quick Filter chips config
   if(t==='dataquery') cfgDataQueryInit(); // [v217] Data Query
 }
+
+// ─── [V658] สถานะงาน (JOB_STATUS) -> done | pending | cancel ─────
+function cfgJobStInit(){
+  var body = document.getElementById('cfg-jobst-body');
+  if(!body) return;
+  var map = (typeof window._jsMap==='function') ? window._jsMap() : {};
+  // นับจำนวนใบจริงที่ใช้แต่ละสถานะ — ค่าที่มีจริงสำคัญกว่าค่า default
+  var cnt = {};
+  try{
+    (window.D||[]).forEach(function(r){
+      var k = String((r&&r.sn)||'').trim();
+      if(k && k!=='None') cnt[k] = (cnt[k]||0)+1;
+    });
+  }catch(e){}
+  var keys = {};
+  Object.keys(map).forEach(function(k){ keys[k]=1; });
+  Object.keys(cnt).forEach(function(k){ keys[k]=1; });
+  var list = Object.keys(keys).sort(function(a,b){ return (cnt[b]||0)-(cnt[a]||0) || a.localeCompare(b); });
+  if(!list.length){
+    body.innerHTML = '<tr><td colspan="5" style="padding:14px;color:var(--mu2)">ยังไม่มีข้อมูล — กด Load Data ก่อน</td></tr>';
+    return;
+  }
+  var _r = function(k, v, cur){
+    var id = 'jobst-'+k.replace(/[^A-Za-z0-9]/g,'_')+'-'+v;
+    return '<td style="text-align:center;padding:6px 10px"><input type="radio" id="'+id+'" name="jobst-'+k.replace(/[^A-Za-z0-9]/g,'_')+'" value="'+v+'"'+(cur===v?' checked':'')+'></td>';
+  };
+  body.innerHTML = list.map(function(k){
+    var cur = map[k] || 'pending';
+    var isNew = !map[k];
+    return '<tr style="border-bottom:1px solid var(--bd)" data-k="'+esc(k)+'">'
+      + '<td style="padding:6px 10px">'+esc(k)
+        + (isNew?' <span style="font-size:10px;color:#fb923c;font-weight:700">ใหม่</span>':'')+'</td>'
+      + '<td style="padding:6px 10px;text-align:right;font-family:var(--mono);color:var(--mu2)">'+(cnt[k]||0)+'</td>'
+      + _r(k,'done',cur) + _r(k,'pending',cur) + _r(k,'cancel',cur)
+      + '</tr>';
+  }).join('');
+  var lg = document.getElementById('cfg-jobst-log');
+  var nNew = list.filter(function(k){ return !map[k]; }).length;
+  if(lg) lg.innerHTML = nNew
+    ? '<span style="color:#fb923c">พบสถานะที่ยังไม่ได้ตั้งไว้ '+nNew+' ค่า — ตอนนี้ถือเป็น ยังไม่จบ</span>'
+    : '';
+}
+function cfgSaveJobSt(){
+  var body = document.getElementById('cfg-jobst-body');
+  var lg = document.getElementById('cfg-jobst-log');
+  if(!body) return;
+  var map = {};
+  Array.prototype.forEach.call(body.querySelectorAll('tr[data-k]'), function(tr){
+    var k = tr.getAttribute('data-k') || '';
+    var sel = tr.querySelector('input[type=radio]:checked');
+    if(k && sel) map[k] = sel.value;
+  });
+  if(lg) lg.innerHTML = '<span style="color:var(--mu2)">กำลังบันทึก…</span>';
+  window._JOB_STATUS = map;
+  try{ window._LAST_CONFIG = window._LAST_CONFIG||{}; window._LAST_CONFIG.job_status = map; }catch(e){}
+  if(!(typeof google!=='undefined' && google.script && google.script.run)){
+    if(lg) lg.innerHTML = '<span style="color:#fb923c">บันทึกไม่ได้ในโหมดนี้</span>';
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(){
+      if(lg) lg.innerHTML = '<span style="color:#4ade80">บันทึกแล้ว — ต้องกด <b>Load Data</b> สดอีกครั้ง IP ถึงจะคำนวณใหม่ (cache ไม่ re-classify)</span>';
+      cfgJobStInit();
+    })
+    .withFailureHandler(function(e){
+      if(lg) lg.innerHTML = '<span style="color:#f87171">บันทึกไม่สำเร็จ: '+esc((e&&e.message)||'')+'</span>';
+    })
+    .saveConfigSection(JSON.stringify({section:'job_status', data:map}));
+}
+window.cfgJobStInit = cfgJobStInit;
+window.cfgSaveJobSt = cfgSaveJobSt;
 
 // ─── [V657] ประวัติการแก้ Status — อ่านจากชีต sales_manual_edit ─────
 //   saveManualEdit() เปลี่ยนเป็น append-only แล้ว จึงเห็นได้ทุกครั้งที่มีคนกด
@@ -2782,7 +2884,7 @@ function resolveFadStatus(bn, px){
   if(Math.abs(Number(info.sum||0))<0.0001) return {state:'FAD Net Zero',actual:false,zero:true,px:0};
   return {state:'FAD Matched',actual:true,zero:false,px:px};
 }
-function ipCls(ip){if(ip==='Cancel PM')return 'bip-excluded';if(ip==='Bill Not Print')return 'bip-excluded';if(ip==='SC Cancel')return 'bip-excluded';if(ip==='PM Completed')return 'bip-sc-comp';if(ip==='Waiting PM')return 'bip-sc-wait-pm';if(ip==='SC Billed')return 'bip-sp-bill';if(ip==='SP Billed')return 'bip-sp-bill';if(ip==='SC Billing')return 'bip-sc-wait-bill';if(ip==='SP Billing')return 'bip-sc-inprog';if(ip==='Waiting Bill')return 'bip-sc-wait-bill';if(ip==='SC:Contract In Progress')return 'bip-sc-inprog';if(ip==='PM Completed')return 'bip-sc-cont';if(ip==='SC:Bill Confirmed'||ip==='SP:Bill Confirmed')return 'bip-sp-bill';if(ip==='SC:FAD Net Zero'||ip==='SP:FAD Net Zero')return 'bip-rp-proc';if(ip==='RP:Stock In')return 'bip-rp-si';if(ip==='RP:Wait Stock-In')return 'bip-rp-wsi';return 'bip-rp-proc';}
+function ipCls(ip){if(ip==='Cancel PM')return 'bip-excluded';if(ip==='Bill Not Print')return 'bip-excluded';if(ip==='SC Cancel')return 'bip-excluded';if(ip==='PM Completed')return 'bip-sc-comp';if(ip==='Waiting PM')return 'bip-sc-wait-pm';if(ip==='SC Pending'||ip==='RP Pending')return 'bip-sc-wait-pm';/* [V658] งานยังไม่จบ — สีเดียวกับ Waiting PM */if(ip==='SC Billed')return 'bip-sp-bill';if(ip==='SP Billed')return 'bip-sp-bill';if(ip==='SC Billing')return 'bip-sc-wait-bill';if(ip==='SP Billing')return 'bip-sc-inprog';if(ip==='Waiting Bill')return 'bip-sc-wait-bill';if(ip==='SC:Contract In Progress')return 'bip-sc-inprog';if(ip==='PM Completed')return 'bip-sc-cont';if(ip==='SC:Bill Confirmed'||ip==='SP:Bill Confirmed')return 'bip-sp-bill';if(ip==='SC:FAD Net Zero'||ip==='SP:FAD Net Zero')return 'bip-rp-proc';if(ip==='RP:Stock In')return 'bip-rp-si';if(ip==='RP:Wait Stock-In')return 'bip-rp-wsi';return 'bip-rp-proc';}
 function fM(v,dec){dec=dec||2;return v?(v/1e6).toFixed(dec)+'M':'—';}
 function fMC(v){return v?(v/1e6).toFixed(2):'—';}
 /* [V649] ต้นเหตุ "(s || \"\").replace is not a function" — โมดัลรายละเอียดเด้ง
@@ -8113,6 +8215,7 @@ function applyConfig(cfg){
   try{ window._NOTE_SN = cfg.note_sn || {}; }catch(e){ window._NOTE_SN={}; } // [B8]
   try{ window._SALES_REGION = cfg.sales_region || {}; if(window._applySalesRegion) window._applySalesRegion(); }catch(e){} // [B10]
   try{ window._PARTS_STATUS = cfg.parts_status || {}; }catch(e){}   // [V562] Parts Status Mapping
+  try{ window._JOB_STATUS = cfg.job_status || {}; }catch(e){}       // [V658] Job Status Mapping
   window._PRICE_TBL = cfg.price_table || {}; // [v403] Price table config (brand||model)
   window._PRICE_GROUPS = cfg.price_groups || {}; // [v433] Price table แบบกลุ่ม
   window._QSP_EXCEPTIONS = cfg.qsp_exceptions || {}; // [v448] QSP23/24 ที่ยกเว้นไม่ filter ออก

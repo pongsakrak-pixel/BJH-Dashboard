@@ -558,7 +558,7 @@ html[data-theme="light"] .dtbl .tsp{font-size:11px !important;}
 /* ═══════════════ IP PILLS (Quick Filter) ═══════════════ */
 .ip-pill{padding:3px 10px;border-radius:12px;border:1px solid var(--bd2);background:transparent;color:var(--mu);cursor:pointer;font-family:var(--font);font-size:10px;white-space:normal;text-align:center;line-height:1.3;font-weight:500;transition:all .12s;}
 .ip-pill:hover{border-color:var(--ac2);color:var(--tx);}
-.ip-pill.on{border-width:1.5px;font-weight:600;}
+.ip-pill.on{border-width:2px;font-weight:600;}
 .ip-actual{border-color:var(--grn);color:#52b788;}
 .ip-actual.on{background:rgba(52,211,153,.12);border-color:var(--grn);color:var(--grn);}
 .ip-all{border-color:var(--ac2);color:var(--ac2);}
@@ -575,6 +575,19 @@ html[data-theme="light"] .dtbl .tsp{font-size:11px !important;}
 .ip-spf-proc.on{background:#2d1b69;color:#b794f4;}
 .ip-pend{border-color:#dc2626;color:#fca5a5;background:rgba(220,38,38,.08);}
 .ip-pend.on{background:rgba(239,68,68,.14);border-color:#ef4444;color:#fecaca;}
+/* [V658] chip ที่กดอยู่ — เดิมต่างจากตัวปกติแค่ความจางของพื้น (.08 -> .12) มองไม่ออก
+   โหมดสว่างทำถูกแล้วตั้งแต่ V479.27b (บรรทัด 1333-1336) — รอบนี้ทำโหมดมืดให้ตรงกัน
+   พื้นทึบสีเต็ม + ตัวอักษรขาว + วงแหวนรอบนอก — สีที่ทึบยังบอกได้ว่ากรองอะไรอยู่ */
+.ip-all.on{background:#2563eb;border-color:#93c5fd;}
+.ip-billed.on{background:#16a34a;border-color:#86efac;}
+.ip-actual.on{background:#0f766e;border-color:#5eead4;}
+.ip-backlog.on{background:#b45309;border-color:#fcd34d;}
+.ip-ordered.on{background:#0369a1;border-color:#7dd3fc;}
+.ip-spf-ord.on{background:#5b21b6;border-color:#c4b5fd;}
+.ip-spf-proc.on{background:#4c1d95;border-color:#ddd6fe;}
+.ip-pend.on{background:#b91c1c;border-color:#fca5a5;}
+.ip-pill.on{border-width:2px;font-weight:800;color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.07);transform:translateY(-1px);}
+.ip-all.on,.ip-billed.on,.ip-actual.on,.ip-backlog.on,.ip-ordered.on,.ip-spf-ord.on,.ip-spf-proc.on,.ip-pend.on{color:#fff;}
 
 /* co-box: Carry On warning */
 .co-box{background:#1a1200;border:1px solid #7a5a00;border-radius:5px;padding:6px 10px;margin-bottom:10px;font-size:11px;color:#f6ad55;}

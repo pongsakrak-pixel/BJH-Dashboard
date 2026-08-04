@@ -1166,6 +1166,15 @@ function _getConfig_() {
       });
     }
 
+    // [V658] Job Status Mapping — { 'Completed':'done', 'Delegated':'pending', ... }
+    if (ckv.job_status && Object.keys(ckv.job_status).length > 0) {
+      config.job_status = {};
+      Object.keys(ckv.job_status).forEach(function(k){
+        var v = String(ckv.job_status[k]||'').trim();
+        if (v) config.job_status[k] = v;
+      });
+    }
+
     return { ok: true, config: config };
   } catch (err) {
     return { ok: false, error: err.message };
@@ -2206,7 +2215,8 @@ function saveConfigSection(payloadStr) {
     // [V479] Sales Retention — config แยกฝ่ายขาย (รุ่น→กลุ่ม / รพ.→กลุ่ม)
     if (section === 'sales_model_group' || section === 'sales_hosp_group'
         || section === 'sa_hosp_group' || section === 'sa_area_override'
-        || section === 'quote_notes' || section === 'cd_cleared') {
+        || section === 'quote_notes' || section === 'cd_cleared'
+        || section === 'job_status') {   // [V658]
       var srMap = {};
       Object.keys(data||{}).forEach(function(k){
         var v = String(data[k]||'').trim();
