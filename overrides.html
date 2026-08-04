@@ -147,7 +147,7 @@
         if(!r.ip || (/FAD|Bill Confirmed|Await FAD|SP Billed|SP Billing|RP Pending|Cancel PM/i.test(r.ip) && r.ip!=='Bill Merge')){
           /* [V658] เงื่อนไขเดิมคงไว้ — แค่แตกช่องที่เคยเป็น SP Billing ตามสถานะงาน
              SP ใช้คำว่า 'PO Completed' ไม่ใช่ 'Completed' → ต้องผ่าน _jsClass เท่านั้น */
-          var _jcS = (typeof window._jsClass==='function') ? window._jsClass(sn) : (/Completed/.test(String(sn||''))?'done':(sn==='Canceled'?'cancel':'pending'));
+          var _jcS = (typeof window._jsClass==='function') ? window._jsClass(sn) : (String(sn||'').trim()==='Completed'?'done':(sn==='Canceled'?'cancel':'pending'));
           r.ip = (r.sb==='รอดำเนินการออกบิล')
                ? ((_jcS==='cancel') ? 'Cancel PM' : (_jcS==='done' ? 'SP Billing' : 'RP Pending'))
                : 'SP Billed';
@@ -1876,8 +1876,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V658.0';
-    var _BUILD_TIME='3 ส.ค. 2569 (V658 IP ตามสถานะงาน SC/RP Pending + ไฮไลต์ Quick Filter)';
+    var _BUILD_VER='V658.1';
+    var _BUILD_TIME='3 ส.ค. 2569 (V658.1 IP ตามสถานะงาน · PO Completed = ยังไม่จบ)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
