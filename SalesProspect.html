@@ -7706,6 +7706,10 @@ window.spRenderContract = function(){
   function _conModel(dn){ var c=_conByQuo[dn]; return c ? (c.Model||c.MODEL||'') : ''; }
   function _conStart(dn){ var c=_conByQuo[dn]; return c ? (c.CONTRACT_START_DATE||'') : ''; }
   function _conEnd(dn){ var c=_conByQuo[dn]; return c ? (c.CONTRACT_END_DATE||'') : ''; }
+  /* [V666.3] ลิงก์ของหน้า Contract Monitor ต้องไปที่ "สัญญา" ไม่ใช่ใบเสนอราคา
+     RAW_CONTRACT มี URL ครบ 5455/5455 (ชี้ EDIT_SC ของ CON_ID นั้น)
+     ไม่มีสัญญา (ยังเป็นแค่ใบเสนอ) -> fallback ไป URL ของ quotation */
+  function _conUrl(dn){ var c=_conByQuo[dn]; return c ? String(c.URL||'').trim() : ''; }
 
   // brand options (รวม brand จากสัญญาด้วย)
   var brands=[];
@@ -7735,7 +7739,9 @@ window.spRenderContract = function(){
     return {
       sa:q.SALES_SERVICE_NAME||'', cu:q.CUSTOMER_NAME||'', br:_br,
       ml:_ml, fromQuo:_fromQuo,
-      qn:dn, quoSt:quoSt, stage:stage, hm:hm, url:String(q.URL||'').trim(),   /* [V666.2] ลิงก์ SmartFlow — เดิมไม่ได้ส่ง url ต่อ ลิงก์เลยไม่ขึ้น */
+      qn:dn, quoSt:quoSt, stage:stage, hm:hm,
+      url:(_conUrl(dn) || String(q.URL||'').trim()),   /* [V666.3] สัญญาก่อน ไม่มีค่อยใช้ใบเสนอราคา */
+      urlIsCon:!!_conUrl(dn),
       px:(parseFloat(q.QH_TOTAL_AMT)||0)-(parseFloat(q.QH_TOTAL_DISCOUNT)||0),
       startD:_startD, endD:_endD
     };
