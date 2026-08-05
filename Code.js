@@ -1781,8 +1781,23 @@ function _bjhJobDateRange_() {
 
 function smartflowJobSyncToDrive() {
   var teams = _bjhJobTeamIds_();
+  var pulled = false;
+  /* [V665.3] ปุ่ม Load SF ดึงแค่ TX — RAW_TEAMS อยู่ใน master ซึ่งมีแต่ trigger ตี 0 ดึงให้
+     ไม่มีปุ่ม master ในระบบเลย -> ถ้าให้ผู้ใช้ "ไปกด Load SF ก่อน" จะไม่มีวันได้ RAW_TEAMS
+     จึงดึง master ให้เองเมื่อยังไม่มี แล้วลองอ่านซ้ำ */
   if (!teams.length) {
-    return { ok: false, error: 'ยังไม่มี RAW_TEAMS — กด Load SF (master) ก่อน 1 ครั้ง' };
+    try {
+      Logger.log('[V665.3] ไม่มี RAW_TEAMS -> ดึง master ให้อัตโนมัติ');
+      smartflowDailySyncToDrive();
+      pulled = true;
+      teams = _bjhJobTeamIds_();
+    } catch (e) {
+      return { ok: false, error: 'ดึง master ไม่สำเร็จ: ' + e.message };
+    }
+  }
+  if (!teams.length) {
+    return { ok: false, error: 'ดึง master แล้วแต่ยังไม่พบ RAW_TEAMS — '
+      + 'ตรวจว่า SmartFlow เปิดสิทธิ์ dataset นี้ให้ client แล้วหรือยัง' };
   }
   var rg = _bjhJobDateRange_();
   var token = smartflowGetToken_();
@@ -1816,7 +1831,7 @@ function smartflowJobSyncToDrive() {
   var file = folder.createFile(blob);
   try { _bjhBumpVer('JOB'); } catch (e) {}
   return { ok: true, file: SMARTFLOW_JOB_FILE, bytes: file.getSize(),
-    teams: teams.length, start: rg.start, end: rg.end };
+    teams: teams.length, start: rg.start, end: rg.end, masterPulled: pulled };
 }
 
 /* [V665] ให้ client เรียกดูข้อมูล job ที่ดึงมาแล้ว */

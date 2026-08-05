@@ -1,5 +1,5 @@
 # STATE — BJH Revenue Dashboard
-อัปเดต: 3 ส.ค. 2569 · เวอร์ชันล่าสุด **V665.2**
+อัปเดต: 3 ส.ค. 2569 · เวอร์ชันล่าสุด **V665.3**
 
 ---
 
@@ -16,7 +16,7 @@
 
 ---
 
-## รอบนี้ (V665.2) — ดึง RAW_TEAMS + RAW_SERVICE_JOB ครบตามคู่มือ API
+## รอบนี้ (V665.3) — ดึง RAW_TEAMS + RAW_SERVICE_JOB ครบตามคู่มือ API
 
 ### เดิมดึงแค่ 8 จาก 10 dataset
 `RAW_TEAMS` และ `RAW_SERVICE_JOB` ไม่เคยถูกดึงเลย (ยืนยันจาก `meta.selected_datasets` ในไฟล์จริงที่ผู้ใช้ส่งมา 5 ส.ค. 69)
@@ -39,9 +39,16 @@
 `getServiceJobData()` เตรียมไว้ให้หน้าจอเรียกอ่าน
 
 ### ลำดับการใช้งาน
-1. `🔌 Load SF` → ได้ `RAW_TEAMS` เข้ามาใน master
-2. `🛠 Load SR Job` → ใช้ TEAM_ID จากขั้น 1 ดึง SR
-3. `Load Data`
+1. `🛠 Load SR Job` → **ดึง master ให้เองถ้ายังไม่มี `RAW_TEAMS`** แล้วดึง SR ต่อ
+2. `Load Data`
+
+**[V665.3] แก้: ปุ่ม `Load SF` ดึงแค่ TX ไม่ได้ดึง master**
+`RAW_TEAMS` อยู่ใน `SMARTFLOW_MASTER_DATASETS` ซึ่งดึงโดย `smartflowDailySyncToDrive()` — **มีแต่ trigger ตี 0 เท่านั้นที่เรียก ไม่มีปุ่มในระบบเลย**
+ผมบอกผู้ใช้ว่า "กด Load SF ก่อน" ซึ่ง**ไม่มีวันได้ `RAW_TEAMS`** → ขึ้น error วนอยู่อย่างนั้น
+แก้: `smartflowJobSyncToDrive()` เรียก `smartflowDailySyncToDrive()` ให้เองเมื่อยังไม่มีทีม แล้วอ่านซ้ำ
+- ดึงแล้วยังไม่มี → บอกให้เช็คว่า SmartFlow เปิดสิทธิ์ dataset นี้ให้ client แล้วหรือยัง **ไม่ยิง API เปล่า**
+- ดึง master พัง → คืน error ไม่ throw
+- มีทีมอยู่แล้ว → ไม่ดึงซ้ำ
 
 ### ทดสอบ
 - `node --check` 13 บล็อกผ่าน · jsdom/vm **46/46** (V665) + ชุดเก่า 10 ชุดผ่านหมด

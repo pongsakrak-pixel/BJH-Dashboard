@@ -9251,7 +9251,8 @@ function apiSyncJob(){
       if(!r || !r.ok){ say('\u274c ' + ((r&&r.error)||'unknown'), '#f87171'); return; }
       say('\u2705 ' + (r.teams||0) + ' \u0e17\u0e35\u0e21 \u00b7 ' + (r.start||'') + ' \u2192 ' + (r.end||'')
         + ' \u00b7 ' + Math.round((r.bytes||0)/1024) + ' KB \u00b7 '
-        + Math.round((Date.now()-t0)/1000) + ' \u0e27\u0e34', '#4ade80');
+        + Math.round((Date.now()-t0)/1000) + ' \u0e27\u0e34'
+        + (r.masterPulled ? ' (\u0e14\u0e36\u0e07 master \u0e43\u0e2b\u0e49\u0e14\u0e49\u0e27\u0e22)' : ''), '#4ade80');
     })
     .withFailureHandler(function(e){
       if(btn) btn.disabled = false;
