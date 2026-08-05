@@ -7735,7 +7735,7 @@ window.spRenderContract = function(){
     return {
       sa:q.SALES_SERVICE_NAME||'', cu:q.CUSTOMER_NAME||'', br:_br,
       ml:_ml, fromQuo:_fromQuo,
-      qn:dn, quoSt:quoSt, stage:stage, hm:hm,
+      qn:dn, quoSt:quoSt, stage:stage, hm:hm, url:String(q.URL||'').trim(),   /* [V666.2] ลิงก์ SmartFlow — เดิมไม่ได้ส่ง url ต่อ ลิงก์เลยไม่ขึ้น */
       px:(parseFloat(q.QH_TOTAL_AMT)||0)-(parseFloat(q.QH_TOTAL_DISCOUNT)||0),
       startD:_startD, endD:_endD
     };
