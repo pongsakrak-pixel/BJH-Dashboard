@@ -2582,7 +2582,12 @@ function jsupETL(scRaw, partsRaw, quoRaw){
         qn:r.QH_DOC_NUMBER||'',cu:r.CUSTOMER_NAME||'',cuc:r.CUSTOMER_CODE||'',ctn:r.CONTRACT_TYPE_NAME||'',cnr:(r.CON_TYPE_TYPE||''),sa:r.SALES_SERVICE_NAME||'', // [v412]
         tm:normTeam(r.TEAM_BILL||quoTeamMap[r.QH_DOC_NUMBER]||''),px:parsePrice(r.BILL_PRICE),
         mo:mo2,yr:yr2,fmo:mo2,fyr:yr2,rbmo:parseInt(r.BILL_MONTH||0),rbyr:parseInt(r.BILL_YEAR||0),
-        ml:r.PRODUCT_NAME||'',br:'',pg:r.PROJECT_NAME||'',pn:r.PROJECT_NUMBER||'',
+        /* [V664] SF ส่ง BRAND_NAME / MODEL_NAME / SN / URL มาใน RAW_SC_BILL แล้ว (5 ส.ค. 69)
+         เดิม br:'' เสมอ เพราะยังไม่มีฟิลด์ -> ต้องไล่หาจาก Install/Contract/Quotation
+         ใช้ชื่อ scbr/scml/scsn เพราะ sn ถูกใช้เก็บ JOB_STATUS อยู่แล้ว (ชื่อชนกัน ห้ามแตะ) */
+      ml:r.PRODUCT_NAME||'',br:'',pg:r.PROJECT_NAME||'',pn:r.PROJECT_NUMBER||'',
+      scbr:String(r.BRAND_NAME||'').trim(), scml:String(r.MODEL_NAME||'').trim(),
+      scsn:String(r.SN||'').trim(), url:String(r.URL||'').trim(),
         bn:r.BILL_NUMBER,bd:r.BILL_PRINT_DATE,
         sb:r.BILL_STATUS_NAME,sc_contract:r.CONTRACT_PROCESS_STATUS_NAME||'',sc:r.CONTRACT_PROCESS_STATUS_NAME||'',
         sn:r.JOB_STATUS||'',nc:0,is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',is_cn:1,
@@ -2633,7 +2638,12 @@ function jsupETL(scRaw, partsRaw, quoRaw){
       qn:qn,cu:r.CUSTOMER_NAME||'',cuc:r.CUSTOMER_CODE||'',ctn:r.CONTRACT_TYPE_NAME||'',cnr:(r.CON_TYPE_TYPE||''),sa:r.SALES_SERVICE_NAME||'', // [v412]
       tm:normTeam(r.TEAM_BILL||quoTeamMap[qn]||''),px:parsePrice(r.BILL_PRICE),
       mo:mo,yr:yrU,fmo:mo,fyr:yrU,rbmo:billMo,rbyr:billYr,
+      /* [V664] SF ส่ง BRAND_NAME / MODEL_NAME / SN / URL มาใน RAW_SC_BILL แล้ว (5 ส.ค. 69)
+         เดิม br:'' เสมอ เพราะยังไม่มีฟิลด์ -> ต้องไล่หาจาก Install/Contract/Quotation
+         ใช้ชื่อ scbr/scml/scsn เพราะ sn ถูกใช้เก็บ JOB_STATUS อยู่แล้ว (ชื่อชนกัน ห้ามแตะ) */
       ml:r.PRODUCT_NAME||'',br:'',pg:r.PROJECT_NAME||'',pn:r.PROJECT_NUMBER||'',
+      scbr:String(r.BRAND_NAME||'').trim(), scml:String(r.MODEL_NAME||'').trim(),
+      scsn:String(r.SN||'').trim(), url:String(r.URL||'').trim(),
       bn:r.BILL_NUMBER,bd:r.BILL_PRINT_DATE,jda:(r.job_date_appointment||r.JOB_DATE_APPOINTMENT||''),
       sb:billSt,sc_contract:contract,sc:contract,sn:jobSt,
       nc:0,is_carry:(/SC Carry/.test(st))?1:0,co_ready:(st==='SC Carry')?1:0,
@@ -3256,6 +3266,32 @@ function _verifyAgainstInstall(br, ml){
 // Layer 3: QUOTATION (byQn[qn])
 // Layer 4: PARSE PRODUCT_NAME
 // + verify กับ Install Base
+/* [V664] จำนวนเครื่องต่อใบ (Package) — นับ SN ไม่ซ้ำใน RAW_SC_BILL
+   RAW_CONTRACT เก็บแค่เครื่องหลัก 1 แถว/ใบ ใช้นับไม่ได้ (ตรวจจากข้อมูลจริง 5 ส.ค. 69:
+   QSC2401-08586 -> contract 1 แถว แต่ SC_BILL 42 แถว = 5 SN x หลายงวด)
+   P = Package · เลข = จำนวนเครื่องในสัญญา */
+var _pkgCache = null;
+function _pkgCount(qn){
+  if(_pkgCache === null){
+    _pkgCache = {};
+    try{
+      var seen = {};
+      (window._jsupSC||[]).forEach(function(x){
+        var q = String(x.QH_DOC_NUMBER||'').trim();
+        var s = String(x.SN||'').trim();
+        if(!q || !s) return;
+        var k = q + '\u0000' + s;
+        if(seen[k]) return;
+        seen[k] = 1;
+        _pkgCache[q] = (_pkgCache[q]||0) + 1;
+      });
+    }catch(e){ _pkgCache = {}; }
+  }
+  return _pkgCache[String(qn||'').trim()] || 0;
+}
+window._pkgCount = _pkgCount;
+window._pkgReset = function(){ _pkgCache = null; };
+
 function resolveBM(r){
   if(!r) return {br:'',ml:''};
   var L=_buildBMLookup();
@@ -3308,6 +3344,20 @@ function resolveBM(r){
      nBr  = จำนวนยี่ห้อไม่ซ้ำ
      list = รายการเครื่อง [{br,ml,sn}]
      src  = มาจากชั้นไหน (ใช้ตรวจว่ายังพึ่งการเดาอยู่แค่ไหน) */
+  /* [V664] Layer 0 — BRAND_NAME/MODEL_NAME จาก RAW_SC_BILL ของแถวนั้นเอง
+     เป็นฟิลด์จริงรายเครื่องต่องวด ไม่ใช่การเดา จึงเชื่อก่อนทุกชั้น
+     แก้ข้อจำกัดที่ V619 เขียนไว้ว่า "RAW_SC_BILL ไม่มีฟิลด์ผูกเครื่องต่องวด" — ตอนนี้มีแล้ว
+     (Px) = ป้ายบอกว่าใบนี้เป็น Package และในสัญญามีกี่เครื่อง ไม่เกี่ยวกับยี่ห้อ */
+  var _scbr = _cleanBM(r.scbr), _scml = _cleanBM(r.scml);
+  if(_scbr){
+    var _o0 = { br:_scbr, ml:_scml || _cleanBM(r.ml), src:'sc_bill' };
+    var _pn0 = _pkgCount(qn);
+    if(_pn0 > 1){ _o0.n = _pn0; _o0.pkg = _pn0; }
+    var _allL0 = (qn && L.byInstallAll && L.byInstallAll[qn]) ? L.byInstallAll[qn] : null;
+    if(_allL0 && _allL0.length){ _o0.list = _allL0; _o0.nBr = 1; }
+    return _o0;
+  }
+
   var _all = (qn && L.byInstallAll && L.byInstallAll[qn]) ? L.byInstallAll[qn] : null;
   function _uniq(arr){ var o={},out=[]; arr.forEach(function(v){ v=String(v||'').trim(); if(v&&!o[v]){o[v]=1;out.push(v);} }); return out; }
   function _tag(o, src){
@@ -3487,6 +3537,13 @@ function extractBrandModelHTML(r){
   if(!bm.br && !bm.ml) return '<span style="color:var(--mu)">—</span>';
   var h='';
   if(bm.br) h+='<span style="font-weight:700">'+esc(bm.br)+'</span>';
+  /* [V664] (Px) — P = Package · x = จำนวนเครื่องในสัญญา (นับ SN ไม่ซ้ำใน RAW_SC_BILL)
+     ไม่เกี่ยวกับยี่ห้อ ยี่ห้อที่โชว์คือของแถวนั้นตรงๆ จาก BRAND_NAME */
+  if(bm.pkg > 1){
+    h+='<span title="ใบนี้เป็น Package มี '+bm.pkg+' เครื่องในสัญญา" '
+      +'style="margin-left:4px;font-size:10px;font-weight:700;color:var(--ac2);'
+      +'border:1px solid var(--ac2);border-radius:3px;padding:0 4px">P'+bm.pkg+'</span>';
+  }
   if(bm.ml){
     if(h) h+=' ';
     h+='<span style="font-size:10px;color:var(--mu)">'+esc(bm.ml)+'</span>';
@@ -4260,7 +4317,17 @@ function renderTbl(){
     h+='<td style="text-align:center">'+_brHTML+'</td>';
     h+='<td style="overflow:hidden"><span class="trunc">'+_mlHTML+'</span></td>';
     h+='<td style="color:var(--mu2);text-align:center;white-space:nowrap">'+esc(teamStr)+'</td>';   /* [V621] */
-    h+='<td style="font-family:var(--mono)"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.qn||'')+'">'+esc(r.qn||'—')+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+'</div></td>';
+    /* [V664] เลขใบกดเปิด SmartFlow — URL มาจาก RAW_SC_BILL / RAW_Quotation ที่ SF เพิ่งเพิ่มให้
+       ใบไหนไม่มี URL แสดงเลขเฉยๆ ไม่ทำลิงก์ตายที่กดแล้วเปิดหน้าว่าง
+       stopPropagation กันไม่ให้ไปเปิด modal รายละเอียดแถวพร้อมกัน */
+    var _qnTxt = esc(r.qn||'\u2014');
+    var _qnUrl = String(r.url||'').trim();
+    var _qnHtml = (/^https?:\/\//i.test(_qnUrl))
+      ? '<a href="'+esc(_qnUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" '
+        + 'title="\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e19 SmartFlow \u2014 '+esc(r.qn||'')+'" '
+        + 'style="color:inherit;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px">'+_qnTxt+'</a>'
+      : _qnTxt;
+    h+='<td style="font-family:var(--mono)"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.qn||'')+'">'+_qnHtml+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+'</div></td>';
     /* [V655] คืน ellipsis + tooltip — V621 ปล่อยล้นเพราะ 14px วันที่ไทยโดนตัด · 12px พอดีคอลัมน์แล้ว */
     var _pdTip=String(periodStr).replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/"/g,'&quot;').replace(/\s+/g,' ').trim();
     h+='<td style="color:var(--mu2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+_pdTip+'">'+periodStr+'</td>';
