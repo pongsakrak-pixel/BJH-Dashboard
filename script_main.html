@@ -4302,7 +4302,11 @@ function renderTbl(){
     /* [V624] เดิมใช้ _bm.multi ซึ่ง = "หลายเครื่อง" -> ยี่ห้อเดียวรุ่นเดียว 3 เครื่อง ก็ติดชิป
        ทำให้คอลัมน์ Brand หายไปเปล่า ๆ ทั้งที่รู้ยี่ห้อชัดเจน
        -> ใช้ nBr>1 (หลายยี่ห้อจริง) เท่านั้น · ไม่แตะค่า .multi เพราะ _bmAudit() ใช้อยู่ */
-    if((_bm.nBr||0)>1 && _bm.list && _bm.list.length){
+    /* [V664.2] ยี่ห้อจริงจาก RAW_SC_BILL ชนะเสมอ — ห้ามตกไปเป็นชิป "Package"
+       ชิปนั้นมีไว้ตอนที่ยังไม่รู้ยี่ห้อรายเครื่อง (V622) ซึ่งหมดความจำเป็นแล้ว
+       เคสจริง QSC2602-15510: Layer 0 ได้ยี่ห้อจริงแล้ว แต่ nBr=9 จาก Install list
+       เลยเข้าเงื่อนไขเก่าทับ ขึ้น "Package P9" แทนยี่ห้อ */
+    if((_bm.nBr||0)>1 && _bm.list && _bm.list.length && _bm.src!=='sc_bill'){
       _brHTML='<span onclick="event.stopPropagation();window._dpJumpSub=\'hw\';selRow('+r.id+')" '
         +'style="display:inline-block;padding:1px 9px;border-radius:10px;border:1px solid var(--ac2);'
         +'color:var(--ac2);cursor:pointer;line-height:1.6" '
