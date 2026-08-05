@@ -1,5 +1,5 @@
 # STATE — BJH Revenue Dashboard
-อัปเดต: 3 ส.ค. 2569 · เวอร์ชันล่าสุด **V666.0**
+อัปเดต: 3 ส.ค. 2569 · เวอร์ชันล่าสุด **V666.1**
 
 ---
 
@@ -16,7 +16,7 @@
 
 ---
 
-## รอบนี้ (V666.0) — ลิงก์ SmartFlow ครบทุกหน้า
+## รอบนี้ (V666.1) — ลิงก์ SmartFlow ครบทุกหน้า
 
 ### `URL` มาครบ 100% ทุกตาราง และชี้คนละ endpoint
 ```
@@ -33,6 +33,12 @@ RAW_SERVICE_JOB  -> EDITJOB             161/161
 - เช็ค `^https?://` ก่อนเสมอ · ไม่มี URL → คืนข้อความเปล่า **ไม่ทำลิงก์ตาย**
 - escape ทั้งข้อความและ url · `stopPropagation` กันเปิด modal พร้อมกัน
 - guard `typeof === 'function'` ทุกจุดที่เรียก
+
+### [V666.1] แก้: 3 หน้าที่ต่อผิดที่
+V666.0 ผมเติมลิงก์ตามบรรทัดที่ `grep` เจอ **โดยไม่ยืนยันว่าตรงกับหน้าที่ผู้ใช้เปิดจริง**
+หน้า SC Quotation / SP Quotation / Contract Monitor เรนเดอร์เข้า `sp-scquote-body` (6764) · `sp-spquote-body` (6955) · `sp-contract-body` (7674) — คนละที่กับที่ผมแก้
+**วิธีหาที่ถูก:** ไล่จากปุ่มแท็บ → `sp-pane-xxx` → `getElementById('sp-xxx-body')` → ฟังก์ชัน render
+Contract Monitor บังเอิญถูกอยู่แล้ว เหลือ SC/SP Quotation 2 จุด (ใช้สตริงเดียวกันเป๊ะ)
 
 ### จุดที่ต่อแล้ว
 - ตารางหลัก Service Commercial Orders — **แถว SP ชี้ `EDIT_SPARE_PART`** (เติม `url` ให้ record SP 4 จุดที่สร้างจาก `RAW_SpareParts`)
@@ -655,6 +661,16 @@ subtitle หัวหน้าเพจแก้จาก `Daily Sales · งา
   - `svcEl = null` ไม่ throw · `_set`/`_urgSet` เรียกกับ element ที่ถูกลบแล้วไม่ throw · Critical Down + popup ยังอยู่
   - ชิปสถานะเครื่องครบ 2 จุด · badge ในแถว + Weekly Report เป็นไทยตรงกัน · dropdown ค่าข้อมูลไม่โดนแตะ
   - `overrides.html` ไม่มีตัวทับ `renderTbl` / `editStatus` / `periodLabel`
+
+## วิธีลง — ส่งบรรทัดเดียวพอ
+ผู้ใช้เปิด `cd C:\bjh-dashboard` + `.\start.ps1` ค้างไว้อยู่แล้ว **ไม่ต้องส่งซ้ำ**
+ไฟล์ patch โหลดไว้ที่ `C:\bjh-dashboard\Deploy`
+
+```powershell
+& .\Deploy\patch_Vxxx.ps1
+```
+
+**ห้ามให้ก๊อปเนื้อไฟล์ไปวางใน console** — base64 หลายพันบรรทัดจะถูก parse+echo ทีละบรรทัด ช้ากว่ารันเป็นไฟล์หลายสิบเท่า
 
 ## วิธีลง
 ```powershell

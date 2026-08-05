@@ -6863,7 +6863,7 @@ window.spRenderSCQuote = function(){
     var con=conMap[r.DOC_NUMBER||'']||null;
     return '<tr style="border-bottom:1px solid var(--bd2,#374151)">'
       +'<td style="padding:6px 10px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+_esc(r.DOC_NUMBER||'—')+'</td>'
+      +'<td style="padding:6px 10px;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.DOC_NUMBER||'—', r.URL):_esc(r.DOC_NUMBER||'—'))+'</td>'   /* [V666.1] SC/SP Quotation */
       +'<td style="padding:6px 10px">'+_esc((r.CUSTOMER_NAME||'—').slice(0,22))+'</td>'
       +'<td style="padding:6px 10px;color:var(--mu);font-size:11.5px;max-width:280px" title="'+_esc(r.SUBJECT_EMAIL||'')+'">'+_esc((r.SUBJECT_EMAIL||'—').slice(0,48))+'</td>'
       +'<td style="padding:6px 10px;color:var(--mu);font-size:12px">'+_esc(r.CONTRACT_TYPE_NAME||'—')+'</td>'
@@ -7029,7 +7029,7 @@ window.spRenderSPQuote = function(){
     var _mcn=pInfo.sn?(_snMcName[pInfo.sn]||''):'';
     return '<tr style="border-bottom:1px solid var(--bd2,#374151)">'
       +'<td style="padding:6px 10px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+_esc(r.DOC_NUMBER||'—')+'</td>'
+      +'<td style="padding:6px 10px;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.DOC_NUMBER||'—', r.URL):_esc(r.DOC_NUMBER||'—'))+'</td>'   /* [V666.1] SC/SP Quotation */
       +'<td style="padding:6px 10px">'+_esc((r.CUSTOMER_NAME||'—').slice(0,22))+'</td>'
       +'<td style="padding:6px 10px">'+_esc(r.BRAND_NAME||'—')+'</td>'
       +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(parseFloat(r.QH_TOTAL_AMT||0)-parseFloat(r.QH_TOTAL_DISCOUNT||0))+'</td>'
