@@ -6085,10 +6085,13 @@ window.dbPrintPPT = function(){
     /* [V660.4] FCSP_FIXED เก็บเป็น "บาท" อยู่แล้ว — ห้าม x1000
        (ต่างจาก BUD ที่เก็บเป็นพันบาทและมี *1000 ตอนใช้ · getStats:936 อ่าน fcspCfg ตรงๆ ไม่คูณ) */
     for(var fm=1;fm<=12;fm++){ fcspRaw[fm-1] = Number(fcspCfg[String(fm)]||0); }
-    D.forEach(function(r){
+    /* [V660.6] หักด้วย "ใบ QSP ทุกใบที่อยู่ในชีตนี้" ไม่ใช่แค่ที่เปิดบิลแล้ว
+       เดิมหักเฉพาะ st='Billed' → ใบ QSP ที่ยัง Backlog/Ordered ยังอยู่ในตารางด้วย
+       เลยกลายเป็นนับซ้ำ (forecast 4.99 + QSP 2.19 = 7.18 ทั้งที่เป้า 5 ล้าน)
+       ใช้ orderedRecs ตัวเดียวกับที่สร้างชีต → หักตรงกับสิ่งที่อยู่ในไฟล์เป๊ะ
+       (prospect อยู่คนละกอง · ใบ is_sp_fix ถูกตัดไปแล้วเมื่อมี FCSP config) */
+    orderedRecs.forEach(function(r){
       if(!r || String(r.t||'').toUpperCase()!=='SP') return;
-      if(String(r.st||'')!=='Billed') return;
-      if(Number(r.yr||0)!==yr) return;
       var bmo=Number(r.mo||0); if(bmo<1||bmo>12) return;
       spBilled[bmo-1] += (r._sp_fix_exvat!=null) ? Number(r._sp_fix_exvat||0) : Number(r.px||0)/1.07;
     });
@@ -6114,7 +6117,7 @@ window.dbPrintPPT = function(){
           'SP-FORECAST-' + MO_EN[fm-1] + '-' + String(yr).slice(2),   // PO/Contract number
           '',                                        // เลขบิล
           '',                                        // วันที่บิล
-          'SP Forecast (หักที่เปิดบิลแล้ว)',          // Hospital
+          'SP Forecast (หัก QSP ในเดือนแล้ว)',        // Hospital
           '', '', '',                                // Brand / Model / ประเภทสัญญา
           Math.round(netEx * 1.07),                  // Amount (Inc.Vat)
           netEx,                                     // Grand Total (Ex.Vat)
@@ -6172,7 +6175,7 @@ window.dbPrintPPT = function(){
       if(tp==='SP') pivSP[mo-1]+=amtEx;
       else pivSC[mo-1]+=amtEx;
     });
-    var pivRows = [['เดือน','SC (฿ Ex.VAT)','SP (฿ Ex.VAT)','Total (฿ Ex.VAT)','SP Forecast (ตั้งไว้)','SP เปิดบิลแล้ว','SP Forecast คงเหลือ']];
+    var pivRows = [['เดือน','SC (฿ Ex.VAT)','SP (฿ Ex.VAT)','Total (฿ Ex.VAT)','SP Forecast (ตั้งไว้)','SP ที่มีใบแล้ว (QSP)','SP Forecast คงเหลือ']];
     var totSC=0, totSP=0, totFc=0, totFcB=0, totFcL=0;
     for(var pm=0;pm<12;pm++){
       var sc=Math.round(pivSC[pm]), sp=Math.round(pivSP[pm]);
