@@ -106,7 +106,8 @@ function openConfirmBilling() {
     var _isSa = false;
     try{ _isSa = (typeof isSales==='function') && isSales(); }catch(e){}
     (typeof D !== 'undefined' ? D : []).forEach(function(r){
-      if(!r.st || !(window._CB_ALLOW_ST||{})[r.st]) return;
+      var _bk0 = (typeof window._stBucket==='function') ? window._stBucket(r) : String(r.st||'');   // [V662]
+      if(!_bk0 || !(window._CB_ALLOW_ST||{})[_bk0]) return;
       if(_isSa && r.sa !== _myN) return;
       if(r.ip && String(r.ip).trim()) ipSet[String(r.ip).trim()] = 1;
     });
@@ -145,8 +146,11 @@ function cbRenderList() {
     if (isSales() && r.sa !== myName) return false;
     // [V565] เฉพาะสถานะที่ยังต้อง "ยืนยันบิล" หรือ "ถอนยืนยัน" ได้เท่านั้น
     //   (เดิม blacklist -> เห็น Billed/Sale Order ปนมาด้วย)
-    if (!r.st || !(window._CB_ALLOW_ST||{})[r.st]) return false;
-    if (fSt && r.st !== fSt) return false;
+    /* [V662] กรองด้วย "กลุ่ม" ไม่ใช่ r.st ตรงๆ — ให้ตรงกับที่ตารางแสดง
+       ใบ SP + Customer Accept แสดงเป็น Prospect ในตาราง จึงต้องอยู่ใต้ตัวเลือก Prospect ที่นี่ด้วย */
+    var _bk = (typeof window._stBucket==='function') ? window._stBucket(r) : String(r.st||'');
+    if (!_bk || !(window._CB_ALLOW_ST||{})[_bk]) return false;
+    if (fSt && _bk !== fSt) return false;
     if (fIp && r.ip !== fIp) return false;
     // filter เดือน/ปี จาก r.mo / r.yr (fMo คือ number, ใช้ === แทน array indexOf)
     if (fMo && Number(r.mo) !== fMo) return false;

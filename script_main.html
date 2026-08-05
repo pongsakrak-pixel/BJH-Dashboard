@@ -2812,6 +2812,19 @@ window._FC_STATUS_GROUP_LOCAL = {
 
 // helper: เช็คว่า record มี HM stage (H หรือ M) ตาม config หรือไม่
 // ใช้สำหรับ Prospect pill filter + status badge label
+/* [V662] กติกาจัดกลุ่มสถานะ — ตัวเดียวให้ทุกหน้าใช้ร่วมกัน
+   SP ที่อยู่ 'SP Ordered (Pending)' + มี HM stage (เช่น qs='Customer Accept')
+   ตารางแสดงเป็น "Prospect" มาตั้งแต่ v393 แต่ค่า r.st จริงไม่เปลี่ยน
+   -> โมดัล Focus ที่กรองด้วย r.st ตรงๆ เลยหาไม่เจอ (ใบ QSP2511-014743)
+   ทำเป็นฟังก์ชันกลางแทนที่จะแก้เฉพาะโมดัล เพราะตรรกะนี้เคยกระจายอยู่ 2 ที่
+   (renderTbl กับ cbRenderList) แก้ที่เดียวเดี๋ยวก็เพี้ยนอีก */
+window._stBucket = function(r){
+  try{
+    if(r && r.st==='SP Ordered (Pending)' && _hasHMStage(r)) return 'Offer';
+  }catch(e){}
+  return r ? String(r.st||'') : '';
+};
+
 function _hasHMStage(r){
   if(!r) return false;
   var _map=(window._FC_HM_STATUS_LOCAL||{});
@@ -2820,6 +2833,19 @@ function _hasHMStage(r){
   var _stg=(_scK?_map[_scK]:null)||(_qsK?_map[_qsK]:null)||null;
   return (_stg==='H'||_stg==='M');
 }
+/* [V662] กติกาจัดกลุ่มสถานะ — ใช้ร่วมกันทุกหน้า
+   ตาราง Orders แสดง SP Ordered (Pending) + HM stage เป็น "Prospect" (renderTbl:4163 _spIsProspect)
+   แต่โมดัล Focus กรองด้วย r.st ตรงๆ -> เลือก Prospect แล้วหาใบพวกนี้ไม่เจอ
+   (เคส QSP2511-014743 · qs='Customer Accept' -> HM stage -> ตารางขึ้น Prospect แต่โมดัล 0 รายการ)
+   ทำเป็นฟังก์ชันกลางเพื่อไม่ให้ตรรกะเดียวกันกระจายอยู่หลายที่แล้วเพี้ยนอีก */
+window._stBucket = function(r){
+  if(!r) return '';
+  try{
+    if(r.st==='SP Ordered (Pending)' && typeof _hasHMStage==='function' && _hasHMStage(r)) return 'Offer';
+  }catch(e){}
+  return r.st || '';
+};
+
 var SA_BUD_MO = {}; // { 'พงษ์ศักดิ์': [m1,m2,...m12] } K/month
 var SA_BUD={"จีรนันท์": 50000, "ธนาวุฒิ": 50000, "ประเสริฐ": 50000, "เจนจิรา": 50000, "พงษ์ศักดิ์": 50000, "ธราภัท": 10000};
 
@@ -4160,7 +4186,9 @@ function renderTbl(){
     var hi=r.id===selId?' class="hi"':(r._manual_edit?' class="edited"':'');
     var tt=r.t==='SC'?'<span class="tsc">SC</span>':'<span class="tsp">SP</span>';
     // SP Ordered (Pending) ที่มี HM stage → แสดง "Prospect" เหมือน SC Offer
-    var _spIsProspect = (r.st==='SP Ordered (Pending)' && _hasHMStage(r));
+    var _spIsProspect = (typeof window._stBucket==='function')
+      ? (window._stBucket(r)==='Offer' && r.st!=='Offer')   // [V662] ใช้กติกากลางตัวเดียวกับโมดัล Focus
+      : (r.st==='SP Ordered (Pending)' && _hasHMStage(r));
     // [v393] _spIsProspect (SP Ordered(Pending)+HM stage) เป็นเงื่อนไขคำนวณ ไม่ใช่ status string ตรงๆ — เก็บไว้เป็น special case เดียว
     //   ที่เหลือทั้งหมด (รวม Offer/SP Ordered (Ordering) ที่เคย hardcode) ให้ _stLbl() จัดการทั้ง default + custom label
     var stLbl=_spIsProspect
