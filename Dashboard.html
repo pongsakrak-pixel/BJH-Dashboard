@@ -452,8 +452,9 @@
             <div class="flow-row" id="db-pipe-row" style="grid-template-columns:1fr 1fr;gap:6px">
               <div class="flow-card spfc" onclick="dbShowBreakdown('spprospect')" style="cursor:pointer;min-height:0;padding:8px 8px 10px"> <!-- [V475] ลดบรรทัด -->
                 <div><span class="flow-ico" style="display:inline;font-size:13px;margin:0">🔧</span> <span class="flow-name" id="db-spfc2-label" style="display:inline;margin:0">SP Forecast</span></div>
-                <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;flex-wrap:wrap"><div id="db-spfc2-target" style="font-family:var(--mono);font-size:13px;color:var(--mu);text-decoration:line-through"></div><div class="flow-val" id="db-spfc2" style="margin:1px 0">฿0</div><div class="flow-pct" id="db-spfc2-pct">0%</div></div>
-                <div id="db-spfc2-have" style="font-size:10px;color:var(--mu2);font-family:var(--mono);margin-top:2px"></div><!-- [V661] -->
+                <div id="db-spfc2-target" style="font-family:var(--mono);font-size:12px;color:var(--mu2);margin-bottom:1px"></div><!-- [V661.1] -->
+                <div id="db-spfc2-have" style="font-size:11px;color:var(--mu2);font-family:var(--mono);margin-bottom:2px"></div>
+                <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;flex-wrap:wrap"><div id="db-spfc2-lead" style="font-size:11px;color:var(--mu2)"></div><div class="flow-val" id="db-spfc2" style="margin:1px 0">฿0</div><div class="flow-pct" id="db-spfc2-pct">0%</div></div>
                 <div class="flow-sub" id="db-spfc2-star" style="display:block;margin-top:4px;border-top:1px solid var(--bd);padding-top:4px;font-size:10px">⭐ <span id="db-spfc2-star-lbl">SP Prospect</span> <b style="font-family:var(--mono);color:var(--pink)" id="db-spfc2-star-val">฿0</b></div>
               </div>
               <div class="flow-card prospect" onclick="dbShowBreakdown('prospect')" style="cursor:pointer;min-height:0;padding:8px 8px 10px"> <!-- [V475] ลดบรรทัด -->
@@ -932,9 +933,31 @@
     // [v209-B] SP Forecast = config FCSP เสมอ; All=เต็ม, รายคน=config ÷ จำนวน sales (_saN)
     var _saN=((window._SA_NAMES||[]).length)||5; // [v212] fix: _saN ต้องประกาศใน getStats (เดิมอยู่ scope dbRender -> ReferenceError ตอนเลือก Sales)
     var _fcspDiv = _saMode ? (_saN||5) : 1;
+    /* [V661.1] หัก SP ที่มีใบจริงแล้ว ออกจากเป้า — ทำที่นี่ที่เดียว
+       เป้า 5 ล้าน = ยอด SP ทั้งเดือน ไม่ใช่ "ที่จะได้เพิ่มจากที่มีอยู่แล้ว"
+       ทำเป็น "รายเดือน" ใน getStats เพื่อให้ทุกที่ที่ใช้ monthlyFCSP ถูกพร้อมกัน:
+         แถว Monthly Forecast · Quarterly Forecast · การ์ด PIPELINE · Forecast YE · Export
+       (V661.0 หักใน dbRender ด้วย _lo/_hi ของตัวเอง -> กวาดทั้งปีมาหัก เหลือ 0)
+       ไม่นับ is_sp_fix (ใบ forecast เอง) และ Offer (prospect ยังไม่ใช่ใบจริง)
+       กรอง sales เหมือนลูปหลัก เพื่อให้โหมดรายคนหักถูกคน */
+    var monthlySpHave = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var monthlyFCSPRaw = [0,0,0,0,0,0,0,0,0,0,0,0];
+    D.forEach(function(r){
+      if(!r || String(r.t||'').toUpperCase()!=='SP') return;
+      if(Number(r.is_sp_fix||0)===1) return;
+      if(String(r.st||'')==='Offer') return;
+      if(Number(r.yr||0)!==Number(yr)) return;
+      if(_saMode && String(r.sa||'')!==_saS) return;
+      var _hm=Number(r.mo||0); if(_hm<1||_hm>12) return;
+      monthlySpHave[_hm-1] += (r._sp_fix_exvat!=null) ? Number(r._sp_fix_exvat||0) : Number(r.px||0)/1.07;
+    });
     for(var fsi=1;fsi<=12;fsi++){
       var fsv = Number(fcspCfg[String(fsi)]||0) / _fcspDiv;
-      if(fsv>0){ monthlyFCSP[fsi-1] = fsv; cnt.fcsp++; cntMo.fcsp[fsi-1]++; hasFcspCfg=true; }
+      if(fsv>0){
+        monthlyFCSPRaw[fsi-1] = fsv;
+        monthlyFCSP[fsi-1] = Math.max(0, fsv - monthlySpHave[fsi-1]);   // ตัดที่ 0 ไม่ติดลบ
+        cnt.fcsp++; cntMo.fcsp[fsi-1]++; hasFcspCfg=true;
+      }
     }
     // [v191] SP Ordered + SP Processing statuses (รายคน -> Forecast SP card)
     var _SP_ORD_PROC=['SP Ordered (Ordering)','SP Forward (Ordering)','SP Ordered (Pending)','SP Forward (Pending Order)'];
@@ -1068,7 +1091,7 @@
       }
       cnt.actual=_saActCnt;
     }
-    return { monthlyActual:monthlyActual, monthlyActualSC:monthlyActualSC, monthlyActualSP:monthlyActualSP, monthlyBacklogSC:monthlyBacklogSC, monthlyBacklogSP:monthlyBacklogSP, _saMode:_saMode, monthlyActualFAD:monthlyActualFAD, monthlyOrdered:monthlyOrdered, monthlyBacklog:monthlyBacklog, monthlyOrderSC:monthlyOrderSC, _backlogSplit:{bl:_mBL,blc:_mBLC}, _orderSplit:{ord:_mScOrd,carry:_mScCar}, monthlySpOrdOnly:_mSpOrdOnly, monthlyFCSP:monthlyFCSP, monthlyFCFAD:monthlyFCFAD, monthlyProspect:monthlyProspect, monthlySpProspect:monthlySpProspect, monthlySpOrdProc:monthlySpOrdProc, mtd:mtd, cnt:cnt, cntMo:cntMo };
+    return { monthlyActual:monthlyActual, monthlyActualSC:monthlyActualSC, monthlyActualSP:monthlyActualSP, monthlyBacklogSC:monthlyBacklogSC, monthlyBacklogSP:monthlyBacklogSP, _saMode:_saMode, monthlyActualFAD:monthlyActualFAD, monthlyOrdered:monthlyOrdered, monthlyBacklog:monthlyBacklog, monthlyOrderSC:monthlyOrderSC, _backlogSplit:{bl:_mBL,blc:_mBLC}, _orderSplit:{ord:_mScOrd,carry:_mScCar}, monthlySpOrdOnly:_mSpOrdOnly, monthlyFCSP:monthlyFCSP, monthlyFCSPRaw:monthlyFCSPRaw, monthlySpHave:monthlySpHave, monthlyFCFAD:monthlyFCFAD, monthlyProspect:monthlyProspect, monthlySpProspect:monthlySpProspect, monthlySpOrdProc:monthlySpOrdProc, mtd:mtd, cnt:cnt, cntMo:cntMo };
   }
 
   function dbPopulateFilters(){
@@ -1273,25 +1296,11 @@
     var sumProsAll=sumPros+sumSpPros; // (legacy) SC+SP prospect
     // [v222] โครง 3 กลุ่ม: CONFIRMED = Actual+Billed + Backlog + BL Confirm ; ORDER = SC Ordered+SC Carry+SP Ordered+SP Processing ; PIPELINE = SP Forecast(config)+SC Prospect
     var sumSPFCx=_sumR(stats.monthlyFCSP); // SP Forecast config
-    /* [V661] หัก SP ที่มีใบจริงแล้ว ออกจากเป้า — เดิมนับซ้ำ
-       เป้า 5 ล้าน = ยอด SP ทั้งเดือน ไม่ใช่ "ที่จะได้เพิ่มจากที่มีอยู่แล้ว"
-       CONFIRMED มี SP 2.19M อยู่แล้ว + PIPELINE 5.00M -> Forecast YE บวกซ้ำ 2.19M
-       ระบบเคยกันไว้บางส่วน (hasFcspCfg ตัดใบ is_sp_fix) แต่ไม่ได้ตัดใบ QSP จริง
-       ตัดที่ 0 ไม่ติดลบ · เก็บ 3 ค่าไว้แสดงบนการ์ด ตรวจย้อนได้ */
-    var _spHave = 0;
-    try{
-      (window.D||[]).forEach(function(r){
-        if(!r || String(r.t||'').toUpperCase()!=='SP') return;
-        if(Number(r.is_sp_fix||0)===1) return;          // ใบ forecast เอง ไม่ใช่ใบจริง
-        if(String(r.st||'')==='Offer') return;          // prospect ยังไม่ใช่ใบที่มีจริง
-        var _m=Number(r.mo||0), _y=Number(r.yr||0);
-        if(_y!==Number(yr)) return;
-        if(_m<(_lo+1) || _m>_hi) return;                // ตามช่วงที่เลือกอยู่
-        _spHave += (r._sp_fix_exvat!=null) ? Number(r._sp_fix_exvat||0) : Number(r.px||0)/1.07;
-      });
-    }catch(e){ _spHave = 0; }
-    var _spFcTarget = Math.max(sumSPFCx, sumSpPros);   // [V470] max(config, SP prospect)
-    var _spForecastShown = Math.max(0, _spFcTarget - _spHave);
+    /* [V661.1] ใช้ค่าที่ getStats หักมาแล้ว — ไม่คำนวณซ้ำที่นี่
+       _sumR() ใช้ช่วงเดือนเดียวกับการ์ดอื่นทุกใบ จึงไม่มีทางเหลื่อม */
+    var _spHave     = _sumR(stats.monthlySpHave||[]);
+    var _spFcTarget = _sumR(stats.monthlyFCSPRaw||[]);
+    var _spForecastShown = Math.max(sumSPFCx, sumSpPros);
     var _spIsProspectBigger = (sumSpPros > sumSPFCx);
     // [v222] แตก Backlog (CONFIRMED) vs SC Ordered/Carry (ORDER) จาก array ใหม่
     var _bkAll=stats.monthlyBacklog||[]; // รวม Backlog + Backlog (Confirmed) ราย idx
@@ -1469,8 +1478,11 @@
     setText('db-spfc2', fmtM(_spForecastShown));
     setText('db-spfc2-pct', pctFmt(_spForecastShown,sumBud));
     /* [V661] โชว์เป้าเต็ม + ยอดที่หักไป — ตรงกับ 3 คอลัมน์ในชีต Pivot ของ Export to FAD */
-    setText('db-spfc2-target', (_spHave>0 && _spFcTarget>0) ? fmtM(_spFcTarget) : '');
-    setText('db-spfc2-have',   (_spHave>0 && _spFcTarget>0) ? ('Confirm '+fmtM(_spHave)) : '');
+    /* [V661.1] ฿5.00M ·  /  มีรายการแล้ว ฿2.19M  /  เหลือ ฿2.81M */
+    var _spShowNet = (_spHave>0 && _spFcTarget>0);
+    setText('db-spfc2-target', _spShowNet ? (fmtM(_spFcTarget)+' \u00b7') : '');
+    setText('db-spfc2-have',   _spShowNet ? ('\u0e21\u0e35\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e41\u0e25\u0e49\u0e27 '+fmtM(_spHave)) : '');
+    setText('db-spfc2-lead',   _spShowNet ? '\u0e40\u0e2b\u0e25\u0e37\u0e2d' : '');
     try{
       var _sfStar=document.getElementById('db-spfc2-star');
       var _sfLbl=document.getElementById('db-spfc2-star-lbl');
