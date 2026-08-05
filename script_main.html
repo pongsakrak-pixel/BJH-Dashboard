@@ -3351,10 +3351,20 @@ function resolveBM(r){
   var _scbr = _cleanBM(r.scbr), _scml = _cleanBM(r.scml);
   if(_scbr){
     var _o0 = { br:_scbr, ml:_scml || _cleanBM(r.ml), src:'sc_bill' };
-    var _pn0 = _pkgCount(qn);
-    if(_pn0 > 1){ _o0.n = _pn0; _o0.pkg = _pn0; }
     var _allL0 = (qn && L.byInstallAll && L.byInstallAll[qn]) ? L.byInstallAll[qn] : null;
-    if(_allL0 && _allL0.length){ _o0.list = _allL0; _o0.nBr = 1; }
+    /* [V664.1] จำนวนเครื่อง "ในสัญญา" ต้องนับจาก Installation Base ก่อน
+       SC_BILL เก็บเฉพาะเครื่องที่ออกบิลไปแล้ว ไม่ใช่ทุกเครื่องในสัญญา
+       เคสจริง QSC230525-5955: install 5 เครื่อง แต่ SC_BILL มีแค่ 2 SN -> เคยขึ้น P2 ผิด
+       Install Base ครอบคลุม SC 2,021/3,058 (66%) และ >= SC_BILL ทุกเคสที่ตรวจ
+       ที่เหลือตกมาใช้ SC_BILL ซึ่งดีกว่าไม่มีป้ายเลย */
+    var _pn0 = (_allL0 && _allL0.length) ? _allL0.length : _pkgCount(qn);
+    if(_pn0 > 1){ _o0.n = _pn0; _o0.pkg = _pn0; }
+    if(_allL0 && _allL0.length){
+      _o0.list = _allL0;
+      var _b0={}, _nb0=0;
+      _allL0.forEach(function(x){ var v=String(x.br||'').trim(); if(v&&!_b0[v]){_b0[v]=1;_nb0++;} });
+      _o0.nBr = _nb0 || 1;
+    }
     return _o0;
   }
 
@@ -4296,9 +4306,18 @@ function renderTbl(){
       _brHTML='<span onclick="event.stopPropagation();window._dpJumpSub=\'hw\';selRow('+r.id+')" '
         +'style="display:inline-block;padding:1px 9px;border-radius:10px;border:1px solid var(--ac2);'
         +'color:var(--ac2);cursor:pointer;line-height:1.6" '
-        +'title="กดดูรายละเอียด + รายการเครื่องทั้งหมด ('+_bm.list.length+' เครื่อง)">Package</span>';
+        +'title="กดดูรายละเอียด + รายการเครื่องทั้งหมด ('+_bm.list.length+' เครื่อง)">Package P'+_bm.list.length+'</span>';   // [V664.1]
     } else {
+      /* [V664.1] ป้าย (Px) ต้องอยู่ที่นี่ ไม่ใช่ extractBrandModelHTML
+         ตารางหลักสร้าง _brHTML เอง ไม่ได้เรียกฟังก์ชันนั้น -> V664.0 ป้ายเลยไม่ขึ้นสักใบ
+         P = Package · x = จำนวนเครื่องในสัญญา (ไม่เกี่ยวกับยี่ห้อ) */
       _brHTML=_bm.br?esc(_bm.br):'<span style="color:var(--mu)">—</span>';
+      if((_bm.pkg||0) > 1){
+        _brHTML += '<span onclick="event.stopPropagation();window._dpJumpSub=\'hw\';selRow('+r.id+')" '
+          + 'title="ใบนี้เป็น Package มี '+_bm.pkg+' เครื่องในสัญญา — กดดูรายการ" '
+          + 'style="margin-left:4px;font-size:10px;font-weight:700;color:var(--ac2);cursor:pointer;'
+          + 'border:1px solid var(--ac2);border-radius:3px;padding:0 4px">P'+_bm.pkg+'</span>';
+      }
     }
     var _mlHTML=_bm.ml?'<span title="'+esc(_bm.ml)+'">'+esc(_bm.ml)+'</span>':'<span style="color:var(--mu)">—</span>';
     h+='<td style="overflow:hidden;text-align:center"><span class="trunc" title="'+esc(ownerText||'')+'">'+esc(ownerText||'—')+'</span></td>';   /* [V621] */
