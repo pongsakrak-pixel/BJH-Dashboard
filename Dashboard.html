@@ -933,31 +933,13 @@
     // [v209-B] SP Forecast = config FCSP เสมอ; All=เต็ม, รายคน=config ÷ จำนวน sales (_saN)
     var _saN=((window._SA_NAMES||[]).length)||5; // [v212] fix: _saN ต้องประกาศใน getStats (เดิมอยู่ scope dbRender -> ReferenceError ตอนเลือก Sales)
     var _fcspDiv = _saMode ? (_saN||5) : 1;
-    /* [V661.1] หัก SP ที่มีใบจริงแล้ว ออกจากเป้า — ทำที่นี่ที่เดียว
-       เป้า 5 ล้าน = ยอด SP ทั้งเดือน ไม่ใช่ "ที่จะได้เพิ่มจากที่มีอยู่แล้ว"
-       ทำเป็น "รายเดือน" ใน getStats เพื่อให้ทุกที่ที่ใช้ monthlyFCSP ถูกพร้อมกัน:
-         แถว Monthly Forecast · Quarterly Forecast · การ์ด PIPELINE · Forecast YE · Export
-       (V661.0 หักใน dbRender ด้วย _lo/_hi ของตัวเอง -> กวาดทั้งปีมาหัก เหลือ 0)
-       ไม่นับ is_sp_fix (ใบ forecast เอง) และ Offer (prospect ยังไม่ใช่ใบจริง)
-       กรอง sales เหมือนลูปหลัก เพื่อให้โหมดรายคนหักถูกคน */
+    /* [V661.2] หัก SP ที่ "มีรายการแล้ว" ออกจากเป้า SP Forecast
+       นิยาม = SP ในการ์ด CONFIRMED ของเดือนนั้น (Actual+Billed + Sale Order + Sales Confirmed)
+       คำนวณจริงอยู่หลังลูปหลัก เพราะต้องรอ monthlyActualSP / monthlyBacklogSP ให้ครบก่อน */
     var monthlySpHave = [0,0,0,0,0,0,0,0,0,0,0,0];
     var monthlyFCSPRaw = [0,0,0,0,0,0,0,0,0,0,0,0];
-    D.forEach(function(r){
-      if(!r || String(r.t||'').toUpperCase()!=='SP') return;
-      if(Number(r.is_sp_fix||0)===1) return;
-      if(String(r.st||'')==='Offer') return;
-      if(Number(r.yr||0)!==Number(yr)) return;
-      if(_saMode && String(r.sa||'')!==_saS) return;
-      var _hm=Number(r.mo||0); if(_hm<1||_hm>12) return;
-      monthlySpHave[_hm-1] += (r._sp_fix_exvat!=null) ? Number(r._sp_fix_exvat||0) : Number(r.px||0)/1.07;
-    });
     for(var fsi=1;fsi<=12;fsi++){
-      var fsv = Number(fcspCfg[String(fsi)]||0) / _fcspDiv;
-      if(fsv>0){
-        monthlyFCSPRaw[fsi-1] = fsv;
-        monthlyFCSP[fsi-1] = Math.max(0, fsv - monthlySpHave[fsi-1]);   // ตัดที่ 0 ไม่ติดลบ
-        cnt.fcsp++; cntMo.fcsp[fsi-1]++; hasFcspCfg=true;
-      }
+      if(Number(fcspCfg[String(fsi)]||0) > 0){ cnt.fcsp++; cntMo.fcsp[fsi-1]++; hasFcspCfg=true; }
     }
     // [v191] SP Ordered + SP Processing statuses (รายคน -> Forecast SP card)
     var _SP_ORD_PROC=['SP Ordered (Ordering)','SP Forward (Ordering)','SP Ordered (Pending)','SP Forward (Pending Order)'];
@@ -1091,6 +1073,21 @@
       }
       cnt.actual=_saActCnt;
     }
+    /* [V661.2] SP ที่ "มีรายการแล้ว" = SP ในการ์ด CONFIRMED ของเดือนนั้น
+       ใช้ monthlyActualSP + monthlyBacklogSP ซึ่งเป็นตัวเดียวกับที่การ์ดโชว์ (บรรทัด 1368 confSP)
+       -> เลขบนการ์ด PIPELINE กับ CONFIRMED มาจากแหล่งเดียวกัน ไม่มีทางไม่ตรง
+       V661.0/.1 ผมไปเขียนลูปนับ SP เองใหม่ ซึ่งกวาดสถานะเกิน (SP Ordered/Processing/Carry)
+       และไม่ตรงกับนิยาม "CONFIRMED" ที่ผู้ใช้ต้องการหัก
+       ต้องทำหลังลูปหลัก เพราะ 2 array นี้เพิ่งถูกเติมเสร็จ */
+    for(var _fs=1;_fs<=12;_fs++){
+      var _fsv = Number(fcspCfg[String(_fs)]||0) / _fcspDiv;
+      monthlySpHave[_fs-1] = Number(monthlyActualSP[_fs-1]||0) + Number(monthlyBacklogSP[_fs-1]||0);
+      if(_fsv>0){
+        monthlyFCSPRaw[_fs-1] = _fsv;
+        monthlyFCSP[_fs-1] = Math.max(0, _fsv - monthlySpHave[_fs-1]);   // ตัดที่ 0 ไม่ติดลบ
+      }
+    }
+
     return { monthlyActual:monthlyActual, monthlyActualSC:monthlyActualSC, monthlyActualSP:monthlyActualSP, monthlyBacklogSC:monthlyBacklogSC, monthlyBacklogSP:monthlyBacklogSP, _saMode:_saMode, monthlyActualFAD:monthlyActualFAD, monthlyOrdered:monthlyOrdered, monthlyBacklog:monthlyBacklog, monthlyOrderSC:monthlyOrderSC, _backlogSplit:{bl:_mBL,blc:_mBLC}, _orderSplit:{ord:_mScOrd,carry:_mScCar}, monthlySpOrdOnly:_mSpOrdOnly, monthlyFCSP:monthlyFCSP, monthlyFCSPRaw:monthlyFCSPRaw, monthlySpHave:monthlySpHave, monthlyFCFAD:monthlyFCFAD, monthlyProspect:monthlyProspect, monthlySpProspect:monthlySpProspect, monthlySpOrdProc:monthlySpOrdProc, mtd:mtd, cnt:cnt, cntMo:cntMo };
   }
 
