@@ -5598,11 +5598,14 @@ function _spSalesOptions(id){
 function _spEmptyRow(cols,msg){
   return '<tr><td colspan="'+cols+'" style="text-align:center;padding:20px;color:var(--mu,#94a3b8)">'+msg+'</td></tr>';
 }
-function _spTbl(cols, rows_html){
+function _spTbl(cols, rows_html, aligns){
   // [v276] หัวคลิกเรียงได้ทุกตาราง
+  // [V668] aligns = align รายคอลัมน์ ('left'|'center'|'right') — ไม่ส่งมา = left เหมือนเดิม
+  //        หัวต้องตรงกับ <td> ไม่งั้นหัว 'มูลค่า' ลอยไปคนละที่กับตัวเลขที่ชิดขวา
   var tid='spt_'+(_spTbl._n=(_spTbl._n||0)+1);
   var th=cols.map(function(c,i){
-    return '<th onclick="_spSortTable(\''+tid+'\','+i+')" style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--bd2,#374151);white-space:nowrap;color:var(--mu,#94a3b8);font-weight:500;cursor:pointer;user-select:none">'+c+'<span class="sort-ar" style="opacity:.4;font-size:10px"></span></th>';
+    var _al=(aligns&&aligns[i])||'left';
+    return '<th onclick="_spSortTable(\''+tid+'\','+i+')" style="text-align:'+_al+';padding:6px 10px;border-bottom:1px solid var(--bd2,#374151);white-space:nowrap;color:var(--mu,#94a3b8);font-weight:500;cursor:pointer;user-select:none">'+c+'<span class="sort-ar" style="opacity:.4;font-size:10px"></span></th>';
   }).join('');
   return '<div style="overflow-x:auto"><table id="'+tid+'" class="sp-tbl" style="width:100%;border-collapse:collapse;font-size:13px">'
     +'<thead><tr>'+th+'</tr></thead>'
@@ -6855,6 +6858,7 @@ window.spRenderSCQuote = function(){
   // [V479.74] +เริ่ม/สิ้นสุด (user: "ให้แสดงวันที่เริ่มต้น สิ้นสุด ด้วย")
   // [V667] จัดคอลัมน์ใหม่ 13 -> 10 : รวม เริ่ม+สิ้นสุด+ปี = ช่วงสัญญา · Sales ย้ายไปหน้าปุ่ม FC
   var cols=['QN','ลูกค้า','รายละเอียด','ชนิด','ประเภทสัญญา','ช่วงสัญญา','มูลค่า','สถานะ','FC','โน้ต'];
+  var aligns=['left','left','left','center','left','left','right','left','left','center']; // [V668] ให้หัวตรงกับ <td>
   var body=rows.map(function(r){
     var isWon=!!WON[r.STATUS_NAME],isLost=!!LOST[r.STATUS_NAME];
     var stColor=isWon?'#3ddc84':isLost?'#ff5252':'#e2e8f0';
@@ -6872,17 +6876,17 @@ window.spRenderSCQuote = function(){
       +'<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+((typeof window._sfLink==='function')?window._sfLink(r.DOC_NUMBER||'—', r.URL):_esc(r.DOC_NUMBER||'—'))+'</td>'
       +'<td style="padding:6px 10px;white-space:nowrap;font-weight:600">'+_esc((r.CUSTOMER_NAME||'—').slice(0,22))+'</td>'
       +'<td style="padding:6px 10px;color:var(--mu);font-size:11.5px;max-width:280px" title="'+_esc(r.SUBJECT_EMAIL||'')+'">'+_esc((r.SUBJECT_EMAIL||'—').slice(0,48))+'</td>'
-      +'<td style="padding:6px 10px;white-space:nowrap">'+_nr+'</td>'
+      +'<td style="padding:6px 10px;white-space:nowrap;text-align:center">'+_nr+'</td>'
       +'<td style="padding:6px 10px;color:var(--mu);font-size:12px">'+_esc(r.CONTRACT_TYPE_NAME||'—')+'</td>'
       +'<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+_period+'<div style="color:var(--mu);font-size:10.5px">'+window._qnYearCell(r)+'</div></td>'
       +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(_net)+'</td>'
       +'<td style="padding:6px 10px;color:'+stColor+';font-size:12px">'+_esc(r.STATUS_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:center;white-space:nowrap"><span style="color:var(--mu);font-size:11px;margin-right:6px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</span>'+_fcCellHtml(r, _net, false)+'</td>'
+      +'<td style="padding:6px 10px;text-align:left;white-space:nowrap"><span style="color:var(--mu);font-size:11px;display:inline-block;min-width:64px;text-align:right;margin-right:8px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</span>'+_fcCellHtml(r, _net, false)+'</td>'
       +'<td style="padding:6px 10px;text-align:center">'+_qnCellHtml(r.DOC_NUMBER||'')+'</td>'
       +'</tr>';
   }).join('');
   // [V479.74] legend * (เหมือน Contract & PO)
-  el.innerHTML=_spTbl(cols,body)+(_scqHasQuo?'<div style="margin-top:8px;font-size:11px;color:#fb923c">* วันที่จากใบเสนอราคา (ยังไม่มีสัญญาจริงใน RAW_CONTRACT)</div>':'')+window._qnOldNote(_oldHid);
+  el.innerHTML=_spTbl(cols,body,aligns)+(_scqHasQuo?'<div style="margin-top:8px;font-size:11px;color:#fb923c">* วันที่จากใบเสนอราคา (ยังไม่มีสัญญาจริงใน RAW_CONTRACT)</div>':'')+window._qnOldNote(_oldHid);
 };
 
 // ── 🔧 SP QUOTATION ─────────────────────────────────────────
@@ -7028,6 +7032,7 @@ window.spRenderSPQuote = function(){
   var _mcColor={'ใช้งานไม่ได้':'#ef4444','ใช้งานได้บางส่วน':'#facc15','End of Life':'#9ca3af','ใช้งานได้ปกติ':'#3ddc84'};
   // [V667] Sales ย้ายไปหน้าปุ่ม FC (9 -> 8) ; [v397] สถานะเครื่อง / สถานะ QN แยกกันเสมอ
   var cols=['QN','ลูกค้า','Brand','มูลค่า','สถานะเครื่อง','สถานะ QN','FC','โน้ต'];
+  var aligns=['left','left','left','right','left','left','left','center']; // [V668]
   var body=rows.map(function(r){
     var pInfo=partsMap[r.DOC_NUMBER||'']||{};
     var _mcn=pInfo.sn?(_snMcName[pInfo.sn]||''):'';
@@ -7039,11 +7044,11 @@ window.spRenderSPQuote = function(){
       +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(_net)+'</td>'
       +'<td style="padding:6px 10px;font-size:12px" title="SN: '+_esc(pInfo.sn||'—')+'"><span style="color:'+(_mcColor[_mcn]||'var(--mu)')+'">'+_esc(_mcn||'—')+'</span></td>'
       +'<td style="padding:6px 10px;color:#e2e8f0;font-size:12px">'+_esc(_SPQ_LBL[r.STATUS_NAME]||r.STATUS_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:center;white-space:nowrap"><span style="color:var(--mu);font-size:11px;margin-right:6px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</span>'+_fcCellHtml(r, _net, true)+'</td>'
+      +'<td style="padding:6px 10px;text-align:left;white-space:nowrap"><span style="color:var(--mu);font-size:11px;display:inline-block;min-width:64px;text-align:right;margin-right:8px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</span>'+_fcCellHtml(r, _net, true)+'</td>'
       +'<td style="padding:6px 10px;text-align:center">'+_qnCellHtml(r.DOC_NUMBER||'')+'</td>'
       +'</tr>';
   }).join('');
-  el.innerHTML=_spTbl(cols,body)+window._qnOldNote(_oldHid);
+  el.innerHTML=_spTbl(cols,body,aligns)+window._qnOldNote(_oldHid);
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -7781,6 +7786,7 @@ window.spRenderContract = function(){
 
   // [V667] ตัด 'ผู้รับผิดชอบ' + 'Log' (เป็น — ทุกแถว ไม่มีข้อมูล) · รวม เริ่ม+สิ้นสุด = ช่วงสัญญา · Sales ย้ายไปท้าย
   var cols=['Stage','ลูกค้า','เลขที่ใบเสนอราคา','ยี่ห้อ','รุ่น','ช่วงสัญญา','สถานะใบเสนอราคา','มูลค่า','Sales','โน้ต'];
+  var aligns=['left','left','left','left','left','left','left','right','left','center']; // [V668]
   var body=rows.map(function(r){
     var sc=r.stage==='late'?'#f87171':r.stage==='near'?'#fb923c':'#94a3b8';
     var sLabel=r.stage==='late'?'🔴 Overdue':r.stage==='near'?'🟠 Due Soon':'⚪ Normal';
@@ -7800,7 +7806,7 @@ window.spRenderContract = function(){
       +'</tr>';
   }).join('');
   var _hasFromQuo=rows.some(function(r){return r.fromQuo;});
-  el.innerHTML=_spTbl(cols,body)+(_hasFromQuo?'<div style="margin-top:8px;font-size:11px;color:#fb923c">* ข้อมูลจากใบเสนอราคา (ยังไม่มีสัญญาจริงใน RAW_CONTRACT — อาจยังไม่ลงงาน)</div>':'');
+  el.innerHTML=_spTbl(cols,body,aligns)+(_hasFromQuo?'<div style="margin-top:8px;font-size:11px;color:#fb923c">* ข้อมูลจากใบเสนอราคา (ยังไม่มีสัญญาจริงใน RAW_CONTRACT — อาจยังไม่ลงงาน)</div>':'');
 };
 
 // ── 💰 AR MONITOR ───────────────────────────────────────────

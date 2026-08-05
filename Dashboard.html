@@ -303,6 +303,9 @@
       <span class="db-sep" style="width:1px;height:18px;background:var(--bd2);margin:0 2px"></span>
       <button id="db-fbtn-table" onclick="dbSwitchTab('table')" style="padding:4px 12px;border-radius:5px;border:1px solid #34d399;background:rgba(52,211,153,0.12);color:#6ee7b7;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">📋 Budget &amp; Actual</button>
       <button id="db-fbtn-salesarea" onclick="dbSwitchTab('salesarea')" style="padding:4px 12px;border-radius:5px;border:1px solid #38bdf8;background:rgba(56,189,248,0.12);color:#7dd3fc;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">🗺 Sales Areas</button>
+      <!-- [V668] Order Tracking — ย้ายจาก nav บนมาที่นี่ เปิดเป็น modal ทับ Summary
+           คง id เดิม (nb-track) ไว้ เพราะ _applyNavPermissions ใช้ id นี้คุมสิทธิ์ nav_track -->
+      <button id="nb-track" onclick="if(typeof window.otOpenModal==='function')window.otOpenModal()" style="padding:4px 12px;border-radius:5px;border:1px solid #f472b6;background:rgba(244,114,182,0.12);color:#f9a8d4;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">📋 Order Tracking</button>
       <!--  [V548] ฉายเฉพาะบล็อก STORY เต็มจอ (โปรเจกเตอร์) -->
       <button id="db-btn-present" onclick="dbPresent()" title="ฉายเต็มจอ (ESC เพื่อออก)" style="padding:4px 12px;border-radius:5px;border:1px solid #f59e0b;background:rgba(245,158,11,0.12);color:#fbbf24;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">🖥 Present</button>
       <button id="db-fbtn-sabud" onclick="dbSwitchTab('sabud')" style="display:none;padding:4px 12px;border-radius:5px;border:1px solid var(--bd2);background:transparent;color:var(--mu2);cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">💰 Budget Sales</button>
@@ -365,6 +368,7 @@
       .story-hdr.presenting #db-filterbar #db-fbtn-sabud,
       .story-hdr.presenting #db-filterbar #db-fbtn-analysis,
       .story-hdr.presenting #db-filterbar #db-btn-present,
+      .story-hdr.presenting #db-filterbar #nb-track,
       .story-hdr.presenting #db-filterbar .db-sep{ display:none !important; }
 
       /* fallback: ไม่มี Fullscreen API */

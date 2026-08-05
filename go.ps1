@@ -1,12 +1,12 @@
 # ============================================================
 #  go.ps1  -  BJH Dashboard patch runner (install once)
 #  Put this file at: C:\bjh-dashboard\go.ps1
-#  Usage:  cd C:\bjh-dashboard   then   .\go.ps1
-#          .\go.ps1 -Yes      (skip confirm)
+#  Usage:  cd C:\bjh-dashboard   then   .\go.ps1     (runs newest patch, no prompt)
+#          .\go.ps1 -Ask      (confirm before running)
 #          .\go.ps1 -List     (show 5 newest, pick by number)
 # ============================================================
 param(
-  [switch]$Yes,
+  [switch]$Ask,
   [switch]$List
 )
 
@@ -68,7 +68,7 @@ if ($ageMin -gt 120) {
   Write-Host ("WARNING: this file is " + [math]::Round($ageMin/60) + " hour(s) old.") -ForegroundColor Yellow
 }
 
-if (-not $Yes) {
+if ($Ask) {
   $ans = Read-Host 'Run this patch? (Y/n)'
   if ($ans -ne '' -and $ans -notmatch '^[Yy]') { Write-Host 'Cancelled.'; exit 1 }
 }

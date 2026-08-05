@@ -1,6 +1,6 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260805230700
+Start time: 20260805231107
 Username: BERLI\PongsakR
 RunAs User: BERLI\PongsakR
 Configuration Name: 
@@ -18,23 +18,9 @@ SerializationVersion: 1.1.0.1
 **********************
 
 === BJH patch V667.0 ===
-guard ok : base V666.3
-  wrote SalesProspect.html  703 KB  sha ok
-  wrote overrides.html  194 KB  sha ok
-  wrote STATE.md  116 KB  sha ok
-version on disk : V667.0
-
-clasp push ...
-
-clasp create-deployment ...
-
-
-
-
-
-DONE : V667.0
-user must Ctrl+Shift+R
+BASE MISMATCH : found 'V667.0' , expected 'V666.3'
+STOP - do not overwrite. tell Claude the current version.
 **********************
 Windows PowerShell transcript end
-End time: 20260805230810
+End time: 20260805231107
 **********************

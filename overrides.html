@@ -1880,8 +1880,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V667.0';
-    var _BUILD_TIME='5 ส.ค. 2569 (V667 จัดคอลัมน์ SC/SP Quotation + Contract Monitor)';
+    var _BUILD_VER='V668.0';
+    var _BUILD_TIME='5 ส.ค. 2569 (V668 Order Tracking เป็น modal ใน Summary + จัดหัวตาราง)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
@@ -2985,6 +2985,60 @@ window._bjhCdDebug = function(){
     }, 500);
   })();
   setTimeout(function(){ try{ window._cbFillStatus(); }catch(e){} }, 3000);
+})();
+
+
+// ════════════════════════════════════════════════════════
+// [V668] Order Tracking -> modal ทับหน้า Summary
+//   ไม่ copy โค้ดหน้า Order Tracking มาใหม่ — "ย้าย" element #v-track เข้าไปในโมดัล
+//   แล้วย้ายกลับที่เดิมตอนปิด -> ฟังก์ชัน otXxx / id ภายในทุกตัวใช้ได้เหมือนเดิม
+//   (จำที่อยู่เดิมไว้ใน _otHome ตั้งแต่ครั้งแรก ถ้าไม่จำ ปิดแล้วหน้าจะหายถาวร)
+// ════════════════════════════════════════════════════════
+(function(){
+  function _box(){
+    var ov=document.getElementById('ot-modal');
+    if(ov) return ov;
+    ov=document.createElement('div');
+    ov.id='ot-modal';
+    ov.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(3,7,18,.74);display:none;padding:22px';
+    ov.innerHTML='<div id="ot-modal-box" style="height:100%;max-width:1600px;margin:0 auto;background:var(--sur,#0f1521);border:1px solid var(--bd2,#334155);border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden">'
+      + '<div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--bd,#1e2836);flex:0 0 auto">'
+      +   '<span style="font-weight:700;font-size:13px">\ud83d\udccb Order Tracking</span>'
+      +   '<span style="flex:1"></span>'
+      +   '<button onclick="window.otCloseModal()" style="padding:3px 12px;border-radius:6px;border:1px solid var(--bd2,#334155);background:transparent;color:var(--mu2,#94a3b8);cursor:pointer;font-family:inherit;font-size:12px">\u2715 \u0e1b\u0e34\u0e14 (ESC)</button>'
+      + '</div>'
+      + '<div id="ot-modal-slot" style="flex:1;overflow:auto;padding:0"></div>'
+      + '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target===ov) window.otCloseModal(); });
+    return ov;
+  }
+  window.otOpenModal=function(){
+    var v=document.getElementById('v-track');
+    if(!v){ console.error('[V668] ไม่พบ #v-track'); return; }
+    if(!window._otHome) window._otHome={parent:v.parentNode,next:v.nextSibling};
+    var ov=_box();
+    document.getElementById('ot-modal-slot').appendChild(v);
+    v.classList.add('on');
+    v.style.setProperty('display','flex','important');
+    v.style.flexDirection='column'; v.style.flex='1';
+    ov.style.display='block';
+    document.body.style.overflow='hidden';
+    try{ if(typeof window.otInit==='function') window.otInit(); }catch(e){ console.error(e); }
+  };
+  window.otCloseModal=function(){
+    var ov=document.getElementById('ot-modal'); if(ov) ov.style.display='none';
+    var v=document.getElementById('v-track');
+    var h=window._otHome;
+    if(v&&h&&h.parent){ h.parent.insertBefore(v,(h.next&&h.next.parentNode===h.parent)?h.next:null); }
+    if(v){ v.classList.remove('on'); v.style.display='none'; }
+    document.body.style.overflow='';
+  };
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape') return;
+    var ov=document.getElementById('ot-modal');
+    if(ov&&ov.style.display!=='none') window.otCloseModal();
+  });
 })();
 
 </script>

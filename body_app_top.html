@@ -378,7 +378,7 @@ window._showBootLoading=function(){
     <button class="nav-btn on" id="nb-db" onclick="sv('db')">📊 Summary</button>
     <button class="nav-btn" id="nb-se" onclick="sv('se')">Service Commercial Orders</button>
     <button class="nav-btn" id="nb-sp" onclick="sv('sp');try{frames[0].spTab(frames[0]._spCurrentTab||'alert');}catch(e){}">🎯 Sales Prospect</button>
-    <button class="nav-btn" id="nb-track" onclick="sv('track')">📋 Order Tracking</button><!-- [V661] -->
+    <!-- [V668] ย้าย Order Tracking ไปเป็นปุ่มในแถบ Summary (เปิดเป็น modal) — ปุ่มจริงอยู่ที่ Dashboard.html #nb-track -->
 
     <div style="flex:1"></div>
     <!-- Tools dropdown menu -->
