@@ -2679,7 +2679,7 @@ function jsupETL(scRaw, partsRaw, quoRaw){
         px:px,mo:CUR_MO,yr:CUR_YR,fmo:CUR_MO,fyr:CUR_YR,rbmo:CUR_MO,rbyr:CUR_YR,
         br:first.BRAND_NAME||'',ml:first.MODEL_NAME||'',bn:null,bd:null,
         sb:'',sc_contract:'',sc:'',sn:(first.SERVICE_JOB_STATUS||''),nc:parts.length,
-        is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',carry_from_mo:CUR_MO,carry_from_yr:CUR_YR,om:CUR_MO,oy:CUR_YR,pg:'',pn:'',qs:first.QUO_STATUS||'',sr:''
+        is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',carry_from_mo:CUR_MO,carry_from_yr:CUR_YR,om:CUR_MO,oy:CUR_YR,pg:'',pn:'',qs:first.QUO_STATUS||'',sr:'',url:String(first.URL||'').trim()
       });
       return;
     }
@@ -2698,7 +2698,7 @@ function jsupETL(scRaw, partsRaw, quoRaw){
         tm:normTeam(first.REQ_TEAM_SHOW||first.REQ_TEAM),px:px,mo:mo,yr:yrU,fmo:mo,fyr:yrU,rbmo:mo,rbyr:yrU,
         br:first.BRAND_NAME||'',ml:first.MODEL_NAME||'',bn:bn,bd:bd,
         sb:bjob||'ปริ้นบิลเรียบร้อย',sc_contract:'',sc:'',sn:(first.SERVICE_JOB_STATUS||''),nc:parts.length,bjob:bjob,
-        is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',carry_from_mo:mo,carry_from_yr:yrU,om:mo,oy:yrU,pg:'',pn:'',qs:first.QUO_STATUS||'',sr:'',delivery:_dlvBL
+        is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',carry_from_mo:mo,carry_from_yr:yrU,om:mo,oy:yrU,pg:'',pn:'',qs:first.QUO_STATUS||'',sr:'',url:String(first.URL||'').trim(),delivery:_dlvBL
       }); return;
     }
     // [v369] Customer Accept = ยังไม่มี PO จริง → st='Prospect' (แยกจาก SP Ordered (Pending) ที่มี PO แล้ว)
@@ -2735,7 +2735,7 @@ function jsupETL(scRaw, partsRaw, quoRaw){
         tm:(normTeam(first.REQ_TEAM_SHOW||first.REQ_TEAM)||(_SA_TEAM_MAP&&_SA_TEAM_MAP[first.SALES_SERVICE_NAME||''])||'Service 1'),px:px,mo:CUR_MO,yr:CUR_YR,fmo:CUR_MO,fyr:CUR_YR,rbmo:CUR_MO,rbyr:CUR_YR,
         br:first.BRAND_NAME||'',ml:first.MODEL_NAME||'',bn:null,bd:null,
         sb:'',sc_contract:'',sc:'',sn:(first.SERVICE_JOB_STATUS||''),nc:parts.length,
-        is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',carry_from_mo:CUR_MO,carry_from_yr:CUR_YR,om:CUR_MO,oy:CUR_YR,pg:'',pn:'',qs:first.QUO_STATUS||'',sr:''
+        is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',carry_from_mo:CUR_MO,carry_from_yr:CUR_YR,om:CUR_MO,oy:CUR_YR,pg:'',pn:'',qs:first.QUO_STATUS||'',sr:'',url:String(first.URL||'').trim()
       }); return;
     }
     var hasPending=Object.keys(stSet).some(function(s){ return !!PENDING[s]; });
@@ -2770,7 +2770,7 @@ function jsupETL(scRaw, partsRaw, quoRaw){
       sb:'',sc_contract:'',sc:'',sn:(first.SERVICE_JOB_STATUS||''),nc:parts.length,
       is_carry:0,co_ready:0,is_sp_fix:0,fad_state:'',
       carry_from_mo:CUR_MO,carry_from_yr:CUR_YR,om:CUR_MO,oy:CUR_YR,
-      pg:'',pn:'',qs:first.QUO_STATUS||'',sr:'',delivery:(eta||''),
+      pg:'',pn:'',qs:first.QUO_STATUS||'',sr:'',url:String(first.URL||'').trim(),delivery:(eta||''),
       _eta_missing:_etaMissing, _eta_late:_etaLate
     });
   });
@@ -3291,6 +3291,25 @@ function _pkgCount(qn){
 }
 window._pkgCount = _pkgCount;
 window._pkgReset = function(){ _pkgCache = null; };
+
+/* [V666] ลิงก์เปิด SmartFlow — ฟังก์ชันกลาง ใช้ได้ทุกหน้า
+   URL มาครบ 100% ทุกตาราง และชี้คนละ endpoint ตามชนิดเอกสาร:
+     RAW_SC_BILL -> EDIT_SC · RAW_SpareParts -> EDIT_SPARE_PART
+     RAW_Quotation / _SP -> EDIT_QUOTATION · RAW_SERVICE_JOB -> EDITJOB
+   จึงต้องเอา URL ของ "แถวนั้น" มาใช้ ห้ามยืมของตารางอื่น
+   ไม่มี URL -> คืนข้อความเปล่า ไม่ทำลิงก์ตายที่กดแล้วเปิดหน้าว่าง */
+window._sfLink = function(txt, url, opt){
+  var t = String(txt == null ? '' : txt);
+  var e = function(v){ return String(v==null?'':v).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  var u = String(url || '').trim();
+  if(!/^https?:\/\//i.test(u)) return e(t);
+  opt = opt || {};
+  return '<a href="'+e(u)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" '
+    + 'title="\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e19 SmartFlow" '
+    + 'style="color:'+(opt.color||'inherit')+';text-decoration:underline;'
+    + 'text-decoration-style:dotted;text-underline-offset:2px">'+e(t)+'</a>';
+};
 
 /* [V664.3] ป้าย (Px) เป็นฟังก์ชันกลาง — ทุกหน้าที่โชว์ยี่ห้อเรียกตัวนี้
    V664.0 เคยใส่ป้ายไว้ที่ extractBrandModelHTML แล้วตารางหลักไม่ได้เรียก -> ป้ายไม่ขึ้น
@@ -4355,13 +4374,11 @@ function renderTbl(){
     /* [V664] เลขใบกดเปิด SmartFlow — URL มาจาก RAW_SC_BILL / RAW_Quotation ที่ SF เพิ่งเพิ่มให้
        ใบไหนไม่มี URL แสดงเลขเฉยๆ ไม่ทำลิงก์ตายที่กดแล้วเปิดหน้าว่าง
        stopPropagation กันไม่ให้ไปเปิด modal รายละเอียดแถวพร้อมกัน */
-    var _qnTxt = esc(r.qn||'\u2014');
+    /* [V666] ใช้ตัวกลาง _sfLink — SP ชี้ EDIT_SPARE_PART · SC ชี้ EDIT_SC ตาม url ของแถวนั้น */
     var _qnUrl = String(r.url||'').trim();
-    var _qnHtml = (/^https?:\/\//i.test(_qnUrl))
-      ? '<a href="'+esc(_qnUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" '
-        + 'title="\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e19 SmartFlow" '   /* [V665.1] สั้นลง ไม่บังตาราง */
-        + 'style="color:inherit;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px">'+_qnTxt+'</a>'
-      : _qnTxt;
+    var _qnHtml = (typeof window._sfLink==='function')
+      ? window._sfLink(r.qn||'\u2014', _qnUrl)
+      : esc(r.qn||'\u2014');
     h+='<td style="font-family:var(--mono)"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"'+(_qnUrl?'':' title="'+esc(r.qn||'')+'"')+'>'+_qnHtml+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+'</div></td>';
     /* [V655] คืน ellipsis + tooltip — V621 ปล่อยล้นเพราะ 14px วันที่ไทยโดนตัด · 12px พอดีคอลัมน์แล้ว */
     var _pdTip=String(periodStr).replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/"/g,'&quot;').replace(/\s+/g,' ').trim();

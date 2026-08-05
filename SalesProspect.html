@@ -1295,7 +1295,7 @@ window.spRenderPipeline = function() {
       +'<td><span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--sur2)">'
         +(isSP?'SP':'SC')+'</span></td>'
       +'<td>'+_esc(r.SALES_SERVICE_NAME||'—')+'</td>'
-      +'<td style="color:#7c6fe0;font-size:11px">'+_esc(r.DOC_NUMBER||'')+'</td>'
+      +'<td style="color:#7c6fe0;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.DOC_NUMBER||'', r.URL):_esc(r.DOC_NUMBER||''))+'</td>'   /* [V666] */
       +'<td>'+_esc(_short(r.CUSTOMER_NAME||'—',22))+'</td>'
       +'<td>'+_esc(r.BRAND_NAME||'—')+'</td>'
             +'<td style="font-size:11px;color:var(--mu)">'+_esc(r.STATUS_NAME||'')+'</td>'
@@ -2286,7 +2286,7 @@ if(!_spQuo.length){
   _spQuo.forEach(function(q){
     var _list = q.items.filter(Boolean).join(', ');
     html += '<tr style="border-bottom:1px solid var(--bd,#1e293b)">'
-      +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:#fbbf24;white-space:nowrap">'+_esc(q.qn)+'</td>'
+      +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px;color:#fbbf24;white-space:nowrap">'+((typeof window._sfLink==='function')?window._sfLink(q.qn, q.url||q.URL):_esc(q.qn))+'</td>'   /* [V666] */
       +'<td style="padding:5px;font-family:var(--mono,monospace);font-size:10px">'+_fmtDate(q.date)+'</td>'
       +'<td style="padding:5px;font-size:10px;max-width:280px" title="'+_esc(_list)+'">'+_esc(_list.slice(0,55))+(_list.length>55?'\u2026':'')+'</td>'
       +'<td style="padding:5px;text-align:right;font-family:var(--mono,monospace)">'+q.items.length+'</td>'
@@ -7777,7 +7777,7 @@ window.spRenderContract = function(){
       +'<td style="padding:6px 10px"><span style="color:'+sc+';font-weight:600;font-size:11px">'+sLabel+'</span></td>'
       +'<td style="padding:6px 10px">'+_esc(r.sa||'—')+'</td>'
       +'<td style="padding:6px 10px">'+_esc((r.cu||'—').slice(0,24))+'</td>'
-      +'<td style="padding:6px 10px;font-size:12px">'+_esc(r.qn||'—')+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'   /* [V666] */
       +'<td style="padding:6px 10px">'+_esc(r.br||'—')+'</td>'
       +'<td style="padding:6px 10px;font-size:12px;color:var(--mu)">'+_esc(r.ml||'—')+(r.fromQuo?'<span title="ข้อมูลจากใบเสนอราคา (ยังไม่มีสัญญาจริง)" style="color:#fb923c;font-weight:700"> *</span>':'')+'</td>'
       +'<td style="padding:6px 10px;font-size:11px">'+_spFmtDate(r.startD)+(r.fromQuo&&r.startD?'<span title="จากใบเสนอราคา" style="color:#fb923c"> *</span>':'')+'</td>'
@@ -8249,7 +8249,7 @@ window.spRenderAR = function(){
         +'<td style="padding:6px 8px;font-size:11px">'+_esc(r.bill)+'</td>'
         +'<td style="padding:6px 8px">'+_esc(r.cu.slice(0,22))+'</td>'
         +'<td style="padding:6px 8px;font-size:12px">'+_esc(r.sa||'—')+'</td>'
-        +'<td style="padding:6px 8px;font-size:11px;color:var(--mu)">'+_esc(r.qn)+'</td>'
+        +'<td style="padding:6px 8px;font-size:11px;color:var(--mu)">'+((typeof window._sfLink==='function')?window._sfLink(r.qn, r.url||r.URL):_esc(r.qn))+'</td>'   /* [V666] */
         +'<td style="padding:6px 8px;text-align:right;font-family:var(--mono,monospace);font-size:12px">'+_spFmtB(r.amt)+'</td>'
         +'<td style="padding:6px 8px;font-size:11px">'+_spFmtDate(r.printDate)+'</td>'
         +'<td style="padding:6px 8px;font-size:11px">'+_spFmtDate(r.due)+'</td>'
@@ -8731,7 +8731,7 @@ window.spRenderOrdSP = function(){
     if(info.dlvLate) dlvCell='<span style="color:#ef4444;font-weight:600">'+dlvCell+'</span>';
     return '<tr style="'+rowStyle+'" onclick="spOpenSPDetail('+r._idx+')">'
       +'<td style="padding:6px 10px">'+_esc(r.sa||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px;color:#a78bfa">'+_esc(r.qn||'—')+'</td>'
+      +'<td style="padding:6px 10px;font-size:11px;color:#a78bfa">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'   /* [V666] */
       +'<td style="padding:6px 10px">'+_esc((r.cu||'—').slice(0,20))+'</td>'
       +'<td style="padding:6px 10px">'+_esc(r.br||'—')+'</td>'
       +'<td style="padding:6px 10px" onclick="event.stopPropagation()"><span style="color:#7c3aed;font-size:12px">'+_esc((window._stLbl?window._stLbl(r.st):r.st)||'—')+'</span>'+_spMergeCell(r)+'</td>' // [v392]
