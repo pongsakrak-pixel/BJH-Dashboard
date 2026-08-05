@@ -4359,10 +4359,10 @@ function renderTbl(){
     var _qnUrl = String(r.url||'').trim();
     var _qnHtml = (/^https?:\/\//i.test(_qnUrl))
       ? '<a href="'+esc(_qnUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" '
-        + 'title="\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e19 SmartFlow \u2014 '+esc(r.qn||'')+'" '
+        + 'title="\u0e40\u0e1b\u0e34\u0e14\u0e43\u0e19 SmartFlow" '   /* [V665.1] สั้นลง ไม่บังตาราง */
         + 'style="color:inherit;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px">'+_qnTxt+'</a>'
       : _qnTxt;
-    h+='<td style="font-family:var(--mono)"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.qn||'')+'">'+_qnHtml+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+'</div></td>';
+    h+='<td style="font-family:var(--mono)"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"'+(_qnUrl?'':' title="'+esc(r.qn||'')+'"')+'>'+_qnHtml+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+'</div></td>';
     /* [V655] คืน ellipsis + tooltip — V621 ปล่อยล้นเพราะ 14px วันที่ไทยโดนตัด · 12px พอดีคอลัมน์แล้ว */
     var _pdTip=String(periodStr).replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/"/g,'&quot;').replace(/\s+/g,' ').trim();
     h+='<td style="color:var(--mu2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+_pdTip+'">'+periodStr+'</td>';
