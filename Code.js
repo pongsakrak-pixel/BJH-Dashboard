@@ -1563,7 +1563,13 @@ var SMARTFLOW_TX_FILE        = 'bjh_tx.json.gz';
 var SMARTFLOW_MASTER_FILE    = 'bjh_master.json.gz';
 var CUSTOMER_PROVINCE_FILE   = 'customer_province.json'; // [v313] Eak อัปเอง: CUS_ID→จังหวัด (จาก Customer Master)
 var SMARTFLOW_TX_DATASETS    = 'RAW_SC_BILL,RAW_SpareParts,RAW_Quotation,RAW_Quotation_SP,RAW_MC_STATUS_HISTORY';
-var SMARTFLOW_MASTER_DATASETS= 'RAW_CONTRACT,RAW_CUSTOMER,RAW_INSTALLATION';
+var SMARTFLOW_MASTER_DATASETS= 'RAW_CONTRACT,RAW_CUSTOMER,RAW_INSTALLATION,RAW_TEAMS';   // [V665] +RAW_TEAMS (ไม่ต้องมีพารามิเตอร์ ปลอดภัย)
+var SMARTFLOW_JOB_FILE       = 'bjh_job.json.gz';   // [V665] ไฟล์ที่ 3 — แยกจาก tx/master
+/* [V665] RAW_SERVICE_JOB ต้องส่ง team + date_start + date_end ครบ ไม่งั้น API ตอบ 400
+   ถ้าเอาไปต่อท้าย SMARTFLOW_TX_DATASETS เฉยๆ -> ทั้งชุด 400 -> ข้อมูลทั้งระบบหาย
+   จึงต้องเป็นการเรียกแยก + ไฟล์แยก ของเดิมพังไม่ได้เด็ดขาด
+   ช่วงวันที่: ย้อนหลัง N เดือน ถึงสิ้นเดือนหน้า (งานนัดล่วงหน้า) */
+var SMARTFLOW_JOB_MONTHS_BACK = 6;
 
 // ════════════════════════════════════════════════════════
 // [v480.1] SLIM PAYLOAD — ตัด field ที่ dashboard ไม่ใช้ ที่ต้นทาง (SmartFlow API)
@@ -1741,6 +1747,87 @@ function smartflowDailySyncToDrive() {
   try { _bjhBumpVer('MASTER'); } catch (e) {}
   try { _bjhReadDriveCached(SMARTFLOW_MASTER_FILE, 'MASTER'); } catch (e) { Logger.log('[C30] warm MASTER: ' + e); }
   return { ok: true, file: r.filename, timestamp: meta.timestamp, bytes: r.bytes };
+}
+
+/* ════════════════════════════════════════════════════════
+   [V665] RAW_SERVICE_JOB — งานแจ้งซ่อม/บริการ (SR)
+   team มาจาก RAW_TEAMS.TEAM_ID (ต้องเป็นเลขบวกเท่านั้น ตามคู่มือ)
+   อ่าน TEAM_ID จากไฟล์ master ที่ดึงมาแล้ว ไม่ต้อง hardcode
+   ════════════════════════════════════════════════════════ */
+function _bjhJobTeamIds_() {
+  try {
+    var m = _bjhReadDriveCached(SMARTFLOW_MASTER_FILE, 'MASTER');
+    var d = (m && m.data && m.data.RAW_TEAMS) || [];
+    var ids = [];
+    d.forEach(function (t) {
+      var v = String((t && (t.TEAM_ID != null ? t.TEAM_ID : t.team_id)) || '').trim();
+      if (/^[0-9]+$/.test(v) && Number(v) > 0 && ids.indexOf(v) < 0) ids.push(v);
+    });
+    return ids;
+  } catch (e) {
+    Logger.log('[V665] อ่าน RAW_TEAMS ไม่ได้: ' + e);
+    return [];
+  }
+}
+
+function _bjhJobDateRange_() {
+  var p = function (n) { return (n < 10 ? '0' : '') + n; };
+  var now = new Date();
+  var s = new Date(now.getFullYear(), now.getMonth() - SMARTFLOW_JOB_MONTHS_BACK, 1);
+  var e = new Date(now.getFullYear(), now.getMonth() + 2, 0);   // สิ้นเดือนหน้า
+  var f = function (d) { return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
+  return { start: f(s), end: f(e) };
+}
+
+function smartflowJobSyncToDrive() {
+  var teams = _bjhJobTeamIds_();
+  if (!teams.length) {
+    return { ok: false, error: 'ยังไม่มี RAW_TEAMS — กด Load SF (master) ก่อน 1 ครั้ง' };
+  }
+  var rg = _bjhJobDateRange_();
+  var token = smartflowGetToken_();
+  var _q = function (s) { return encodeURIComponent(s).replace(/%2C/g, ','); };
+  var url = SMARTFLOW_DATA_URL_GAS + '?datasets=RAW_SERVICE_JOB&format=gzip'
+    + '&team=' + _q(teams.join(','))
+    + '&date_start=' + rg.start + '&date_end=' + rg.end;
+  if (url.length > BJH_URL_MAX) {
+    return { ok: false, error: 'URL ยาว ' + url.length + ' chars (เพดาน 2048) — ทีมเยอะเกิน ต้องแบ่งดึง' };
+  }
+  Logger.log('[V665] job fetch ' + teams.length + ' teams | ' + rg.start + ' -> ' + rg.end
+    + ' | URL=' + url.length + ' chars');
+  var opt = { method: 'get', headers: { 'Authorization': 'Bearer ' + token }, muteHttpExceptions: true };
+  var resp = UrlFetchApp.fetch(url, opt);
+  if (resp.getResponseCode() === 401) {
+    smartflowClearToken_();
+    opt.headers.Authorization = 'Bearer ' + smartflowGetToken_();
+    resp = UrlFetchApp.fetch(url, opt);
+  }
+  var code = resp.getResponseCode();
+  if (code !== 200) {
+    /* 400 = team/วันที่ไม่ถูก — บอกให้ชัดว่าส่งอะไรไป จะได้ไม่ต้องเดา */
+    return { ok: false, error: 'HTTP ' + code + ' | teams=' + teams.join(',')
+      + ' | ' + rg.start + '..' + rg.end
+      + ' | ' + String(resp.getContentText()).slice(0, 200) };
+  }
+  var blob = resp.getBlob().setName(SMARTFLOW_JOB_FILE);
+  var folder = getOrCreateFolder();   // [V665] ใช้ตัวเดียวกับที่ระบบใช้อยู่
+  var it = folder.getFilesByName(SMARTFLOW_JOB_FILE);
+  while (it.hasNext()) it.next().setTrashed(true);
+  var file = folder.createFile(blob);
+  try { _bjhBumpVer('JOB'); } catch (e) {}
+  return { ok: true, file: SMARTFLOW_JOB_FILE, bytes: file.getSize(),
+    teams: teams.length, start: rg.start, end: rg.end };
+}
+
+/* [V665] ให้ client เรียกดูข้อมูล job ที่ดึงมาแล้ว */
+function getServiceJobData() {
+  try {
+    var d = _bjhReadDriveCached(SMARTFLOW_JOB_FILE, 'JOB');
+    var rows = (d && d.data && d.data.RAW_SERVICE_JOB) || [];
+    return JSON.stringify({ ok: true, rows: rows, meta: (d && d.meta) || {} });
+  } catch (e) {
+    return JSON.stringify({ ok: false, error: e.message });
+  }
 }
 
 // ── client เรียกขอ token ──

@@ -3292,6 +3292,22 @@ function _pkgCount(qn){
 window._pkgCount = _pkgCount;
 window._pkgReset = function(){ _pkgCache = null; };
 
+/* [V664.3] ป้าย (Px) เป็นฟังก์ชันกลาง — ทุกหน้าที่โชว์ยี่ห้อเรียกตัวนี้
+   V664.0 เคยใส่ป้ายไว้ที่ extractBrandModelHTML แล้วตารางหลักไม่ได้เรียก -> ป้ายไม่ขึ้น
+   V664.1 ย้ายเข้า renderTbl แล้วหน้า SC Monitor ก็ยังไม่มี
+   -> ทำเป็นตัวกลางตั้งแต่แรก จะได้ไม่ต้องไล่เติมทีละหน้าอีก
+   clickable=false สำหรับหน้าที่ไม่มี selRow() */
+window._pkgBadge = function(bm, rid){
+  var n = bm && bm.pkg;
+  if(!(n > 1)) return '';
+  var base = 'font-size:10px;font-weight:700;color:var(--ac2);'
+    + 'border:1px solid var(--ac2);border-radius:3px;padding:0 4px;margin-left:4px';
+  var tip = 'ใบนี้เป็น Package มี ' + n + ' เครื่องในสัญญา';
+  if(rid == null) return '<span title="'+tip+'" style="'+base+'">P'+n+'</span>';
+  return '<span onclick="event.stopPropagation();window._dpJumpSub=\'hw\';selRow('+rid+')" '
+    + 'title="'+tip+' — กดดูรายการ" style="'+base+';cursor:pointer">P'+n+'</span>';
+};
+
 function resolveBM(r){
   if(!r) return {br:'',ml:''};
   var L=_buildBMLookup();
@@ -4316,12 +4332,8 @@ function renderTbl(){
          ตารางหลักสร้าง _brHTML เอง ไม่ได้เรียกฟังก์ชันนั้น -> V664.0 ป้ายเลยไม่ขึ้นสักใบ
          P = Package · x = จำนวนเครื่องในสัญญา (ไม่เกี่ยวกับยี่ห้อ) */
       _brHTML=_bm.br?esc(_bm.br):'<span style="color:var(--mu)">—</span>';
-      if((_bm.pkg||0) > 1){
-        _brHTML += '<span onclick="event.stopPropagation();window._dpJumpSub=\'hw\';selRow('+r.id+')" '
-          + 'title="ใบนี้เป็น Package มี '+_bm.pkg+' เครื่องในสัญญา — กดดูรายการ" '
-          + 'style="margin-left:4px;font-size:10px;font-weight:700;color:var(--ac2);cursor:pointer;'
-          + 'border:1px solid var(--ac2);border-radius:3px;padding:0 4px">P'+_bm.pkg+'</span>';
-      }
+      /* [V664.3] ใช้ตัวกลาง — guard ไว้ด้วย ถ้าเรียกก่อนโหลดจะพังทั้งตาราง (เทส V655 จับได้) */
+      if(typeof window._pkgBadge==='function') _brHTML += window._pkgBadge(_bm, r.id);
     }
     var _mlHTML=_bm.ml?'<span title="'+esc(_bm.ml)+'">'+esc(_bm.ml)+'</span>':'<span style="color:var(--mu)">—</span>';
     h+='<td style="overflow:hidden;text-align:center"><span class="trunc" title="'+esc(ownerText||'')+'">'+esc(ownerText||'—')+'</span></td>';   /* [V621] */
@@ -9219,6 +9231,35 @@ function _sfToastHide(){
   var t = document.getElementById('sf-sync-toast');
   if(t) t.style.display = 'none';
 }
+
+/* [V665] ดึง RAW_SERVICE_JOB — แยกจาก Load SF เพราะต้องส่ง team/date และใช้เวลานาน
+   ต้องกด Load SF (master) ก่อนอย่างน้อย 1 ครั้ง เพื่อให้มี RAW_TEAMS ให้อ่าน TEAM_ID */
+function apiSyncJob(){
+  var lg = document.getElementById('api-job-log');
+  var btn = document.getElementById('api-job-btn');
+  function say(t,c){ if(lg) lg.innerHTML = '<span style="color:'+(c||'var(--mu2)')+'">'+t+'</span>'; }
+  if(!(typeof google!=='undefined' && google.script && google.script.run)){
+    say('\u274c \u0e40\u0e23\u0e35\u0e22\u0e01 server \u0e44\u0e21\u0e48\u0e44\u0e14\u0e49','#f87171'); return;
+  }
+  if(btn) btn.disabled = true;
+  say('\u23f3 \u0e01\u0e33\u0e25\u0e31\u0e07\u0e14\u0e36\u0e07 SR Job\u2026 (\u0e2d\u0e32\u0e08\u0e43\u0e0a\u0e49\u0e40\u0e27\u0e25\u0e32\u0e2a\u0e31\u0e01\u0e04\u0e23\u0e39\u0e48)','#60a5fa');
+  var t0 = Date.now();
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(btn) btn.disabled = false;
+      var r; try{ r = (typeof res==='string')?JSON.parse(res):res; }catch(e){ r = res; }
+      if(!r || !r.ok){ say('\u274c ' + ((r&&r.error)||'unknown'), '#f87171'); return; }
+      say('\u2705 ' + (r.teams||0) + ' \u0e17\u0e35\u0e21 \u00b7 ' + (r.start||'') + ' \u2192 ' + (r.end||'')
+        + ' \u00b7 ' + Math.round((r.bytes||0)/1024) + ' KB \u00b7 '
+        + Math.round((Date.now()-t0)/1000) + ' \u0e27\u0e34', '#4ade80');
+    })
+    .withFailureHandler(function(e){
+      if(btn) btn.disabled = false;
+      say('\u274c ' + ((e&&e.message)||'error'), '#f87171');
+    })
+    .smartflowJobSyncToDrive();
+}
+window.apiSyncJob = apiSyncJob;
 
 function apiSyncFromServer(){
   _sfToastSet('\u23f3 \u0e2a\u0e31\u0e48\u0e07 server \u0e14\u0e36\u0e07\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25 SmartFlow...', '#60a5fa');
