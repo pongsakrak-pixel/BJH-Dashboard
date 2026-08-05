@@ -1570,6 +1570,11 @@ var SMARTFLOW_JOB_FILE       = 'bjh_job.json.gz';   // [V665] ไฟล์ที
    จึงต้องเป็นการเรียกแยก + ไฟล์แยก ของเดิมพังไม่ได้เด็ดขาด
    ช่วงวันที่: ย้อนหลัง N เดือน ถึงสิ้นเดือนหน้า (งานนัดล่วงหน้า) */
 var SMARTFLOW_JOB_MONTHS_BACK = 6;
+/* [V665.4] ดึงเฉพาะทีมที่ต้องการ — เดิมดึงทั้ง 44 ทีม (URL เสี่ยงเกิน 2048 + ช้า + ไม่เกี่ยวงานเรา)
+   ตรวจจาก RAW_TEAMS จริง (5 ส.ค. 69): Service Commercial = 1002131 · BU 1000246 · manager 2392
+   ใช้ "ชื่อทีม" เป็นตัวตั้ง ไม่ใช่เลข -> ถ้า SmartFlow เปลี่ยน ID ยังหาเจอ
+   อยากได้ทั้ง BU ให้ใส่ชื่อทีมอื่นเพิ่มในลิสต์นี้ */
+var SMARTFLOW_JOB_TEAM_NAMES = ['Service Commercial'];
 
 // ════════════════════════════════════════════════════════
 // [v480.1] SLIM PAYLOAD — ตัด field ที่ dashboard ไม่ใช้ ที่ต้นทาง (SmartFlow API)
@@ -1758,10 +1763,15 @@ function _bjhJobTeamIds_() {
   try {
     var m = _bjhReadDriveCached(SMARTFLOW_MASTER_FILE, 'MASTER');
     var d = (m && m.data && m.data.RAW_TEAMS) || [];
+    var want = {};
+    (SMARTFLOW_JOB_TEAM_NAMES || []).forEach(function (n) { want[String(n).trim().toLowerCase()] = 1; });
     var ids = [];
     d.forEach(function (t) {
       var v = String((t && (t.TEAM_ID != null ? t.TEAM_ID : t.team_id)) || '').trim();
-      if (/^[0-9]+$/.test(v) && Number(v) > 0 && ids.indexOf(v) < 0) ids.push(v);
+      if (!/^[0-9]+$/.test(v) || Number(v) <= 0) return;   // ต้องเป็นเลขบวก ตามคู่มือ
+      var nm = String((t && (t.TEAM_NAME || t.team_name)) || '').trim().toLowerCase();
+      if (Object.keys(want).length && !want[nm]) return;   // กรองตามชื่อทีมที่ตั้งไว้
+      if (ids.indexOf(v) < 0) ids.push(v);
     });
     return ids;
   } catch (e) {
@@ -1796,8 +1806,8 @@ function smartflowJobSyncToDrive() {
     }
   }
   if (!teams.length) {
-    return { ok: false, error: 'ดึง master แล้วแต่ยังไม่พบ RAW_TEAMS — '
-      + 'ตรวจว่า SmartFlow เปิดสิทธิ์ dataset นี้ให้ client แล้วหรือยัง' };
+    return { ok: false, error: 'ไม่พบทีม ' + (SMARTFLOW_JOB_TEAM_NAMES || []).join(', ')
+      + ' ใน RAW_TEAMS — ตรวจชื่อทีมใน SMARTFLOW_JOB_TEAM_NAMES ให้ตรงกับที่ SmartFlow ใช้' };
   }
   var rg = _bjhJobDateRange_();
   var token = smartflowGetToken_();
