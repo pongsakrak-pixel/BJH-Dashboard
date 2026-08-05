@@ -1476,10 +1476,12 @@
     setText('db-spfc2-pct', pctFmt(_spForecastShown,sumBud));
     /* [V661] โชว์เป้าเต็ม + ยอดที่หักไป — ตรงกับ 3 คอลัมน์ในชีต Pivot ของ Export to FAD */
     /* [V661.1] ฿5.00M ·  /  มีรายการแล้ว ฿2.19M  /  เหลือ ฿2.81M */
+    /* [V661.3] ฿5.00M / Confirm ฿2.25M / To Find ฿2.75M
+       "To Find" ใช้คำเดียวกับการ์ด CHALLENGE — บอกว่าเป็นยอดที่ยังต้องปิดให้ได้ ไม่ใช่แค่เศษที่เหลือ */
     var _spShowNet = (_spHave>0 && _spFcTarget>0);
-    setText('db-spfc2-target', _spShowNet ? (fmtM(_spFcTarget)+' \u00b7') : '');
-    setText('db-spfc2-have',   _spShowNet ? ('\u0e21\u0e35\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e41\u0e25\u0e49\u0e27 '+fmtM(_spHave)) : '');
-    setText('db-spfc2-lead',   _spShowNet ? '\u0e40\u0e2b\u0e25\u0e37\u0e2d' : '');
+    setText('db-spfc2-target', _spShowNet ? fmtM(_spFcTarget) : '');
+    setText('db-spfc2-have',   _spShowNet ? ('Confirm '+fmtM(_spHave)) : '');
+    setText('db-spfc2-lead',   _spShowNet ? 'To Find' : '');
     try{
       var _sfStar=document.getElementById('db-spfc2-star');
       var _sfLbl=document.getElementById('db-spfc2-star-lbl');
