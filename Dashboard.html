@@ -397,7 +397,7 @@
       <div class="flow-2rows">
         <div class="flow-toprow" style="display:grid;grid-template-columns:1.35fr 1fr 0.85fr;gap:10px;margin-bottom:8px;align-items:stretch"><!-- [V572] -->
           <div class="flow-group group-a">
-            <div class="flow-group-title"><span>🔒 CONFIRMED</span><span class="flow-group-sum" id="db-conf-sum">฿0 (0%)</span></div>
+            <div class="flow-group-title"><span>🔒 ON HAND</span><span class="flow-group-sum" id="db-conf-sum">฿0 (0%)</span></div><!-- [V663] เดิม CONFIRMED — คนอ่านตีความว่าได้เงินแน่ ทั้งที่ยังหลุดได้ -->
             <div class="flow-row" style="grid-template-columns:1fr 1fr 1fr;gap:6px">
               <div class="flow-card actual" onclick="dbShowBreakdown('actbill')" style="cursor:pointer">
                 <div class="flow-ico">✅</div><div class="flow-name">Actual+Billed</div>
@@ -407,13 +407,13 @@
                 <div class="flow-sub" id="db-actual-live" style="opacity:.65;font-size:9.5px"></div><!-- [v402] -->
               </div>
               <div class="flow-card backlog" onclick="dbShowBreakdown('backlog')" style="cursor:pointer">
-                <div class="flow-ico">📋</div><div class="flow-name">Sale Order</div><!-- [V580] ตรงกับ Quick Filter -->
+                <div class="flow-ico">📋</div><div class="flow-name" id="db-nm-backlog">Sale Order</div><!-- [V663] ชื่อจาก Config > Quick Filter chips -->
                 <div class="flow-val" id="db-backlog">฿0</div>
                 <div class="flow-pct" id="db-backlog-pct">0%</div>
                 <div class="flow-sub" id="db-backlog-cnt">0 items</div>
               </div>
               <div class="flow-card backlogc" onclick="dbShowBreakdown('backlogc')" style="cursor:pointer">
-                <div class="flow-ico">📑</div><div class="flow-name">Sales Confirmed</div><!-- [V580] -->
+                <div class="flow-ico">📑</div><div class="flow-name" id="db-nm-backlogc">Sales Confirmed</div><!-- [V663] -->
                 <div class="flow-val" id="db-backlogc">฿0</div>
                 <div class="flow-pct" id="db-backlogc-pct">0%</div>
                 <div class="flow-sub" id="db-backlogc-cnt">0 items</div>
@@ -758,8 +758,8 @@
   // [C37] Summary Status Filter — แยกจาก Service Commercial Orders 100%
   window._SUM_PILLS=[
     {id:'billed',label:'Billed',c:'#fbbf24'},
-    {id:'backlog',label:'Sale Order',c:'#fbbf24'},
-    {id:'backlog-conf',label:'Sales Confirmed',c:'#fbbf24'},
+    {id:'backlog',label:_qfNm('backlog','Sale Order'),c:'#fbbf24'},          // [V663]
+    {id:'backlog-conf',label:_qfNm('backlog-conf','Sales Confirmed'),c:'#fbbf24'},   // [V663]
     {id:'ordered',label:'SC Ordered',c:'#38bdf8'},
     {id:'co-ready',label:'SC Carry (Bill)',c:'#38bdf8'},
     {id:'spf-ord',label:'SP Ordered',c:'#c084fc'},
@@ -1268,7 +1268,25 @@
     if(q&&!q._c36){ q._c36=1; q.addEventListener('change',function(){q.setAttribute('data-touched','1');}); }
     if(m&&!m._c36){ m._c36=1; m.addEventListener('change',function(){m.setAttribute('data-touched','1');}); }
   }catch(e){} })();
-  function dbRenderStory(yr, budget, stats){
+  /* [V663] ชื่อกลุ่มอ่านจาก Config > Quick Filter chips ที่เดียว
+   เดิมชื่อเดียวกันเขียนไว้ 4 ที่ (การ์ด / ตัวเลือก status / หัวป๊อปอัพ / chip) แล้วไม่ตรงกัน */
+function _qfNm(pill, fb){
+  try{
+    var c = (window._QF_CFG||{})['qf_'+pill+'_label'];
+    return (c && String(c).trim()) ? String(c).trim() : fb;
+  }catch(e){ return fb; }
+}
+window._qfNm = _qfNm;
+/* เขียนชื่อลงการ์ด — เรียกทุกครั้งที่ render เพราะ config อาจมาทีหลัง */
+function _qfApplyNames(){
+  try{
+    var a=document.getElementById('db-nm-backlog');  if(a) a.textContent=_qfNm('backlog','Sale Order');
+    var b=document.getElementById('db-nm-backlogc'); if(b) b.textContent=_qfNm('backlog-conf','Sales Confirmed');
+  }catch(e){}
+}
+window._qfApplyNames = _qfApplyNames;
+
+function dbRenderStory(yr, budget, stats){
     // [v197] half filter — เฉพาะ tab Dashboard (Story); KPI cards Confirmed/Pipeline เท่านั้น
     var _halfSel=document.getElementById("db-half-sel"); var _half=window.dbActiveRange();
     var _c36r=window.dbRangeLoHi(window.dbActiveRange()); var _lo=_c36r[0],_hi=_c36r[1];
@@ -1480,8 +1498,9 @@
        "To Find" ใช้คำเดียวกับการ์ด CHALLENGE — บอกว่าเป็นยอดที่ยังต้องปิดให้ได้ ไม่ใช่แค่เศษที่เหลือ */
     var _spShowNet = (_spHave>0 && _spFcTarget>0);
     setText('db-spfc2-target', _spShowNet ? fmtM(_spFcTarget) : '');
-    setText('db-spfc2-have',   _spShowNet ? ('Confirm '+fmtM(_spHave)) : '');
+    setText('db-spfc2-have',   _spShowNet ? ('On Hand '+fmtM(_spHave)) : '');   // [V663] ตรงกับหัวกลุ่ม ON HAND
     setText('db-spfc2-lead',   _spShowNet ? 'To Find' : '');
+    _qfApplyNames();   // [V663] ชื่อ Sale Order / Sales Confirmed ตาม Config
     try{
       var _sfStar=document.getElementById('db-spfc2-star');
       var _sfLbl=document.getElementById('db-spfc2-star-lbl');
@@ -3181,7 +3200,8 @@
       spGroups[br].push(r);
     });
 
-    var kpiLabels = {actual:'✅ Actual', ordered:'📦 Ordered', fcsp:'🔧 SP Processing', prospect:'🎯 SC Prospect', actbill:'✅ Actual + Billed', backlog:'📋 Backlog', backlogc:'📋 BL Confirmed', scord:'📦 SC Ordered', spprospect:'🔧 SP Prospect'};
+    /* [V663] หัวป๊อปอัพใช้ชื่อเดียวกับ chip — เดิมเขียน 'Backlog' / 'BL Confirmed' คนละคำกับที่การ์ดโชว์ */
+    var kpiLabels = {actual:'✅ Actual', ordered:'📦 Ordered', fcsp:'🔧 SP Processing', prospect:'🎯 SC Prospect', actbill:'✅ Actual + Billed', backlog:'📋 '+_qfNm('backlog','Sale Order'), backlogc:'📋 '+_qfNm('backlog-conf','Sales Confirmed'), scord:'📦 SC Ordered', spprospect:'🔧 SP Prospect'};
     // [V468] SP Prospect: ตัด Offer/Low estimate ที่ qn ซ้ำกับ Customer Accept (กันนับซ้ำในตาราง + ยอดรวม popup)
     if(kpi==='spprospect'){
       var _caQ={};

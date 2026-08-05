@@ -2818,13 +2818,6 @@ window._FC_STATUS_GROUP_LOCAL = {
    -> โมดัล Focus ที่กรองด้วย r.st ตรงๆ เลยหาไม่เจอ (ใบ QSP2511-014743)
    ทำเป็นฟังก์ชันกลางแทนที่จะแก้เฉพาะโมดัล เพราะตรรกะนี้เคยกระจายอยู่ 2 ที่
    (renderTbl กับ cbRenderList) แก้ที่เดียวเดี๋ยวก็เพี้ยนอีก */
-window._stBucket = function(r){
-  try{
-    if(r && r.st==='SP Ordered (Pending)' && _hasHMStage(r)) return 'Offer';
-  }catch(e){}
-  return r ? String(r.st||'') : '';
-};
-
 function _hasHMStage(r){
   if(!r) return false;
   var _map=(window._FC_HM_STATUS_LOCAL||{});
@@ -2840,10 +2833,18 @@ function _hasHMStage(r){
    ทำเป็นฟังก์ชันกลางเพื่อไม่ให้ตรรกะเดียวกันกระจายอยู่หลายที่แล้วเพี้ยนอีก */
 window._stBucket = function(r){
   if(!r) return '';
+  var st = r.st || '';
   try{
-    if(r.st==='SP Ordered (Pending)' && typeof _hasHMStage==='function' && _hasHMStage(r)) return 'Offer';
+    /* [V663] ลิสต์เต็มของสถานะที่ระบบ "แสดงเป็น Prospect"
+       ยกมาจาก overrides.html:1615 ซึ่งเป็นที่เดียวที่เคยรวมครบ
+       V662 ลอกมาแค่ตัวเดียว -> ใบ st='Prospect' (SP ที่ลูกค้าตอบรับแต่ยังไม่มี PO, v369/v370)
+       ยังหาไม่เจอในโมดัล Focus
+       เพิ่มสถานะใหม่ที่ต้องนับเป็น Prospect ให้เติมที่นี่ที่เดียว */
+    if(st==='Offer') return 'Offer';
+    if(st==='Prospect') return 'Offer';
+    if(st==='SP Ordered (Pending)' && typeof _hasHMStage==='function' && _hasHMStage(r)) return 'Offer';
   }catch(e){}
-  return r.st || '';
+  return st;
 };
 
 var SA_BUD_MO = {}; // { 'พงษ์ศักดิ์': [m1,m2,...m12] } K/month
