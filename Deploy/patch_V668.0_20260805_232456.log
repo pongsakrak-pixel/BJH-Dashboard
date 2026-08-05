@@ -1,0 +1,42 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260805232456
+Username: BERLI\PongsakR
+RunAs User: BERLI\PongsakR
+Configuration Name: 
+Machine: PDNB-00H192094 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoExit -ExecutionPolicy Bypass -Command cd C:\bjh-dashboard; .\start.ps1
+Process ID: 44520
+PSVersion: 5.1.26100.7705
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7705
+BuildVersion: 10.0.26100.7705
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+
+=== BJH patch V668.0 ===
+guard ok : base V667.0
+  wrote SalesProspect.html  704 KB  sha ok
+  wrote overrides.html  198 KB  sha ok
+  wrote Dashboard.html  587 KB  sha ok
+  wrote body_app_top.html  59 KB  sha ok
+  wrote STATE.md  122 KB  sha ok
+version on disk : V668.0
+
+clasp push -f ...
+
+clasp create-deployment ...
+
+
+
+
+
+DONE : V668.0
+user must Ctrl+Shift+R
+**********************
+Windows PowerShell transcript end
+End time: 20260805232622
+**********************

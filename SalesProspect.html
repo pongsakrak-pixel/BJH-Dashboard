@@ -6857,8 +6857,9 @@ window.spRenderSCQuote = function(){
   }
   // [V479.74] +เริ่ม/สิ้นสุด (user: "ให้แสดงวันที่เริ่มต้น สิ้นสุด ด้วย")
   // [V667] จัดคอลัมน์ใหม่ 13 -> 10 : รวม เริ่ม+สิ้นสุด+ปี = ช่วงสัญญา · Sales ย้ายไปหน้าปุ่ม FC
-  var cols=['QN','ลูกค้า','รายละเอียด','ชนิด','ประเภทสัญญา','ช่วงสัญญา','มูลค่า','สถานะ','FC','โน้ต'];
-  var aligns=['left','left','left','center','left','left','right','left','left','center']; // [V668] ให้หัวตรงกับ <td>
+  // [V668.1] Sales แยกเป็นคอลัมน์ของตัวเอง (V667 เคยยุบเข้า FC — ผู้ใช้ขอแยกคืน)
+  var cols=['QN','ลูกค้า','รายละเอียด','ชนิด','ประเภทสัญญา','ช่วงสัญญา','มูลค่า','สถานะ','Sales','FC','โน้ต'];
+  var aligns=['left','left','left','center','left','left','right','left','left','center','center'];
   var body=rows.map(function(r){
     var isWon=!!WON[r.STATUS_NAME],isLost=!!LOST[r.STATUS_NAME];
     var stColor=isWon?'#3ddc84':isLost?'#ff5252':'#e2e8f0';
@@ -6881,7 +6882,8 @@ window.spRenderSCQuote = function(){
       +'<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+_period+'<div style="color:var(--mu);font-size:10.5px">'+window._qnYearCell(r)+'</div></td>'
       +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(_net)+'</td>'
       +'<td style="padding:6px 10px;color:'+stColor+';font-size:12px">'+_esc(r.STATUS_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:left;white-space:nowrap"><span style="color:var(--mu);font-size:11px;display:inline-block;min-width:64px;text-align:right;margin-right:8px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</span>'+_fcCellHtml(r, _net, false)+'</td>'
+      +'<td style="padding:6px 10px;white-space:nowrap;color:var(--mu);font-size:12px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</td>'
+      +'<td style="padding:6px 10px;text-align:center;white-space:nowrap">'+_fcCellHtml(r, _net, false)+'</td>'
       +'<td style="padding:6px 10px;text-align:center">'+_qnCellHtml(r.DOC_NUMBER||'')+'</td>'
       +'</tr>';
   }).join('');
@@ -7031,8 +7033,9 @@ window.spRenderSPQuote = function(){
   (window._spInstallRows||[]).forEach(function(ir){ var _s=String(ir.SN||'').trim().toUpperCase(); if(_s&&!_snMcName[_s]) _snMcName[_s]=ir.MC_STATUS_NAME||''; });
   var _mcColor={'ใช้งานไม่ได้':'#ef4444','ใช้งานได้บางส่วน':'#facc15','End of Life':'#9ca3af','ใช้งานได้ปกติ':'#3ddc84'};
   // [V667] Sales ย้ายไปหน้าปุ่ม FC (9 -> 8) ; [v397] สถานะเครื่อง / สถานะ QN แยกกันเสมอ
-  var cols=['QN','ลูกค้า','Brand','มูลค่า','สถานะเครื่อง','สถานะ QN','FC','โน้ต'];
-  var aligns=['left','left','left','right','left','left','left','center']; // [V668]
+  // [V668.1] Sales แยกเป็นคอลัมน์ของตัวเอง
+  var cols=['QN','ลูกค้า','Brand','มูลค่า','สถานะเครื่อง','สถานะ QN','Sales','FC','โน้ต'];
+  var aligns=['left','left','left','right','left','left','left','center','center'];
   var body=rows.map(function(r){
     var pInfo=partsMap[r.DOC_NUMBER||'']||{};
     var _mcn=pInfo.sn?(_snMcName[pInfo.sn]||''):'';
@@ -7044,7 +7047,8 @@ window.spRenderSPQuote = function(){
       +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(_net)+'</td>'
       +'<td style="padding:6px 10px;font-size:12px" title="SN: '+_esc(pInfo.sn||'—')+'"><span style="color:'+(_mcColor[_mcn]||'var(--mu)')+'">'+_esc(_mcn||'—')+'</span></td>'
       +'<td style="padding:6px 10px;color:#e2e8f0;font-size:12px">'+_esc(_SPQ_LBL[r.STATUS_NAME]||r.STATUS_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:left;white-space:nowrap"><span style="color:var(--mu);font-size:11px;display:inline-block;min-width:64px;text-align:right;margin-right:8px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</span>'+_fcCellHtml(r, _net, true)+'</td>'
+      +'<td style="padding:6px 10px;white-space:nowrap;color:var(--mu);font-size:12px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</td>'
+      +'<td style="padding:6px 10px;text-align:center;white-space:nowrap">'+_fcCellHtml(r, _net, true)+'</td>'
       +'<td style="padding:6px 10px;text-align:center">'+_qnCellHtml(r.DOC_NUMBER||'')+'</td>'
       +'</tr>';
   }).join('');
