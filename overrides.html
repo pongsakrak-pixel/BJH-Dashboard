@@ -1696,6 +1696,7 @@ function dpFmtDate(v){
       if(v==='bvf') try{renderBVF();}catch(e){console.error(e);}
       if(v==='sp')  try{spTab(window._spCurrentTab||'alert'); try{ if(typeof spApplyTabPermissions==='function') spApplyTabPermissions(); }catch(e){} }catch(e){console.error(e);}
       if(v==='home') try{ if(typeof homeInit==='function') homeInit(window.D||D); }catch(e){console.error(e);}
+      if(v==='track') try{ if(typeof window.otInit==='function') window.otInit(); }catch(e){console.error(e);}   // [V661]
     // [v228] apply permission ทุกครั้งสลับเมนู (ปุ่มไม่มีสิทธิ์ถูกซ่อน) — เดิม overrides sv ไม่เรียก = ปุ่มโผล่หมด
     try { if(typeof _applyNavPermissions==='function') _applyNavPermissions(); } catch(e){}
   };
@@ -1878,8 +1879,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V660.6';
-    var _BUILD_TIME='3 ส.ค. 2569 (V660 เริ่มเก็บ snapshot · ปุ่ม Focus · SP Forecast ใน Export)';
+    var _BUILD_VER='V661.0';
+    var _BUILD_TIME='4 ส.ค. 2569 (V661 Order Tracking · SP Forecast หักใบที่มีแล้ว)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน

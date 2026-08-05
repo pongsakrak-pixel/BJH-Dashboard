@@ -1,0 +1,310 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     [V661] Order Tracking — ไล่ตามใบที่ยังไม่ปิด
+     อ่านจาก snapshot ที่เก็บไว้ตั้งแต่ V660 (snap_state / daily_summary / daily_change)
+     ไม่คำนวณจาก window.D สด เพราะต้องเทียบ "ภาพเมื่อวาน" กับ "ภาพวันนี้"
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="view" id="v-track" style="display:none;flex-direction:column;flex:1;overflow:auto">
+  <div style="padding:14px 16px">
+
+    <!-- แถบเลือกวัน -->
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:11px 14px;margin-bottom:12px">
+      <label style="font-size:12px;color:var(--mu2);font-weight:600">เทียบ</label>
+      <input type="date" id="ot-from" onchange="otLoad()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:5px 10px;font-size:12px;font-family:var(--mono)">
+      <span style="color:var(--mu);font-size:15px">→</span>
+      <input type="date" id="ot-to" onchange="otLoad()" style="background:var(--sur2);color:var(--tx);border:1px solid var(--bd2);border-radius:6px;padding:5px 10px;font-size:12px;font-family:var(--mono)">
+      <span style="display:flex;gap:5px;margin-left:8px;flex-wrap:wrap">
+        <span class="ot-chip" onclick="otQuick(1)">เมื่อวาน → วันนี้</span>
+        <span class="ot-chip" onclick="otQuick(0)">วันแรกของเดือน → วันนี้</span>
+        <span class="ot-chip" onclick="otQuick(7)">7 วันล่าสุด</span>
+      </span>
+      <div style="flex:1"></div>
+      <button onclick="otLoad(true)" style="background:var(--sur2);border:1px solid var(--bd2);color:var(--tx);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:var(--font)">🔄 รีเฟรช</button>
+    </div>
+
+    <div id="ot-range" style="font-size:12px;color:var(--mu2);background:var(--sur);border:1px solid var(--bd);border-radius:8px;padding:8px 13px;margin-bottom:14px"></div>
+
+    <!-- การ์ดสถานะ -->
+    <div style="font-size:13px;font-weight:700;margin:0 0 9px">📊 สถานะ ณ สิ้นวันปลายทาง<span style="font-size:11px;font-weight:600;color:var(--mu);margin-left:7px">ส่วนต่างเทียบวันตั้งต้น</span></div>
+    <div id="ot-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px;margin-bottom:20px"></div>
+
+    <!-- ตารางความเคลื่อนไหว -->
+    <div style="font-size:13px;font-weight:700;margin:0 0 9px">🔀 ความเคลื่อนไหวในช่วงที่เลือก<span style="font-size:11px;font-weight:600;color:var(--mu);margin-left:7px">นับจาก daily_change — เห็นทุกก้าวที่ขยับ ไม่ใช่แค่ผลสุทธิ</span></div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--sur);border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:20px">
+      <thead>
+        <tr style="background:var(--sur2)">
+          <th style="text-align:left;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2)">จาก</th>
+          <th style="text-align:left;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2)">→ เป็น</th>
+          <th style="text-align:right;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2);width:90px">จำนวนใบ</th>
+          <th style="text-align:right;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2);width:130px">มูลค่า</th>
+        </tr>
+      </thead>
+      <tbody id="ot-flow"></tbody>
+    </table>
+
+    <!-- รายใบ -->
+    <div style="font-size:13px;font-weight:700;margin:0 0 9px">📄 รายใบ</div>
+    <div id="ot-tabs" style="display:flex;gap:6px;margin-bottom:9px;flex-wrap:wrap"></div>
+    <div style="max-height:420px;overflow:auto;border:1px solid var(--bd);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--sur)">
+        <thead>
+          <tr style="background:var(--sur2);position:sticky;top:0;z-index:1">
+            <th style="text-align:left;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2);width:80px">วันที่</th>
+            <th style="text-align:left;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2);width:132px">Quotation</th>
+            <th style="text-align:left;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2)">ลูกค้า</th>
+            <th style="text-align:left;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2);width:88px">Sales</th>
+            <th style="text-align:left;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2);width:230px">เปลี่ยนเป็น</th>
+            <th style="text-align:right;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2);width:110px">มูลค่า</th>
+            <th style="text-align:right;padding:8px 11px;color:var(--mu2);border-bottom:1px solid var(--bd2);width:96px">ค้างมากี่วัน</th>
+          </tr>
+        </thead>
+        <tbody id="ot-rows"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .ot-chip{padding:4px 10px;border-radius:99px;border:1px solid var(--bd2);background:var(--sur2);color:var(--mu2);font-size:11px;cursor:pointer;white-space:nowrap}
+  .ot-chip:hover{border-color:var(--ac2);color:var(--ac2)}
+  .ot-tab{padding:5px 13px;border-radius:99px;border:1px solid var(--bd2);background:var(--sur2);color:var(--mu2);font-size:12px;cursor:pointer;white-space:nowrap}
+  .ot-tab.on{border-color:var(--ac2);color:var(--ac2);background:rgba(96,165,250,.10);font-weight:700}
+  .ot-card{background:var(--sur);border:1px solid var(--bd);border-radius:10px;padding:13px 15px;position:relative;overflow:hidden}
+  .ot-card .bar{position:absolute;inset:0 0 auto 0;height:2px}
+  #v-track table tbody tr{border-bottom:1px solid var(--bd)}
+  #v-track table tbody tr:last-child{border-bottom:none}
+</style>
+
+<script>
+(function(){
+  /* สถานะที่ติดตาม + สีประจำ — ต้องตรงกับ window._SNAP_TRACK ใน script_main */
+  var OT_ST = [
+    {k:'SC Ordered',          l:'SC Ordered',       c:'#fbbf24'},
+    {k:'SC Carry',            l:'SC Carry',         c:'#f59e0b'},
+    {k:'SC Carry (Pending)',  l:'SC Carry (PM)',    c:'#d97706'},
+    {k:'Backlog (Confirmed)', l:'Sales Confirmed',  c:'#22c55e'},
+    {k:'Backlog',             l:'Sale Order',       c:'#60a5fa'},
+    {k:'Billed',              l:'Billed',           c:'#4ade80'}
+  ];
+  var OT_KIND = [
+    {k:'',       l:'ทั้งหมด'},
+    {k:'new',    l:'เข้าใหม่'},
+    {k:'moved',  l:'เปลี่ยนสถานะ'},
+    {k:'billed', l:'ออกบิลแล้ว'},
+    {k:'gone',   l:'หายไป'}
+  ];
+  var _kindLbl = {'new':'เข้าใหม่','moved':'เปลี่ยนสถานะ','billed':'ออกบิลแล้ว','gone':'หายไปจากระบบ'};
+  var _kindCol = {'new':'#a78bfa','moved':'#60a5fa','billed':'#4ade80','gone':'#f87171'};
+
+  var _data = {summary:[], changes:[]};
+  var _kind = '';
+
+  function _p(n){ return (n<10?'0':'')+n; }
+  function _ymd(d){ return d.getFullYear()+'-'+_p(d.getMonth()+1)+'-'+_p(d.getDate()); }
+  function _esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function _money(n){
+    n = Number(n||0);
+    if(Math.abs(n) >= 1000000) return '฿'+(n/1000000).toFixed(2)+'M';
+    if(Math.abs(n) >= 1000)    return '฿'+Math.round(n/1000)+'K';
+    return '฿'+Math.round(n);
+  }
+  function _lbl(st){
+    for(var i=0;i<OT_ST.length;i++) if(OT_ST[i].k===st) return OT_ST[i].l;
+    return st || '—';
+  }
+  function _col(st){
+    for(var i=0;i<OT_ST.length;i++) if(OT_ST[i].k===st) return OT_ST[i].c;
+    return 'var(--mu2)';
+  }
+  function _bdg(st){
+    if(!st) return '<span style="color:var(--mu)">—</span>';
+    var c=_col(st);
+    return '<span style="display:inline-block;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:600;'
+      + 'border:1px solid '+c+';color:'+c+'">'+_esc(_lbl(st))+'</span>';
+  }
+
+  window.otQuick = function(mode){
+    var to = new Date(), from = new Date();
+    if(mode === 0) from = new Date(to.getFullYear(), to.getMonth(), 1);
+    else from.setDate(to.getDate() - mode);
+    var a=document.getElementById('ot-from'), b=document.getElementById('ot-to');
+    if(a) a.value=_ymd(from);
+    if(b) b.value=_ymd(to);
+    window.otLoad();
+  };
+
+  window.otInit = function(){
+    var a=document.getElementById('ot-from'), b=document.getElementById('ot-to');
+    if(!a || !b) return;
+    if(!a.value || !b.value) window.otQuick(1); else window.otLoad();
+  };
+
+  window.otLoad = function(force){
+    var a=document.getElementById('ot-from'), b=document.getElementById('ot-to');
+    if(!a || !b) return;
+    var f=a.value, t=b.value;
+    if(!f || !t) return;
+    if(f > t){ var tmp=f; f=t; t=tmp; a.value=f; b.value=t; }
+    var rg=document.getElementById('ot-range');
+    if(rg) rg.textContent='กำลังโหลด…';
+    if(!(typeof google!=='undefined' && google.script && google.script.run)){
+      if(rg) rg.textContent='โหลดไม่ได้ในโหมดนี้';
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(function(res){
+        var d={}; try{ d=JSON.parse(res)||{}; }catch(e){}
+        if(!d.ok){ if(rg) rg.innerHTML='<span style="color:#f87171">โหลดไม่สำเร็จ</span>'; return; }
+        _data = {summary:d.summary||[], changes:d.changes||[]};
+        window.otRender(f, t);
+      })
+      .withFailureHandler(function(e){
+        if(rg) rg.innerHTML='<span style="color:#f87171">โหลดไม่สำเร็จ: '+_esc((e&&e.message)||'')+'</span>';
+      })
+      .getSnapshotRange(f, t);
+  };
+
+  function _byDay(rows, day){
+    var o={};
+    rows.forEach(function(r){
+      if(String(r.date||'').slice(0,10) !== day) return;
+      o[String(r.st||'')] = r;
+    });
+    return o;
+  }
+  function _days(rows){
+    var s={}, out=[];
+    rows.forEach(function(r){ var d=String(r.date||'').slice(0,10); if(d && !s[d]){ s[d]=1; out.push(d); } });
+    return out.sort();
+  }
+
+  window.otRender = function(f, t){
+    var rg=document.getElementById('ot-range');
+    var have=_days(_data.summary);
+    /* วันที่ไม่มี snapshot ต้องบอกตรงๆ ห้ามเอาวันข้างเคียงมาแสดงแทน */
+    var dTo   = have.indexOf(t)>=0 ? t : (have.length ? have[have.length-1] : '');
+    var dFrom = have.indexOf(f)>=0 ? f : (have.length ? have[0] : '');
+    if(rg){
+      if(!have.length){
+        rg.innerHTML = '<span style="color:#fb923c">ยังไม่มีข้อมูล snapshot ในช่วงนี้</span> '
+          + '<span style="color:var(--mu)">— ระบบเริ่มเก็บตั้งแต่วันที่ลง V660 และเก็บวันละครั้งตอนเปิดหน้าเว็บ</span>';
+      } else {
+        var warn = '';
+        if(dTo !== t || dFrom !== f){
+          warn = ' <span style="color:#fb923c">· วันที่เลือกบางวันไม่มีข้อมูล ใช้ '
+            + _esc(dFrom)+' → '+_esc(dTo)+' แทน</span>';
+        }
+        rg.innerHTML = 'ช่วงที่เลือก <b style="font-family:var(--mono);color:var(--tx)">'+_esc(f)+' → '+_esc(t)+'</b>'
+          + ' <span style="color:var(--mu)">· มีข้อมูล '+have.length+' วัน</span>' + warn;
+      }
+    }
+    /* [V661] ต้องตั้งช่วงวันก่อนเรียก otTabs — เดิม otRows เป็นคนตั้ง
+       ทำให้ตัวนับบนแท็บอ่าน undefined แล้วได้ 0 ทุกแท็บในรอบแรก */
+    window._otF = dFrom; window._otT = dTo;
+    otCards(dFrom, dTo);
+    otFlow(dFrom, dTo);
+    otTabs();
+    otRows(dFrom, dTo);
+  };
+
+  function otCards(dFrom, dTo){
+    var el=document.getElementById('ot-cards');
+    if(!el) return;
+    var A=_byDay(_data.summary, dFrom), B=_byDay(_data.summary, dTo);
+    el.innerHTML = OT_ST.map(function(s){
+      var b=B[s.k], a=A[s.k];
+      var cn=b?Number(b.count||0):0, am=b?Number(b.amount||0):0;
+      var dv=cn-(a?Number(a.count||0):0);
+      var dTxt = (!a && !b) ? '—' : (dv>0?'▲ +'+dv:(dv<0?'▼ '+dv:'ไม่เปลี่ยน'));
+      var dCol = dv>0?'#4ade80':(dv<0?'#f87171':'var(--mu)');
+      return '<div class="ot-card"><div class="bar" style="background:'+s.c+'"></div>'
+        + '<div style="font-size:11px;color:var(--mu2);font-weight:700;letter-spacing:.03em;margin-bottom:8px">'+_esc(s.l)+'</div>'
+        + '<div style="font-family:var(--mono);font-size:24px;font-weight:700;color:'+s.c+';line-height:1">'+cn
+        + '<span style="font-size:11px;color:var(--mu);margin-left:5px;font-family:var(--font)">ใบ</span></div>'
+        + '<div style="font-family:var(--mono);font-size:12px;color:var(--mu2);margin-top:6px">'+_money(am)+'</div>'
+        + '<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--bd);font-size:11px;color:var(--mu);display:flex;justify-content:space-between">'
+        + '<span>เทียบวันตั้งต้น</span><span style="font-family:var(--mono);color:'+dCol+'">'+dTxt+'</span></div>'
+        + '</div>';
+    }).join('');
+  }
+
+  function _inRange(r, dFrom, dTo){
+    var d=String(r.date||'').slice(0,10);
+    return d && d>dFrom && d<=dTo;   // ตัดวันตั้งต้นออก — ความเคลื่อนไหว "หลังจาก" วันนั้น
+  }
+
+  function otFlow(dFrom, dTo){
+    var el=document.getElementById('ot-flow');
+    if(!el) return;
+    var agg={};
+    _data.changes.forEach(function(r){
+      if(!_inRange(r, dFrom, dTo)) return;
+      var key=String(r.fromSt||'')+'\u0000'+String(r.toSt||'');
+      if(!agg[key]) agg[key]={f:r.fromSt||'',t:r.toSt||'',c:0,a:0};
+      agg[key].c++; agg[key].a += Number(r.amount||0);
+    });
+    var rows=Object.keys(agg).map(function(k){ return agg[k]; }).sort(function(x,y){ return y.c-x.c; });
+    if(!rows.length){
+      el.innerHTML='<tr><td colspan="4" style="padding:16px;color:var(--mu2)">ไม่มีความเคลื่อนไหวในช่วงนี้'
+        + ' <span style="color:var(--mu)">— ต้องมี snapshot อย่างน้อย 2 วันถึงจะเทียบได้</span></td></tr>';
+      return;
+    }
+    el.innerHTML=rows.map(function(r){
+      return '<tr><td style="padding:7px 11px">'+(r.f?_bdg(r.f):'<span style="color:#a78bfa;font-size:11px">เข้าใหม่</span>')+'</td>'
+        + '<td style="padding:7px 11px">'+(r.t?_bdg(r.t):'<span style="color:#f87171;font-size:11px">หายไป</span>')+'</td>'
+        + '<td style="padding:7px 11px;text-align:right;font-family:var(--mono)">'+r.c+'</td>'
+        + '<td style="padding:7px 11px;text-align:right;font-family:var(--mono);color:var(--mu2)">'+_money(r.a)+'</td></tr>';
+    }).join('');
+  }
+
+  window.otSetKind = function(k){ _kind=k; otTabs(); otRows(window._otF, window._otT); };
+
+  function otTabs(){
+    var el=document.getElementById('ot-tabs');
+    if(!el) return;
+    var cnt={};
+    _data.changes.forEach(function(r){
+      if(!_inRange(r, window._otF, window._otT)) return;
+      cnt[String(r.kind||'')] = (cnt[String(r.kind||'')]||0)+1;
+      cnt[''] = (cnt['']||0)+1;
+    });
+    el.innerHTML = OT_KIND.map(function(k){
+      return '<span class="ot-tab'+(_kind===k.k?' on':'')+'" onclick="otSetKind(\''+k.k+'\')">'
+        + _esc(k.l)+' <span style="font-family:var(--mono);opacity:.75">'+(cnt[k.k]||0)+'</span></span>';
+    }).join('');
+  }
+
+  function otRows(dFrom, dTo){
+    window._otF=dFrom; window._otT=dTo;
+    var el=document.getElementById('ot-rows');
+    if(!el) return;
+    var rows=_data.changes.filter(function(r){
+      if(!_inRange(r, dFrom, dTo)) return false;
+      return !_kind || String(r.kind||'')===_kind;
+    }).sort(function(a,b){
+      var d=String(b.date||'').localeCompare(String(a.date||''));
+      return d!==0 ? d : (Number(b.amount||0)-Number(a.amount||0));
+    });
+    if(!rows.length){
+      el.innerHTML='<tr><td colspan="7" style="padding:16px;color:var(--mu2)">ไม่มีรายการในช่วงนี้</td></tr>';
+      return;
+    }
+    el.innerHTML=rows.slice(0,500).map(function(r){
+      var k=String(r.kind||'');
+      var days=(r.daysInPrev===''||r.daysInPrev==null)?'—':(r.daysInPrev+' วัน');
+      return '<tr>'
+        + '<td style="padding:7px 11px;font-family:var(--mono);color:var(--mu2);white-space:nowrap">'+_esc(String(r.date||'').slice(5))+'</td>'
+        + '<td style="padding:7px 11px;font-family:var(--mono)">'+_esc(r.qn||'')+'</td>'
+        + '<td style="padding:7px 11px">'+_esc(r.customer||'')+'</td>'
+        + '<td style="padding:7px 11px;color:var(--mu2)">'+_esc(r.sales||'')+'</td>'
+        + '<td style="padding:7px 11px">'+_bdg(r.fromSt)
+          + '<span style="color:var(--mu);margin:0 5px">→</span>'+_bdg(r.toSt)
+          + ' <span style="font-size:10px;color:'+(_kindCol[k]||'var(--mu)')+'">'+_esc(_kindLbl[k]||k)+'</span></td>'
+        + '<td style="padding:7px 11px;text-align:right;font-family:var(--mono)">'+_money(r.amount)+'</td>'
+        + '<td style="padding:7px 11px;text-align:right;font-family:var(--mono);color:var(--mu2)">'+_esc(days)+'</td>'
+        + '</tr>';
+    }).join('');
+  }
+})();
+</script>

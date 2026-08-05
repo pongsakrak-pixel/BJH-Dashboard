@@ -1357,6 +1357,7 @@ function cfgTabPermInit(){
     {key:'analysis',     label:'└ 📈 Analysis', group:'sub'},
     {key:'nav_service',  label:'🔧 Service Commercial Orders', group:'nav'},
     {key:'nav_prospect', label:'🎯 Sales Prospect', group:'nav'},
+    {key:'nav_track',    label:'📋 Order Tracking', group:'nav'},   // [V661]
     /* [V597] ซ่อนจาก Config สิทธิ์แท็บ — Revenue Forecast ปิดใช้แล้ว */
     /* [V597] ซ่อนจาก Config สิทธิ์แท็บ — Quotation Pipeline ปิดใช้แล้ว */
     {key:'sp_install',   label:'└ 🏥 Installation Base', group:'sub'},
@@ -6506,19 +6507,21 @@ window._TAB_PERM_DEFAULT = {
   tool_retention: {admin:true, manager:true, sales:false}, // [V545] เหมือน tool_pricetbl
   tool_pricebook: {admin:true, manager:true, sales:false}, // [V611] ราคาอ้างอิง SC/SP
   ma_verify: {admin:true, manager:true, sales:false}, // [V654] MA หน้าตรวจสอบ/อนุมัติ
-  ma_config: {admin:true, manager:false, sales:false} // [V654] MA หน้า Config
+  ma_config: {admin:true, manager:false, sales:false}, // [V654] MA หน้า Config
+  nav_track: {admin:true, manager:true, sales:true} // [V661] Order Tracking
 };
 /* [V654] key ใหม่ที่ยังไม่มีในชีต _config_kv — ใช้ค่านี้แทน all-false
    ถ้าไม่มี พอเพิ่ม key ลง _TAB_PERM_KEYS ทุกคนจะมองไม่เห็นแท็บทันทีตอนอัป — จนกว่าแอดมินจะเข้าไปติ๊ก
    เข้าชีตเมื่อแอดมินกด Save ครั้งแรก จากนั้นค่าในชีตคุมตามปกติ */
 window._TAB_PERM_NEWKEYS_DEF = {
+  nav_track: {admin:true, manager:true, sales:true},
   sp_bg:     {admin:true, manager:true, sales:true},
   sp_weekly: {admin:true, manager:true, sales:true},
   ma_verify: {admin:true, manager:true, sales:false},
   ma_config: {admin:true, manager:false, sales:false}
 };
 // keys ทั้งหมดที่ระบบรู้จัก (ลำดับ = ลำดับใน config UI)
-window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook','sp_bg','sp_weekly','ma_verify','ma_config']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook
+window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook','sp_bg','sp_weekly','ma_verify','ma_config','nav_track']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook
 // helper: เช็คสิทธิ์ 1 key สำหรับ role — ไม่มี admin bypass (admin ตาม config เหมือน role อื่น)
 window._tpCan = function(key, role){
   // [v225+v247] sheet ก่อน — ถ้า key ไม่มีใน sheet fallback _TAB_PERM_DEFAULT
@@ -6539,7 +6542,7 @@ function _applyNavPermissions(){
   if(!window._TAB_PERMISSIONS || Object.keys(window._TAB_PERMISSIONS).length===0) return;
   // [v224] single-DOM, ทุกอย่างตาม config (admin คุมตัวเองได้) — ใช้ _tpCan ตัวเดียว
   var role = window._USER_ROLE || (window._currentUser && window._currentUser.role) || 'sales';
-  var navMap = {nav_ds:'nb-ds', nav_home:'nb-home', nav_summary:'nb-db', nav_service:'nb-se', nav_prospect:'nb-sp'};
+  var navMap = {nav_ds:'nb-ds', nav_home:'nb-home', nav_summary:'nb-db', nav_service:'nb-se', nav_prospect:'nb-sp', nav_track:'nb-track'};
   var visibleNav = [];
   Object.keys(navMap).forEach(function(navKey){
     var canSee = window._tpCan(navKey, role);
