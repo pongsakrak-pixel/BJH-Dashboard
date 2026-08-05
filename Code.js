@@ -1759,9 +1759,24 @@ function smartflowDailySyncToDrive() {
    team มาจาก RAW_TEAMS.TEAM_ID (ต้องเป็นเลขบวกเท่านั้น ตามคู่มือ)
    อ่าน TEAM_ID จากไฟล์ master ที่ดึงมาแล้ว ไม่ต้อง hardcode
    ════════════════════════════════════════════════════════ */
+/* [V665.5] อ่าน RAW_TEAMS จากไฟล์ master
+   _bjhReadDriveCached คืน "ข้อความดิบ" (base64 ของ gzip) ไม่ใช่ object ที่ parse แล้ว
+   ฝั่ง server ไม่เคยแตะข้อมูลข้างใน — ส่งดิบให้ client ไปคลายเอง
+   V665.4 ผมเขียน m.data.RAW_TEAMS โดยคิดเองว่าเป็น object -> ได้ [] เงียบๆ ทุกครั้ง */
+function _bjhMasterJson_() {
+  var raw = _bjhReadDriveCached(SMARTFLOW_MASTER_FILE, 'MASTER');
+  if (raw == null) return null;
+  if (typeof raw === 'object') return raw;                 // เผื่ออนาคตเปลี่ยนเป็นคืน object
+  var s = String(raw);
+  if (s.charCodeAt(0) === 123) return JSON.parse(s);       // 123 = เครื่องหมายปีกกาเปิด (เผื่อเป็น JSON ตรงๆ)
+  var bytes = Utilities.base64Decode(s);
+  var gz = Utilities.newBlob(bytes, 'application/x-gzip', 'm.json.gz');
+  return JSON.parse(Utilities.ungzip(gz).getDataAsString('UTF-8'));
+}
+
 function _bjhJobTeamIds_() {
   try {
-    var m = _bjhReadDriveCached(SMARTFLOW_MASTER_FILE, 'MASTER');
+    var m = _bjhMasterJson_();
     var d = (m && m.data && m.data.RAW_TEAMS) || [];
     var want = {};
     (SMARTFLOW_JOB_TEAM_NAMES || []).forEach(function (n) { want[String(n).trim().toLowerCase()] = 1; });
