@@ -6125,17 +6125,39 @@ window.dbPrintPPT = function(){
         ]);
       }
     })();
-    /* [V660.4] แถวรวมด้านบน — SUBTOTAL(9) นับเฉพาะแถวที่ผ่านตัวกรองของ Excel
-       แทรกเป็นแถวที่ 2 (header=1, ข้อมูลเริ่ม 3) ให้ตรงกับสูตร L3:L9999 */
-    oRows.splice(1, 0, ['', '', '', '', '', '', '', 'รวมทั้งหมด (ตามตัวกรอง)', '', '', '',
-                        '', '', '', '', '', '', '', '', '', '', '']);
+    /* [V660.5] เรียงเดือน — เดือนปัจจุบันขึ้นก่อน แล้วไล่ไปข้างหน้า จบด้วยเดือนที่ผ่านมาแล้ว
+       อ่านเดือนจากคอลัมน์ Period (index 19) รูปแบบ 'Aug-26' · แถวที่ไม่มีเดือนไปท้ายสุด
+       ใช้ index กำกับให้ sort เสถียร (ลำดับเดิมภายในเดือนเดียวกันไม่สลับ) */
+    (function(){
+      var hdr = oRows[0], body = oRows.slice(1);
+      var cm = Number(window.CUR_MO) || (new Date().getMonth() + 1);
+      body.forEach(function(row, i){ row.__i = i; });
+      body.sort(function(a, b){
+        function key(row){
+          var mi = MO_EN.indexOf(String(row[19] || '').split('-')[0]);
+          if(mi < 0) return 99;
+          var m = mi + 1;
+          return (m >= cm) ? (m - cm) : (m - cm + 12);
+        }
+        var d = key(a) - key(b);
+        return d !== 0 ? d : (a.__i - b.__i);
+      });
+      body.forEach(function(row, i){ delete row.__i; row[0] = i + 1; });   // เรียงเลข NO ใหม่
+      oRows = [hdr].concat(body);
+    })();
+
+    /* [V660.5] แถวรวมไว้บนสุด (แถว 1) — header เลื่อนเป็นแถว 2 · ข้อมูลเริ่มแถว 3
+       ตรงกับสูตร SUBTOTAL(9,L3:L9999) ที่ขอมา
+       SUBTOTAL(9) นับเฉพาะแถวที่ผ่านตัวกรอง จึงต้องเปิด autofilter ให้ด้วย */
+    oRows.unshift(['', '', '', '', '', '', '', 'รวมทั้งหมด (ตามตัวกรอง)', '', '', '',
+                   '', '', '', '', '', '', '', '', '', '', '']);
     var wsO = XLSX.utils.aoa_to_sheet(oRows);
     wsO['!cols'] = COL_W;
     _applyNumberFormat(wsO, oRows.length);
     ['L','M'].forEach(function(col){
-      wsO[col+'2'] = { t:'n', f:'SUBTOTAL(9,'+col+'3:'+col+'9999)', z:'#,##0' };
+      wsO[col+'1'] = { t:'n', f:'SUBTOTAL(9,'+col+'3:'+col+'9999)', z:'#,##0' };
     });
-    wsO['!autofilter'] = { ref: 'A1:V' + oRows.length };   // เปิดตัวกรองให้เลย SUBTOTAL จะได้มีความหมาย
+    wsO['!autofilter'] = { ref: 'A2:V' + oRows.length };
     XLSX.utils.book_append_sheet(wb, wsO, 'Ordered');
 
     // Sheet 2: Pivot (เดือน × SC/SP/Total) จาก orderedRecs (ข้อมูลเดียวกับ Sheet 1)
