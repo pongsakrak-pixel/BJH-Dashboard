@@ -6853,28 +6853,31 @@ window.spRenderSCQuote = function(){
     return _spFmtDate(qv)+'<span title="จากใบเสนอราคา (ยังไม่มีสัญญาจริง)" style="color:#fb923c;font-weight:700"> *</span>';
   }
   // [V479.74] +เริ่ม/สิ้นสุด (user: "ให้แสดงวันที่เริ่มต้น สิ้นสุด ด้วย")
-  var cols=['Sales','QN','ลูกค้า','รายละเอียด','ประเภทสัญญา','ปี','เริ่ม','สิ้นสุด','NEW/RENEW','มูลค่า','สถานะ','FC','โน้ต'];
+  // [V667] จัดคอลัมน์ใหม่ 13 -> 10 : รวม เริ่ม+สิ้นสุด+ปี = ช่วงสัญญา · Sales ย้ายไปหน้าปุ่ม FC
+  var cols=['QN','ลูกค้า','รายละเอียด','ชนิด','ประเภทสัญญา','ช่วงสัญญา','มูลค่า','สถานะ','FC','โน้ต'];
   var body=rows.map(function(r){
-    var sent=r.SEND_TO_CUSTOMER_DATETIME?new Date(r.SEND_TO_CUSTOMER_DATETIME):null;
-    var age=(sent&&!isNaN(sent))?Math.max(0,Math.round((today-sent)/86400000)):null;
-    var ageStr=age===null?'—':(age>60?'<span style="color:#ff9d3c">'+age+'</span>':age+'');
     var isWon=!!WON[r.STATUS_NAME],isLost=!!LOST[r.STATUS_NAME];
     var stColor=isWon?'#3ddc84':isLost?'#ff5252':'#e2e8f0';
     var con=conMap[r.DOC_NUMBER||'']||null;
+    var _net=parseFloat(r.QH_TOTAL_AMT||0)-parseFloat(r.QH_TOTAL_DISCOUNT||0);
+    // [V667] ชนิด NEW/RENEW (เดิมคอลัมน์ NEW/RENEW)
+    var _nr=(r.CONTRACT_TYPE_TYPE_NAME&&r.CONTRACT_TYPE_TYPE_NAME!=='null')
+      ?('<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;font-weight:600;'
+        +(String(r.CONTRACT_TYPE_TYPE_NAME).toUpperCase()==='NEW'?'background:rgba(56,189,248,.12);color:#38bdf8':'background:rgba(167,139,250,.12);color:#a78bfa')
+        +'">'+_esc(r.CONTRACT_TYPE_TYPE_NAME)+'</span>')
+      :'—';
+    // [V667] ช่วงสัญญา = เริ่ม -> สิ้นสุด (บรรทัดล่าง = จำนวนปี) ; * ส้ม = มาจากใบเสนอราคา
+    var _period=_scqDateCell(con,r,'start')+' <span style="color:var(--mu)">&rarr;</span> '+_scqDateCell(con,r,'end');
     return '<tr style="border-bottom:1px solid var(--bd2,#374151)">'
-      +'<td style="padding:6px 10px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.DOC_NUMBER||'—', r.URL):_esc(r.DOC_NUMBER||'—'))+'</td>'   /* [V666.1] SC/SP Quotation */
-      +'<td style="padding:6px 10px">'+_esc((r.CUSTOMER_NAME||'—').slice(0,22))+'</td>'
+      +'<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+((typeof window._sfLink==='function')?window._sfLink(r.DOC_NUMBER||'—', r.URL):_esc(r.DOC_NUMBER||'—'))+'</td>'
+      +'<td style="padding:6px 10px;white-space:nowrap;font-weight:600">'+_esc((r.CUSTOMER_NAME||'—').slice(0,22))+'</td>'
       +'<td style="padding:6px 10px;color:var(--mu);font-size:11.5px;max-width:280px" title="'+_esc(r.SUBJECT_EMAIL||'')+'">'+_esc((r.SUBJECT_EMAIL||'—').slice(0,48))+'</td>'
+      +'<td style="padding:6px 10px;white-space:nowrap">'+_nr+'</td>'
       +'<td style="padding:6px 10px;color:var(--mu);font-size:12px">'+_esc(r.CONTRACT_TYPE_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:center">'+window._qnYearCell(r)+'</td>' // [V479.31] จำนวนปี (คำนวณเอง)
-      // [V479.74] เริ่ม/สิ้นสุด — RAW_CONTRACT เป็นหลัก, ไม่มี → fallback ใบเสนอราคา (+ * ส้มเตือน)
-      +'<td style="padding:6px 10px;font-size:11px">'+_scqDateCell(con, r, 'start')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+_scqDateCell(con, r, 'end')+'</td>'
-      +'<td style="padding:6px 10px">'+(r.CONTRACT_TYPE_TYPE_NAME&&r.CONTRACT_TYPE_TYPE_NAME!=='null'?('<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;font-weight:600;'+(String(r.CONTRACT_TYPE_TYPE_NAME).toUpperCase()==='NEW'?'background:rgba(56,189,248,.12);color:#38bdf8':'background:rgba(167,139,250,.12);color:#a78bfa')+'">'+_esc(r.CONTRACT_TYPE_TYPE_NAME)+'</span>'):'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(parseFloat(r.QH_TOTAL_AMT||0)-parseFloat(r.QH_TOTAL_DISCOUNT||0))+'</td>'
-      +'<td style="padding:6px 10px;color:'+stColor+'">'+_esc(r.STATUS_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:center">'+_fcCellHtml(r, parseFloat(r.QH_TOTAL_AMT||0)-parseFloat(r.QH_TOTAL_DISCOUNT||0), false)+'</td>'
+      +'<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+_period+'<div style="color:var(--mu);font-size:10.5px">'+window._qnYearCell(r)+'</div></td>'
+      +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(_net)+'</td>'
+      +'<td style="padding:6px 10px;color:'+stColor+';font-size:12px">'+_esc(r.STATUS_NAME||'—')+'</td>'
+      +'<td style="padding:6px 10px;text-align:center;white-space:nowrap"><span style="color:var(--mu);font-size:11px;margin-right:6px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</span>'+_fcCellHtml(r, _net, false)+'</td>'
       +'<td style="padding:6px 10px;text-align:center">'+_qnCellHtml(r.DOC_NUMBER||'')+'</td>'
       +'</tr>';
   }).join('');
@@ -7023,19 +7026,20 @@ window.spRenderSPQuote = function(){
   var _snMcName={};
   (window._spInstallRows||[]).forEach(function(ir){ var _s=String(ir.SN||'').trim().toUpperCase(); if(_s&&!_snMcName[_s]) _snMcName[_s]=ir.MC_STATUS_NAME||''; });
   var _mcColor={'ใช้งานไม่ได้':'#ef4444','ใช้งานได้บางส่วน':'#facc15','End of Life':'#9ca3af','ใช้งานได้ปกติ':'#3ddc84'};
-  var cols=['Sales','QN','ลูกค้า','Brand','มูลค่า','สถานะเครื่อง','สถานะ QN','FC','โน้ต']; // [v397] แยก 2 คอลัมน์เสมอ — toggle มีผลแค่ปุ่ม chip กรองเท่านั้น
+  // [V667] Sales ย้ายไปหน้าปุ่ม FC (9 -> 8) ; [v397] สถานะเครื่อง / สถานะ QN แยกกันเสมอ
+  var cols=['QN','ลูกค้า','Brand','มูลค่า','สถานะเครื่อง','สถานะ QN','FC','โน้ต'];
   var body=rows.map(function(r){
     var pInfo=partsMap[r.DOC_NUMBER||'']||{};
     var _mcn=pInfo.sn?(_snMcName[pInfo.sn]||''):'';
+    var _net=parseFloat(r.QH_TOTAL_AMT||0)-parseFloat(r.QH_TOTAL_DISCOUNT||0);
     return '<tr style="border-bottom:1px solid var(--bd2,#374151)">'
-      +'<td style="padding:6px 10px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.DOC_NUMBER||'—', r.URL):_esc(r.DOC_NUMBER||'—'))+'</td>'   /* [V666.1] SC/SP Quotation */
-      +'<td style="padding:6px 10px">'+_esc((r.CUSTOMER_NAME||'—').slice(0,22))+'</td>'
+      +'<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+((typeof window._sfLink==='function')?window._sfLink(r.DOC_NUMBER||'—', r.URL):_esc(r.DOC_NUMBER||'—'))+'</td>'
+      +'<td style="padding:6px 10px;white-space:nowrap;font-weight:600">'+_esc((r.CUSTOMER_NAME||'—').slice(0,22))+'</td>'
       +'<td style="padding:6px 10px">'+_esc(r.BRAND_NAME||'—')+'</td>'
-      +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(parseFloat(r.QH_TOTAL_AMT||0)-parseFloat(r.QH_TOTAL_DISCOUNT||0))+'</td>'
-      +'<td style="padding:6px 10px;font-size:12px" title="SN: '+_esc(pInfo.sn||'—')+'"><span style="color:'+(_mcColor[_mcn]||'var(--mu)')+'">'+_esc(_mcn||'—')+'</span></td>' // [v397] สถานะเครื่อง (แยกถาวร)
-      +'<td style="padding:6px 10px;color:#e2e8f0">'+_esc(_SPQ_LBL[r.STATUS_NAME]||r.STATUS_NAME||'—')+'</td>' // [v397] สถานะ QN (แยกถาวร)
-      +'<td style="padding:6px 10px;text-align:center">'+_fcCellHtml(r, parseFloat(r.QH_TOTAL_AMT||0)-parseFloat(r.QH_TOTAL_DISCOUNT||0), true)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(_net)+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px" title="SN: '+_esc(pInfo.sn||'—')+'"><span style="color:'+(_mcColor[_mcn]||'var(--mu)')+'">'+_esc(_mcn||'—')+'</span></td>'
+      +'<td style="padding:6px 10px;color:#e2e8f0;font-size:12px">'+_esc(_SPQ_LBL[r.STATUS_NAME]||r.STATUS_NAME||'—')+'</td>'
+      +'<td style="padding:6px 10px;text-align:center;white-space:nowrap"><span style="color:var(--mu);font-size:11px;margin-right:6px">'+_esc(r.SALES_SERVICE_NAME||'—')+'</span>'+_fcCellHtml(r, _net, true)+'</td>'
       +'<td style="padding:6px 10px;text-align:center">'+_qnCellHtml(r.DOC_NUMBER||'')+'</td>'
       +'</tr>';
   }).join('');
@@ -7775,24 +7779,24 @@ window.spRenderContract = function(){
 
   if(!rows.length){ el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu)">ไม่พบใบเสนอ QSC (H/M)</div>'; return; }
 
-  var cols=['Stage','Sales','ลูกค้า','เลขที่ใบเสนอราคา','ยี่ห้อ','รุ่น','เริ่ม','สิ้นสุด','สถานะใบเสนอราคา','มูลค่า','ผู้รับผิดชอบ','Log','โน้ต']; // [V508] +โน้ต
+  // [V667] ตัด 'ผู้รับผิดชอบ' + 'Log' (เป็น — ทุกแถว ไม่มีข้อมูล) · รวม เริ่ม+สิ้นสุด = ช่วงสัญญา · Sales ย้ายไปท้าย
+  var cols=['Stage','ลูกค้า','เลขที่ใบเสนอราคา','ยี่ห้อ','รุ่น','ช่วงสัญญา','สถานะใบเสนอราคา','มูลค่า','Sales','โน้ต'];
   var body=rows.map(function(r){
     var sc=r.stage==='late'?'#f87171':r.stage==='near'?'#fb923c':'#94a3b8';
     var sLabel=r.stage==='late'?'🔴 Overdue':r.stage==='near'?'🟠 Due Soon':'⚪ Normal';
+    var _star=r.fromQuo?'<span title="จากใบเสนอราคา (ยังไม่มีสัญญาจริง)" style="color:#fb923c;font-weight:700"> *</span>':'';
+    var _period=_spFmtDate(r.startD)+' <span style="color:var(--mu)">&rarr;</span> '+_spFmtDate(r.endD)+((r.startD||r.endD)?_star:'');
     return '<tr style="border-bottom:1px solid var(--bd2,#374151)">'
-      +'<td style="padding:6px 10px"><span style="color:'+sc+';font-weight:600;font-size:11px">'+sLabel+'</span></td>'
-      +'<td style="padding:6px 10px">'+_esc(r.sa||'—')+'</td>'
-      +'<td style="padding:6px 10px">'+_esc((r.cu||'—').slice(0,24))+'</td>'
-      +'<td style="padding:6px 10px;font-size:12px">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'   /* [V666] */
+      +'<td style="padding:6px 10px;white-space:nowrap"><span style="color:'+sc+';font-weight:600;font-size:11px">'+sLabel+'</span></td>'
+      +'<td style="padding:6px 10px;white-space:nowrap;font-weight:600">'+_esc((r.cu||'—').slice(0,24))+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px;white-space:nowrap">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'
       +'<td style="padding:6px 10px">'+_esc(r.br||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:12px;color:var(--mu)">'+_esc(r.ml||'—')+(r.fromQuo?'<span title="ข้อมูลจากใบเสนอราคา (ยังไม่มีสัญญาจริง)" style="color:#fb923c;font-weight:700"> *</span>':'')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+_spFmtDate(r.startD)+(r.fromQuo&&r.startD?'<span title="จากใบเสนอราคา" style="color:#fb923c"> *</span>':'')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+_spFmtDate(r.endD)+(r.fromQuo&&r.endD?'<span title="จากใบเสนอราคา" style="color:#fb923c"> *</span>':'')+'</td>'
+      +'<td style="padding:6px 10px;font-size:12px;color:var(--mu)">'+_esc(r.ml||'—')+'</td>'
+      +'<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+_period+'</td>'
       +'<td style="padding:6px 10px;font-size:12px">'+_esc(r.quoSt||'—')+'</td>'
       +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(r.px)+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px;color:var(--mu)">—</td>'
-      +'<td style="padding:6px 10px;font-size:11px;color:var(--mu)">—</td>'
-      +'<td style="padding:6px 10px;text-align:center" onclick="event.stopPropagation()">'+_qnCellHtml(r.qn||'')+'</td>' // [V508]
+      +'<td style="padding:6px 10px;font-size:12px;color:var(--mu);white-space:nowrap">'+_esc(r.sa||'—')+'</td>'
+      +'<td style="padding:6px 10px;text-align:center" onclick="event.stopPropagation()">'+_qnCellHtml(r.qn||'')+'</td>'
       +'</tr>';
   }).join('');
   var _hasFromQuo=rows.some(function(r){return r.fromQuo;});
