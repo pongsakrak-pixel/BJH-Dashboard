@@ -421,7 +421,8 @@
       var _rip=r.ip||'';
       var _isActualFAD=(r.st==='Actual FAD'||r.st==='Actual FAD (Not Found)'||r.st==='Actual FAD (CN)');
       var _isBilled=(r.st==='Billed');
-      var _isBL=(r.st==='Backlog'&&(_rip==='SC Billing'||_rip==='SP Billing'||_rip==='SC Pending'||_rip==='RP Pending'));   // [V658]
+      var _BLIP=(window._MFC_BL_IPS||['SC Billing','SP Billing','Bill Merge','SC Pending','RP Pending']);   // [V670.7]
+      var _isBL=(r.st==='Backlog'&&_BLIP.indexOf(_rip)>=0);   // [V658] · [V670.7] ใช้ชุดเดียวกับชิป Sales Order
       var _isSCOrd=(r.st==='SC Ordered'||r.st==='Ordered');
       var _isSCCarry=(r.st==='SC Carry');
       if(mo<CUR_MO){
@@ -470,7 +471,7 @@
       } else if(r.st==='Backlog'){
         var exv=Number(exVat(r.px||0)||0);
         moBL[mo-1]+=exv;
-        if(_rip==='SC Billing'||_rip==='SP Billing'||_rip==='SC Pending'||_rip==='RP Pending') moBilling[mo-1]+=exv;   // [V658]
+        if(_BLIP.indexOf(_rip)>=0) moBilling[mo-1]+=exv;   // [V658] · [V670.7] ป้าย (BL) ใต้ตัวเลขต้องเป็นชุดเดียวกับที่ชิปนับ
       }
     });
     var qf=QMO.map(function(q){ return q.reduce(function(s,i){ return s+moMFC[i]; },0); });
@@ -1882,8 +1883,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V670.6';
-    var _BUILD_TIME='6 ส.ค. 2569 (V670.6 ปลดเพดานความสูงรายการเครื่อง)';
+    var _BUILD_VER='V670.7';
+    var _BUILD_TIME='6 ส.ค. 2569 (V670.7 Monthly Forecast: BL ชุดเดียวกันทุกที่)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน

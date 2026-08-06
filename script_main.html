@@ -4596,11 +4596,19 @@ function renderStatusBar(){
 
 // ─── MFC FILTER POPUP ───
 var _mfcModal=null;
+/* [V670.7] IP ของ Backlog ที่ถือว่า "กำลังจะออกบิล" — แหล่งความจริงเดียว
+   เดิมเขียนไว้ 2 ที่แล้วหลุดกัน: ชิป Sales Order ใช้ SC Billing/SP Billing/Bill Merge
+   ส่วนป้าย (BL) กับค่า default ใช้ SC Billing/SP Billing/SC Pending/RP Pending (V658 เพิ่มเข้ามาแต่ไม่ได้แก้ชิป)
+   ผลคือ ส.ค. โชว์ 4.67M แต่ป้ายใต้ตัวเลขบอก BL 9.74M — SC Pending 7.54M หายไปจากยอดที่ชิปนับ
+   และค่า default (ไม่ติ๊กชิปเลย) ยังได้ยอดสูงกว่าตอนติ๊กชิปครบ ซึ่งเป็นไปไม่ได้
+   -> รวมเป็น union ชุดเดียว ทุกที่อ่านจากตรงนี้ */
+window._MFC_BL_IPS = ['SC Billing','SP Billing','Bill Merge','SC Pending','RP Pending'];
+
 var _MFC_PILLS=[
   //  [V526] ยุบ pill 'actual' เข้า 'billed' — ให้ตรงกับ Summary (_SUM_PILLS) ที่ map Actual FAD -> chip billed
   //    เดิม Monthly มี 11 pill / Summary มี 10 -> เลือก "Billed" เท่ากันแต่ได้ยอดต่างกัน (Actual FAD ติดมาเฉพาะ Summary)
   {id:'billed',  label:'Billed',               st:['Billed','Actual FAD','Actual FAD (Not Found)','Actual FAD (CN)'], color:'var(--ylw2)'},
-  {id:'backlog', label:'Backlog (BL)',          st:['Backlog','Forecast SP'],  ip:['SC Billing','SP Billing','Bill Merge'],   color:'var(--ylw2)'}, // [v376] Bill Merge กลับเข้ามาอีกครั้ง (v373 เคยพัง สาเหตุยังไม่ยืนยัน — ทดสอบระมัดระวัง)
+  {id:'backlog', label:'Backlog (BL)',          st:['Backlog','Forecast SP'],  ip:window._MFC_BL_IPS,   color:'var(--ylw2)'}, // [v376] Bill Merge · [V670.7] อ่านจาก _MFC_BL_IPS ชุดเดียวกับป้าย (BL) และค่า default
   {id:'backlog-conf',label:'Backlog (Confirmed)', st:['Backlog (Confirmed)'],                       color:'var(--ylw2)'},
   {id:'ordered', label:'SC Ordered',            st:['SC Ordered','Ordered'],                      color:'#38bdf8'},
   {id:'co-ready',label:'SC Carry (Bill Pending)',   st:['SC Carry'],                                  color:'#38bdf8'},
