@@ -1355,9 +1355,9 @@ function cfgTabPermInit(){
     {key:'table',        label:'└ 📋 Budget & Actual', group:'sub'},
     {key:'sabud',        label:'└ 💰 Budget Sales', group:'sub'},
     {key:'analysis',     label:'└ 📈 Analysis', group:'sub'},
+    {key:'nav_track',    label:'└ 📋 Order Tracking', group:'sub'},   // [V661][V669.1] ย้ายมาเป็นลูกของ Summary — ปุ่มอยู่ในแถบ Summary แล้ว ไม่ใช่แท็บบนอีกต่อไป
     {key:'nav_service',  label:'🔧 Service Commercial Orders', group:'nav'},
     {key:'nav_prospect', label:'🎯 Sales Prospect', group:'nav'},
-    {key:'nav_track',    label:'📋 Order Tracking', group:'nav'},   // [V661]
     /* [V597] ซ่อนจาก Config สิทธิ์แท็บ — Revenue Forecast ปิดใช้แล้ว */
     /* [V597] ซ่อนจาก Config สิทธิ์แท็บ — Quotation Pipeline ปิดใช้แล้ว */
     {key:'sp_install',   label:'└ 🏥 Installation Base', group:'sub'},
@@ -6698,7 +6698,9 @@ function _applyNavPermissions(){
     if(btn) btn.style.display = canSee ? 'inline-flex' : 'none';
     var mbBtn = document.getElementById('mbn-'+navMap[navKey].replace('nb-',''));
     if(mbBtn) mbBtn.style.display = canSee ? '' : 'none';
-    if(canSee) visibleNav.push(navMap[navKey].replace('nb-',''));
+    /* [V669.1] 'track' คุมสิทธิ์ปุ่มได้เหมือนเดิม แต่ห้ามเป็น "ปลายทาง" ของ _autoSwitchIfHidden()
+       เพราะ Order Tracking เปิดเป็นโมดัลแล้ว ถ้าเด้งไป sv('track') จะไม่มีปุ่มกลับ */
+    if(canSee && navKey !== 'nav_track') visibleNav.push(navMap[navKey].replace('nb-',''));
   });
   // MD Collection (Tools menu) — gate by nav_mdcol
   try {
@@ -6746,7 +6748,7 @@ function _autoSwitchIfHidden(){
   var vis = window._visibleNav || [];
   var curOn = document.querySelector('.view.on');
   var curView = curOn ? curOn.id.replace('v-','') : 'db';
-  var _navExempt = ['ds','loa','mdcol','ma','bvf']; // หน้านอก navMap — ไม่เตะออก
+  var _navExempt = ['ds','loa','mdcol','ma','bvf','track']; // หน้านอก navMap — ไม่เตะออก ([V669.1] +track = อยู่ในโมดัลของ Summary)
   if(_navExempt.indexOf(curView)<0 && vis.indexOf(curView)<0 && vis.length){
     // [v327] se ก่อน db (landing = Service Commercial) — ไม่เด้งไป Dashboard ทับ landing
     var pref=['se','db','sp','home']; var dest=null;
