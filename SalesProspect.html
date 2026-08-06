@@ -8928,7 +8928,7 @@ window.spRenderOrdSC = function(){
     if(_crossMo) _moCell='<span style="color:#f87171;font-weight:600">'+_moCell+' ⚠</span>';
     return '<tr style="border-bottom:1px solid var(--bd2,#374151);cursor:pointer;'+rowBg+'" onclick="spOpenSPDetail('+r._idx+')">'
       +'<td style="padding:6px 10px">'+_esc(r.sa||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+_esc(r.qn||'—')+'</td>'
+      +'<td style="padding:6px 10px;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'   /* [V669.2] ลิงก์ SmartFlow — V666 ตกหน้านี้ */
       +'<td style="padding:6px 10px">'+_esc((r.cu||'—').slice(0,24))+'</td>'
       +(function(){ var _bm=(typeof resolveBM==='function')?resolveBM(r):{br:r.br||'',ml:r.ml||''}; var _tx=((_bm.br||'')+' '+(_bm.ml||'')).trim(); var _pb=(typeof window._pkgBadge==='function')?window._pkgBadge(_bm):''; return '<td style="padding:6px 10px;color:var(--mu);font-size:12px">'+(_tx?('<b style="color:var(--tx)">'+_esc(_bm.br||'')+'</b> '+_esc(String(_bm.ml||'').slice(0,22))+_pb):'—')+'</td>'; })()   /* [V664.3] +ป้าย (Px) */ // [v385] resolveBM ตัวเดียวกับตารางหลัก (v383 join RAW_Quotation ว่าง)
       +'<td style="padding:6px 10px"><span style="color:#38bdf8">'+_esc((window._stLbl?window._stLbl(r.st):r.st)||'—')+'</span></td>'
@@ -9001,7 +9001,7 @@ window.spRenderBilling = function(){
     return '<tr style="border-bottom:1px solid var(--bd2,#374151);cursor:pointer" onclick="spOpenSPDetail('+r._idx+')">'
       +'<td style="padding:6px 8px"><span style="color:'+tc+';font-weight:600;font-size:12px">'+(r.t||'—')+'</span></td>'
       +'<td style="padding:6px 8px">'+_esc(r.sa||'—')+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+_esc(r.qn||'—')+'</td>'
+      +'<td style="padding:6px 8px;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'   /* [V669.2] ลิงก์ SmartFlow — V666 ตกหน้านี้ */
       +'<td style="padding:6px 8px">'+_esc((r.cu||'—').slice(0,22))+'</td>'
       +'<td style="padding:6px 8px"><span style="color:#facc15;font-size:12px">'+_esc((window._stLbl?window._stLbl(r.st):r.st)||'—')+'</span></td>' // [v391]
       +'<td style="padding:6px 8px;text-align:right">'+_spFmtB(r.px||0)+'</td>'
