@@ -3235,6 +3235,114 @@ function repairSnapshotDates() {
   return JSON.stringify({ ok: true, detail: out });
 }
 
+/* ═══ [V670] snapshot สถานะสัญญา — ต่อยอดระบบเดิม (โครงเดียวกับ snap_state/daily_change) ═══
+   ทำไมต้องมี: RAW_CONTRACT ไม่มีวันที่เปลี่ยนสถานะเลย มีแค่ start/end
+   -> ถามว่า "สัปดาห์นี้ปิดไปกี่งาน" จากข้อมูลดิบไม่ได้ ตอบได้แค่ "ตอนนี้ค้างกี่งาน" ซึ่งเลขเท่าเดิมทุกสัปดาห์
+   จึงถ่ายภาพสถานะต่อ CON_ID วันละครั้ง แล้วเทียบกับภาพเมื่อวานเพื่อออกเป็นรายการ "ขยับ"
+   ข้อจำกัดที่ยอมรับแล้ว: ย้อนหลังก่อนวันติดตั้งไม่ได้ · ต้องมีอย่างน้อย 2 วันถึงจะเริ่มมีของ
+   ใช้ _snapDayStr + setNumberFormat('@') เหมือน V669 (บั๊กวันที่กลายเป็น Date ห้ามเกิดซ้ำ) */
+var CON_STATE_HDR = ['conId', 'qn', 'customer', 'st', 'sales', 'amount', 'startDate', 'endDate', 'sinceDate', 'lastSeen'];
+var CON_CHG_HDR   = ['date', 'kind', 'conId', 'qn', 'customer', 'fromSt', 'toSt', 'sales', 'amount', 'daysInPrev'];
+
+function saveContractSnapshot(payloadStr) {
+  var lock = LockService.getScriptLock();
+  try { if (!lock.tryLock(20000)) return JSON.stringify({ ok: false, error: 'busy' }); } catch (e) {}
+  try {
+    var p = JSON.parse(payloadStr || '{}');
+    var day = String(p.date || '').trim();
+    var rows = p.rows || [];
+    if (!day || !rows.length) return JSON.stringify({ ok: false, error: 'empty payload' });
+
+    var ss = getSpreadsheet();
+    var shState = _snapSheet(ss, 'contract_state', CON_STATE_HDR);
+    var shChg   = _snapSheet(ss, 'contract_change', CON_CHG_HDR);
+
+    // ── ภาพเมื่อวาน + กันซ้ำ (lastSeen = วันนี้แล้ว -> ข้าม) ──
+    var prev = {}, prevLast = shState.getLastRow();
+    if (prevLast > 1) {
+      var pv = shState.getRange(2, 1, prevLast - 1, CON_STATE_HDR.length).getValues();
+      for (var i = 0; i < pv.length; i++) {
+        if (_snapDayStr(pv[i][9]) === day) {
+          return JSON.stringify({ ok: true, skipped: true, reason: 'already saved today' });
+        }
+      }
+      pv.forEach(function (r) {
+        var k = String(r[0] || '');
+        if (k) prev[k] = { st: String(r[3] || ''), since: _snapDayStr(r[8]) };
+      });
+    }
+
+    // ── ส่วนต่าง ──
+    var chg = [], seen = {}, stateRows = [];
+    rows.forEach(function (r) {
+      var k = String(r.k || '');
+      if (!k || seen[k]) return;
+      seen[k] = 1;
+      var st = String(r.st || ''), was = prev[k], since = day, kind = '';
+      if (!was) kind = 'new';
+      else if (was.st !== st) kind = 'moved';
+      else since = was.since || day;
+      if (kind) {
+        chg.push([day, kind, k, String(r.qn || ''), String(r.cu || ''),
+          was ? was.st : '', st, String(r.sa || ''), Number(r.px || 0),
+          was ? _snapDayDiff(was.since || day, day) : '']);
+      }
+      stateRows.push([k, String(r.qn || ''), String(r.cu || ''), st, String(r.sa || ''),
+        Number(r.px || 0), String(r.sd || ''), String(r.ed || ''), since, day]);
+    });
+    Object.keys(prev).forEach(function (k) {
+      if (seen[k]) return;
+      chg.push([day, 'gone', k, '', '', prev[k].st, '', '', 0, _snapDayDiff(prev[k].since || day, day)]);
+    });
+
+    if (chg.length) {
+      var rgC = shChg.getRange(shChg.getLastRow() + 1, 1, chg.length, CON_CHG_HDR.length);
+      shChg.getRange(rgC.getRow(), 1, chg.length, 1).setNumberFormat('@');
+      rgC.setValues(chg);
+    }
+    if (shState.getLastRow() > 1) shState.getRange(2, 1, shState.getLastRow() - 1, CON_STATE_HDR.length).clearContent();
+    if (stateRows.length) {
+      shState.getRange(2, 9, stateRows.length, 2).setNumberFormat('@');   // sinceDate / lastSeen
+      shState.getRange(2, 1, stateRows.length, CON_STATE_HDR.length).setValues(stateRows);
+    }
+    return JSON.stringify({ ok: true, date: day, tracked: stateRows.length, changes: chg.length });
+  } catch (e) {
+    return JSON.stringify({ ok: false, error: e.message });
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
+}
+
+/* คืนรายการ "ขยับสถานะ" ทั้งหมด + วันแรกที่เริ่มเก็บ
+   ส่งทั้งก้อนเพราะการขยับต่อวันมีไม่กี่รายการ · ฝั่ง Weekly กรองช่วงสัปดาห์เอง */
+function getContractChanges() {
+  try {
+    var ss = getSpreadsheet();
+    var sh = ss.getSheetByName('contract_change');
+    var shS = ss.getSheetByName('contract_state');
+    if (!sh || sh.getLastRow() < 2) {
+      return JSON.stringify({ ok: true, ready: false, changes: [], since: '' });
+    }
+    var dat = sh.getRange(2, 1, sh.getLastRow() - 1, CON_CHG_HDR.length).getValues();
+    var out = dat.map(function (r) {
+      var o = {};
+      CON_CHG_HDR.forEach(function (h, i) { o[h] = r[i]; });
+      o.date = _snapDayStr(r[0]);
+      return o;
+    }).filter(function (o) { return !!o.date; });
+
+    var since = '';
+    if (shS && shS.getLastRow() > 1) {
+      var col = shS.getRange(2, 9, shS.getLastRow() - 1, 1).getValues()
+        .map(function (r) { return _snapDayStr(r[0]); }).filter(String).sort();
+      since = col[0] || '';
+    }
+    return JSON.stringify({ ok: true, ready: out.length > 0, changes: out, since: since });
+  } catch (e) {
+    return JSON.stringify({ ok: false, error: e.message, changes: [] });
+  }
+}
+
 function getSnapshotRange(fromDay, toDay) {
   try {
     var ss = getSpreadsheet();

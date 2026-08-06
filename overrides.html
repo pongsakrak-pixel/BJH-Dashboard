@@ -1682,6 +1682,8 @@ function dpFmtDate(v){
       /* [V660] ถ่าย snapshot หลัง render เสร็จ — หน่วงไว้ 3 วินาที กันแย่งกับการโหลดหน้า */
       try{ if(window._pkgReset) window._pkgReset(); }catch(e){}   // [V664] ล้าง cache จำนวนเครื่อง
       try{ if(window.bjhDailySnapshot) setTimeout(function(){ window.bjhDailySnapshot(); }, 3000); }catch(e){}
+      /* [V670] สัญญาแยกอีกตัว หน่วงกว่ากันยิงชนกัน — ล้มก็ไม่กระทบตัวแรก */
+      try{ if(window.bjhContractSnapshot) setTimeout(function(){ window.bjhContractSnapshot(); }, 6000); }catch(e){}
       APP={ready:true,records:D.length,parts:Object.keys(PARTS||{}).length,version:'v99-loaded',lastError:''};
       window.APP=APP; return true;
     }catch(err){ console.error('v57 init failed',err); window.APP={ready:false,records:0,parts:0,version:'v99-init-failed',lastError:String(err&&err.message||err)}; return false; }
@@ -1880,8 +1882,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V669.2';
-    var _BUILD_TIME='6 ส.ค. 2569 (V669.2 ลิงก์ SmartFlow ที่ SC Monitor + Bill Monitor)';
+    var _BUILD_VER='V670.0';
+    var _BUILD_TIME='6 ส.ค. 2569 (V670 Weekly: PO อะไหล่ + สถานะสัญญา)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน

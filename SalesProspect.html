@@ -7218,6 +7218,56 @@ function _wkCollect(range, who){
   });
   m.sp={ neu:newSP, late:lateSP.length, list:lateSP };
 
+  /* ── 🛒 PO อะไหล่ [V670] — ใบ QSP ที่ลูกค้าออก PO ให้ในสัปดาห์นั้น ──
+     CUSTOMER_ACCEPT_DATETIME เติมครบ 100% ในใบที่ PO Completed (ตรวจกับข้อมูลจริงแล้ว)
+     dedupe ตาม DOC_NUMBER — _jsupQuo มีหลายแถวต่อ 1 ใบ ถ้าไม่ตัดจะนับเกิน ~3 เท่า */
+  var poSeen={}, poN=0, poAmt=0, poTop=[];
+  Q.forEach(function(q){
+    var dn=String(q.DOC_NUMBER||'');
+    if(dn.slice(0,3)!=='QSP') return;
+    if(String(q.STATUS_NAME||'')!=='PO Completed') return;
+    if(!mine(q.SALES_SERVICE_NAME)) return;
+    if(!_wkIn(q.CUSTOMER_ACCEPT_DATETIME, range)) return;
+    if(poSeen[dn]) return; poSeen[dn]=1;
+    var a=amtByQN[dn]||0;
+    poN++; poAmt+=a;
+    poTop.push({ cu:q.CUSTOMER_NAME||'', qn:dn, amt:a });
+  });
+  poTop.sort(function(a,b){ return b.amt-a.amt; });
+  m.po={ n:poN, amt:poAmt, top:poTop };
+
+  /* ── 📄 สถานะสัญญา [V670] ──
+     ปิด = Contract Completed / PO Completed · ยกเลิกสัญญา ไม่นับทั้งสองฝั่ง
+     "ค้าง/ปิดสะสม" อ่านจากข้อมูลดิบได้ตรงๆ แต่ "สัปดาห์นี้ขยับ/ปิดกี่งาน" ต้องพึ่ง snapshot
+     (RAW_CONTRACT ไม่มีวันที่เปลี่ยนสถานะ) */
+  var CON_CLOSED={'Contract Completed':1,'PO Completed':1};
+  var CON_SKIP={'ยกเลิกสัญญา':1};
+  var conSeen={}, conOpen=0, conClosedNow=0;
+  CON.forEach(function(c){
+    var k=String(c.CON_ID||c.QUOTATION_NO||'').trim();
+    if(!k||conSeen[k]) return; conSeen[k]=1;
+    var qn=c.QUOTATION_NO||c.QH_DOC_NUMBER_CREATE||'';
+    if(!mine(String(c.SALES_NAME_DT||saByQN[qn]||''))) return;
+    var st=String(c.CONTRACT_PROCESS_STATUS_NAME||'');
+    if(CON_SKIP[st]) return;
+    if(CON_CLOSED[st]) conClosedNow++; else conOpen++;
+  });
+  var _cc=window._wkConChg||{};
+  var conMoved=0, conClosedWk=0, conMovedTop=[];
+  ((_cc.changes)||[]).forEach(function(ch){
+    if(String(ch.kind||'')!=='moved') return;
+    if(!mine(String(ch.sales||''))) return;
+    if(!_wkIn(ch.date, range)) return;
+    conMoved++;
+    var closed=!!CON_CLOSED[String(ch.toSt||'')];
+    if(closed) conClosedWk++;
+    conMovedTop.push({ cu:ch.customer||'', qn:ch.qn||'', amt:Number(ch.amount||0),
+                       from:String(ch.fromSt||''), to:String(ch.toSt||''), closed:closed });
+  });
+  conMovedTop.sort(function(a,b){ return b.amt-a.amt; });
+  m.conSt={ open:conOpen, closedNow:conClosedNow, moved:conMoved, closedWk:conClosedWk,
+            ready:!!_cc.ready, since:String(_cc.since||''), top:conMovedTop };
+
   /* ── 📥 SC Monitor (ไม่มีวันที่ → ใช้ยอดค้างปัจจุบัน) ── */
   var scPend=D.filter(function(r){
     return mine(r.sa) && ['SC Ordered','SC Carry','SC Carry (Pending)','Backlog'].indexOf(String(r.st||''))>=0; });
@@ -7445,7 +7495,15 @@ function _wkTable(m, prev){
     ['📄 Contract Monitor','สัญญาใหม่เริ่มสัปดาห์นี้', m.con.n, m.con.amt, dv(m.con.n,(P.con||{}).n)],
     ['🛒 SP Monitor','สั่งอะไหล่ใหม่ · เกินกำหนดส่งมอบ '+m.sp.late, m.sp.neu, null, dv(m.sp.neu,(P.sp||{}).neu)],
     ['📥 SC Monitor','งานรอออกบิล (ยอดค้างสะสม)', m.sc.n, m.sc.amt, dv(m.sc.n,(P.sc||{}).n)],
-    ['🧾 Bill Monitor','เปิดบิล', m.bill.n, m.bill.amt, dv(m.bill.n,(P.bill||{}).n)]
+    ['🧾 Bill Monitor','เปิดบิล', m.bill.n, m.bill.amt, dv(m.bill.n,(P.bill||{}).n)],
+    /* [V670] */
+    ['🛒 PO อะไหล่','ลูกค้าออก PO ให้ (ใบ QSP)', m.po.n, m.po.amt, dv(m.po.n,(P.po||{}).n)],
+    ['📄 สถานะสัญญา',
+      (m.conSt.ready
+        ? ('ขยับสถานะ · ปิดได้ '+m.conSt.closedWk+' งาน · ค้างอยู่ '+m.conSt.open)
+        : ('เริ่มเก็บแล้ว ยังไม่มีวันเทียบ — ค้างอยู่ '+m.conSt.open+' · ปิดสะสม '+m.conSt.closedNow)),
+      (m.conSt.ready ? m.conSt.moved : m.conSt.open), null,
+      (m.conSt.ready ? dv(m.conSt.moved,(P.conSt||{}).moved) : '<span style="color:var(--mu2)">—</span>')]
   ];
   return '<table class="wk-tbl"><thead><tr><th>หน้า</th><th>สัปดาห์นี้</th><th class="r">จำนวน</th><th class="r">มูลค่า</th><th class="r">vs สัปดาห์ก่อน</th></tr></thead><tbody>'
     + rows.map(function(r){
@@ -7528,8 +7586,35 @@ window.wkGoWeek=function(key){
 };
 
 /* ═══ RENDER ═══ */
+/* [V670] โหลดรายการขยับสถานะสัญญาครั้งเดียวต่อการเปิดหน้า แล้ว cache ไว้
+   ถ้ายังไม่มีชีต (ยังไม่เคยเก็บ) จะได้ ready:false -> ตารางแสดงยอด ณ ปัจจุบันแทน ไม่ค้างรอ */
+window._wkConLoad = function(cb){
+  if(window._wkConChg){ cb(); return; }
+  if(window._wkConBusy){ cb(); return; }
+  if(!(typeof google!=='undefined' && google.script && google.script.run)){
+    window._wkConChg={ready:false,changes:[],since:''}; cb(); return;
+  }
+  window._wkConBusy=true;
+  google.script.run
+    .withSuccessHandler(function(s){
+      var o={ready:false,changes:[],since:''};
+      try{ o=JSON.parse(s)||o; }catch(e){}
+      window._wkConChg=o; window._wkConBusy=false; cb();
+    })
+    .withFailureHandler(function(){
+      window._wkConChg={ready:false,changes:[],since:''}; window._wkConBusy=false; cb();
+    })
+    .getContractChanges();
+};
+
 window.spRenderWeekly = function(){
   var el=document.getElementById('sp-weekly-body'); if(!el) return;
+  /* [V670] ยังไม่มี cache -> โหลดก่อนแล้วค่อยเรนเดอร์รอบเดียว (กันวนซ้ำด้วย _wkConBusy) */
+  if(!window._wkConChg && !window._wkConBusy){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--mu)">⏳ กำลังโหลดรายงาน…</div>';
+    window._wkConLoad(function(){ window.spRenderWeekly(); });
+    return;
+  }
   var r=_wkRange(window._wkOff), me=_wkMe(), boss=_wkIsBoss();
 
   el.innerHTML='<div style="padding:30px;text-align:center;color:var(--mu)">⏳ กำลังโหลดรายงาน…</div>';

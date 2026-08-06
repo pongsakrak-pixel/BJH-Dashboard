@@ -4044,6 +4044,52 @@ window.bjhDailySnapshot = function(force){
   }catch(e){ /* ห้ามให้ snapshot ทำหน้าเว็บพัง */ }
 };
 
+/* [V670] ถ่ายภาพสถานะสัญญาวันละครั้ง — คู่กับ bjhDailySnapshot
+   sales ของสัญญา: SALES_NAME_DT (95%) -> ถ้าว่างค่อยหาจาก QN ในใบเสนอราคา */
+window.bjhContractSnapshot = function(force){
+  try{
+    if(window._conSnapDone && !force) return;
+    var C = window._jsupContract || [];
+    if(!C.length) return;
+    if(!(typeof google!=='undefined' && google.script && google.script.run)) return;
+
+    var saByQN = {};
+    try{
+      ((window._spData && window._spData.quotations) || []).forEach(function(q){
+        var n = q && q.DOC_NUMBER; if(n && !saByQN[n]) saByQN[n] = q.SALES_SERVICE_NAME || '';
+      });
+    }catch(e){}
+
+    var seen = {}, rows = [];
+    C.forEach(function(c){
+      if(!c) return;
+      var k = String(c.CON_ID || c.QUOTATION_NO || '').trim();
+      if(!k || seen[k]) return;                 // 1 สัญญา = 1 แถว (RAW_CONTRACT มีหลายแถวต่อสัญญา)
+      seen[k] = 1;
+      var qn = String(c.QUOTATION_NO || c.QH_DOC_NUMBER_CREATE || '');
+      rows.push({
+        k: k, qn: qn,
+        cu: String(c.CUSTOMER_NAME || '').slice(0,60),
+        st: String(c.CONTRACT_PROCESS_STATUS_NAME || ''),
+        sa: String(c.SALES_NAME_DT || saByQN[qn] || ''),
+        px: parseFloat(c.CONTRACT_PRICE || 0) || 0,
+        sd: String(c.CONTRACT_START_DATE || ''),
+        ed: String(c.CONTRACT_END_DATE || '')
+      });
+    });
+    if(!rows.length) return;
+    window._conSnapDone = true;
+    var d = new Date(), p = function(n){ return (n<10?'0':'')+n; };
+    var ds = d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+    google.script.run
+      .withSuccessHandler(function(res){
+        try{ window._conSnapResult = JSON.parse(res); }catch(e){ window._conSnapResult = {ok:false}; }
+      })
+      .withFailureHandler(function(){ window._conSnapDone = false; })
+      .saveContractSnapshot(JSON.stringify({date: ds, rows: rows}));
+  }catch(e){ /* ห้ามให้ snapshot ทำหน้าเว็บพัง */ }
+};
+
 function cfgQfInit(){
   var cfg=window._QF_CFG||{};
   _QF_KEYS.forEach(function(k){
