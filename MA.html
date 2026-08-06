@@ -32,6 +32,11 @@
 #v-ma .wrap{max-width:1180px;margin:0 auto;padding:16px 16px 70px}
 /* [V636] หน้าสร้างคำขอ: เต็มความกว้าง + จบในหน้าเดียว */
 #v-ma .wrap.wide{max-width:none;padding:10px 18px 14px}   /* [V670.4] เต็มจอ — เดิม 1680 เหลือขอบว่างสองข้าง */
+/* [V670.5] คลาส .wide ใส่ด้วย JS ตอน MA.go('request') — ถ้าจังหวะไหนไม่ได้วิ่งผ่าน go()
+   หน้าจะค้างที่ 1180px แล้วเหลือขอบว่างสองข้าง (เคสจริงที่เจอ)
+   -> ผูกกับสภาพจริงของ DOM แทน: หน้าสร้างคำขอเปิดอยู่เมื่อไร กว้างเต็มเมื่อนั้น ไม่ต้องรอ JS
+   :has() ไม่รองรับ = ตกกลับไปพฤติกรรมเดิม ไม่พัง */
+#v-ma .wrap:has(#page-request:not(.hidden)){max-width:none;padding:10px 18px 14px}
 #v-ma .rq-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 #v-ma .rq-head .stage-title{margin:0}
 #v-ma .rq-head .stage-desc{margin:0}
