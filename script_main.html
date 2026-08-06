@@ -1360,15 +1360,18 @@ function cfgTabPermInit(){
     {key:'nav_prospect', label:'🎯 Sales Prospect', group:'nav'},
     /* [V597] ซ่อนจาก Config สิทธิ์แท็บ — Revenue Forecast ปิดใช้แล้ว */
     /* [V597] ซ่อนจาก Config สิทธิ์แท็บ — Quotation Pipeline ปิดใช้แล้ว */
-    {key:'sp_install',   label:'└ 🏥 Installation Base', group:'sub'},
+    /* [V670.3] เรียงตามลำดับแท็บจริงในหน้า + ใช้ชื่อเดียวกับที่เห็นบนแท็บ
+       เดิม sp_srcom ไม่มีในลิสต์นี้เลย -> แอดมินคุมสิทธิ์ SR Commercial ไม่ได้ */
+    {key:'sp_srcom',     label:'└ 🛠 SR Commercial', group:'sub'},
     {key:'sp_alert',     label:'└ 🚨 Alert', group:'sub'},
+    {key:'sp_install',   label:'└ 🏥 Install Base', group:'sub'},
     {key:'sp_renewal',   label:'└ 🔄 Renewal Pipeline', group:'sub'},
     {key:'sp_scquote',   label:'└ 📋 SC Quotation', group:'sub'},
     {key:'sp_spquote',   label:'└ 🔧 SP Quotation', group:'sub'},
     {key:'sp_contract',  label:'└ 📄 Contract Monitor', group:'sub'},
-    {key:'sp_ordsp',     label:'└ 🛒 ติดตามสั่ง SP', group:'sub'},
-    {key:'sp_ordsc',     label:'└ 📥 ติดตามเข้า SC', group:'sub'},
-    {key:'sp_billing',   label:'└ 🧾 ติดตามเปิดบิล', group:'sub'},
+    {key:'sp_ordsp',     label:'└ 🛒 SP Monitor', group:'sub'},
+    {key:'sp_ordsc',     label:'└ 📥 SC Monitor', group:'sub'},
+    {key:'sp_billing',   label:'└ 🧾 Bill Monitor', group:'sub'},
     {key:'sp_ar',        label:'└ 💰 AR Monitor', group:'sub'},
     {key:'sp_bg',        label:'└ 📊 BG Monitor', group:'sub'},      // [V654]
     {key:'sp_weekly',    label:'└ 📝 Weekly Report', group:'sub'},   // [V654]
@@ -6693,6 +6696,7 @@ window._TAB_PERM_DEFAULT = {
   sp_forecast: {admin:false, manager:false, sales:false},   /* [V597] ปิดใช้ */
   sp_pipeline: {admin:false, manager:false, sales:false},   /* [V597] ปิดใช้ */
   sp_install:  {admin:true, manager:true, sales:true},
+  sp_srcom:    {admin:true, manager:true, sales:true},   /* [V670.3] SR Commercial — เดิมไม่มีเลย */
   sp_bg:       {admin:true, manager:true, sales:true},   /* [V654] BG Monitor */
   sp_weekly:   {admin:true, manager:true, sales:true},   /* [V654] Weekly Report */
   // MD Collection (Tools menu)
@@ -6710,6 +6714,7 @@ window._TAB_PERM_DEFAULT = {
    ถ้าไม่มี พอเพิ่ม key ลง _TAB_PERM_KEYS ทุกคนจะมองไม่เห็นแท็บทันทีตอนอัป — จนกว่าแอดมินจะเข้าไปติ๊ก
    เข้าชีตเมื่อแอดมินกด Save ครั้งแรก จากนั้นค่าในชีตคุมตามปกติ */
 window._TAB_PERM_NEWKEYS_DEF = {
+  sp_srcom:  {admin:true, manager:true, sales:true},   /* [V670.3] */
   nav_track: {admin:true, manager:true, sales:true},
   sp_bg:     {admin:true, manager:true, sales:true},
   sp_weekly: {admin:true, manager:true, sales:true},
@@ -6717,7 +6722,7 @@ window._TAB_PERM_NEWKEYS_DEF = {
   ma_config: {admin:true, manager:false, sales:false}
 };
 // keys ทั้งหมดที่ระบบรู้จัก (ลำดับ = ลำดับใน config UI)
-window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook','sp_bg','sp_weekly','ma_verify','ma_config','nav_track']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook
+window._TAB_PERM_KEYS = ['nav_ds','nav_home','nav_summary','dashboard','table','sabud','analysis','nav_service','nav_prospect','sp_alert','sp_renewal','sp_scquote','sp_spquote','sp_contract','sp_ordsp','sp_ordsc','sp_billing','sp_ar','sp_forecast','sp_pipeline','sp_install','nav_mdcol','tool_pricetbl','tool_saleforecast','tool_ma','tool_retention','tool_pricebook','sp_bg','sp_weekly','ma_verify','ma_config','nav_track','sp_srcom']; // [v445] · [V545] +tool_retention · [V611] +tool_pricebook · [V670.3] +sp_srcom
 // helper: เช็คสิทธิ์ 1 key สำหรับ role — ไม่มี admin bypass (admin ตาม config เหมือน role อื่น)
 window._tpCan = function(key, role){
   // [v225+v247] sheet ก่อน — ถ้า key ไม่มีใน sheet fallback _TAB_PERM_DEFAULT
