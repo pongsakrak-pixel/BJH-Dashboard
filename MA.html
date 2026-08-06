@@ -63,7 +63,15 @@
 @media(min-width:1900px){#v-ma .rq-3{grid-template-columns:1fr 1fr 1fr}}
 #v-ma .rq-top .grid2{grid-template-columns:1fr}   /* [V670.4] เฉพาะในกล่องคอลัมน์ — หน้า Config ยังเป็น 2 ช่องเหมือนเดิม */
 #v-ma .rq-top .card textarea{min-height:120px}
-#v-ma .rq-mlist{max-height:150px;overflow-y:auto;padding-right:2px}
+#v-ma .rq-top .card .addbtn{margin-top:auto}   /* [V670.6] ปุ่ม "เพิ่มรุ่นเครื่อง" ไปอยู่ล่างสุดของกล่อง */
+/* [V670.6] ปลดเพดานความสูง — ตกลงกันว่าปล่อยยืดตามจำนวนรุ่น ไม่ใส่ scroll ซ้อนในกล่อง
+   เดิม max-height:150px ตั้งไว้ตอนกล่องนี้ยังเป็นแถวแนวนอนเต็มความกว้าง (แถวเตี้ยกว่านี้)
+   พอย้ายมาเป็นคอลัมน์ใน V670.4 แถวสูงขึ้น -> ช่อง "จำนวน" โดนตัดครึ่ง
+   จอเตี้ยยังกันล้นด้วย max-height ที่อิงความสูงจอ ไม่ใช่ค่าคงที่ */
+/* [V670.6] padding-top เผื่อป้ายเลขลำดับ (.mno วางที่ top:-8px ยื่นออกนอก .mcard)
+   ถ้าตัวแม่มี overflow แล้วไม่เผื่อที่ ป้ายจะโดนตัดครึ่ง — เคสจริงที่เจอตอน V670.5 */
+#v-ma .rq-mlist{padding:10px 2px 0 0}
+@media(max-height:760px){#v-ma .rq-mlist{max-height:52vh;overflow-y:auto}}
 #v-ma #page-request .mcard{padding:9px 11px;margin-bottom:6px}
 #v-ma #page-request .dropzone{padding:8px;font-size:11px}
 #v-ma #page-request textarea{min-height:44px}
