@@ -31,11 +31,13 @@
 
 #v-ma .wrap{max-width:1180px;margin:0 auto;padding:16px 16px 70px}
 /* [V636] หน้าสร้างคำขอ: เต็มความกว้าง + จบในหน้าเดียว */
-#v-ma .wrap.wide{max-width:1680px;padding:10px 18px 14px}
+#v-ma .wrap.wide{max-width:none;padding:10px 18px 14px}   /* [V670.4] เต็มจอ — เดิม 1680 เหลือขอบว่างสองข้าง */
 #v-ma .rq-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 #v-ma .rq-head .stage-title{margin:0}
 #v-ma .rq-head .stage-desc{margin:0}
-#v-ma .rq-top{display:grid;grid-template-columns:1.05fr .95fr .8fr;gap:12px;align-items:stretch;margin-bottom:12px}
+/* [V670.4] 4 คอลัมน์แถวเดียว — เดิม 3 กล่องบน + กล่อง "เครื่องที่ขอราคา" เต็มความกว้างข้างล่าง (ต้องเลื่อนจอ)
+   กล่อง 4 กว้างสุดเพราะมีหลายรุ่นได้ · align-items:stretch ทำให้ทุกกล่องสูงเท่ากล่องที่ยาวสุด (ตกลงกันว่าปล่อยยืด) */
+#v-ma .rq-top{display:grid;grid-template-columns:.95fr .8fr .85fr 1.4fr;gap:12px;align-items:stretch;margin-bottom:12px}
 #v-ma .rq-top .card{margin-bottom:0;display:flex;flex-direction:column}
 /* [V651] บีบให้ทั้งหน้าพอดีจอเดียว รวมการ์ดเครื่อง */
 #v-ma #page-request .card{padding:11px 13px}
@@ -51,12 +53,16 @@
 #v-ma #page-request .card .hint{margin-bottom:9px}
 #v-ma #page-request .field{margin-bottom:7px;gap:3px}
 #v-ma #page-request .grid2{gap:10px}
-#v-ma .rq-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+/* [V670.4] คอลัมน์แคบลงแล้ว 3 ช่องเรียงแนวนอนจะบีบเกินไป -> เรียงลง (จอ >1900px ค่อยกลับเป็น 3) */
+#v-ma .rq-3{display:grid;grid-template-columns:1fr;gap:9px}
+@media(min-width:1900px){#v-ma .rq-3{grid-template-columns:1fr 1fr 1fr}}
+#v-ma .rq-top .grid2{grid-template-columns:1fr}   /* [V670.4] เฉพาะในกล่องคอลัมน์ — หน้า Config ยังเป็น 2 ช่องเหมือนเดิม */
+#v-ma .rq-top .card textarea{min-height:120px}
 #v-ma .rq-mlist{max-height:150px;overflow-y:auto;padding-right:2px}
 #v-ma #page-request .mcard{padding:9px 11px;margin-bottom:6px}
 #v-ma #page-request .dropzone{padding:8px;font-size:11px}
 #v-ma #page-request textarea{min-height:44px}
-@media(max-width:1200px){#v-ma .rq-top{grid-template-columns:1fr 1fr}}
+@media(max-width:1400px){#v-ma .rq-top{grid-template-columns:1fr 1fr}}   /* [V670.4] 4 คอลัมน์ต้องการที่มากกว่าเดิม */
 @media(max-width:820px){#v-ma .rq-top{grid-template-columns:1fr}#v-ma .rq-3{grid-template-columns:1fr}}
 #v-ma .stage-title{font-size:16px;font-weight:700;margin-bottom:2px;color:var(--tx)}
 #v-ma .stage-desc{color:var(--mu2);font-size:12px;margin-bottom:14px}
@@ -128,7 +134,15 @@
 #v-ma .mcard{background:var(--sur2);border:1px solid var(--bd);border-radius:7px;padding:13px;margin-bottom:9px;position:relative}
 #v-ma .mno{position:absolute;top:-8px;left:12px;background:var(--ac);color:#fff;font-size:10px;
   font-weight:700;padding:1px 8px;border-radius:10px;font-family:var(--mono)}
-#v-ma .mcard .mtop{display:grid;grid-template-columns:1.2fr 1.4fr .6fr auto;gap:10px;align-items:end}
+/* [V670.4] อยู่ในคอลัมน์แคบแล้ว — ยี่ห้อ/รุ่นเต็มบรรทัด · จำนวนกับปุ่มลบแชร์บรรทัดเดียวกัน */
+#v-ma .mcard .mtop{display:grid;grid-template-columns:1fr auto;gap:9px 10px;align-items:end}
+#v-ma .mcard .mtop > .field:nth-child(1),
+#v-ma .mcard .mtop > .field:nth-child(2){grid-column:1 / -1}
+@media(min-width:1900px){
+  #v-ma .mcard .mtop{grid-template-columns:1.2fr 1.4fr .6fr auto}
+  #v-ma .mcard .mtop > .field:nth-child(1),
+  #v-ma .mcard .mtop > .field:nth-child(2){grid-column:auto}
+}
 
 /* ── ตารางรายการ (แบบเดียวกับ SP Monitor) ── */
 #v-ma .ltbl{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
@@ -315,16 +329,15 @@
         <div class="field" style="margin:0"><label>หมายเหตุ <span class="sub">ไม่บังคับ</span></label>
           <textarea id="r_note" rows="2" placeholder="เงื่อนไขพิเศษ / ข้อตกลงกับลูกค้า..."></textarea></div>
       </div>
-    </div>
 
-    <!-- 2 เครื่อง — เต็มความกว้าง -->
-    <div class="card">
-      <h3><span class="sec-num">4</span> เครื่องที่ขอราคา
-        <span style="margin-left:auto;font-size:11px;font-weight:400;color:var(--mu)">
-          ใส่ได้หลายรุ่น · ราคาดึงจาก Tools → ตั้งราคาสัญญาบริการ (แบบกลุ่ม)</span></h3>
-      <div class="rq-mlist"><div id="r_models"></div></div>
-      <button class="addbtn" onclick="MA.mrAdd()">+ เพิ่มรุ่นเครื่อง</button>
-      <datalist id="dl_brand"></datalist>
+      <!-- 4 — [V670.4] ย้ายเข้ามาอยู่ในแถวเดียวกับอีก 3 กล่อง (เดิมอยู่ข้างล่างเต็มความกว้าง) -->
+      <div class="card">
+        <h3><span class="sec-num">4</span> เครื่องที่ขอราคา</h3>
+        <div class="hint">ใส่ได้หลายรุ่น · ราคาดึงจาก Tools → ตั้งราคาสัญญาบริการ (แบบกลุ่ม)</div>
+        <div class="rq-mlist"><div id="r_models"></div></div>
+        <button class="addbtn" onclick="MA.mrAdd()">+ เพิ่มรุ่นเครื่อง</button>
+        <datalist id="dl_brand"></datalist>
+      </div>
     </div>
 
     <div class="actions">
