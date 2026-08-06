@@ -8836,7 +8836,8 @@ window.spRenderOrdSP = function(){
     if(info.dlvLate) dlvCell='<span style="color:#ef4444;font-weight:600">'+dlvCell+'</span>';
     return '<tr style="'+rowStyle+'" onclick="spOpenSPDetail('+r._idx+')">'
       +'<td style="padding:6px 10px">'+_esc(r.sa||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px;color:#a78bfa">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'   /* [V666] */
+      /* [V670.2] +ป้าย "Nชิ้น" ต่อท้าย QN ให้ตรงกับตารางหลัก — r.nc = จำนวนอะไหล่ในใบ มากับ window.D อยู่แล้ว */
+      +'<td style="padding:6px 10px;font-size:11px;color:#a78bfa;white-space:nowrap">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+(Number(r.nc||0)>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px;margin-left:4px">'+Number(r.nc)+'ชิ้น</span>':'')+'</td>'   /* [V666] */
       +'<td style="padding:6px 10px">'+_esc((r.cu||'—').slice(0,20))+'</td>'
       +'<td style="padding:6px 10px">'+_esc(r.br||'—')+'</td>'
       +'<td style="padding:6px 10px" onclick="event.stopPropagation()"><span style="color:#7c3aed;font-size:12px">'+_esc((window._stLbl?window._stLbl(r.st):r.st)||'—')+'</span>'+_spMergeCell(r)+'</td>' // [v392]
@@ -9017,7 +9018,7 @@ window.spRenderOrdSC = function(){
       +(function(){ var _bm=(typeof resolveBM==='function')?resolveBM(r):{br:r.br||'',ml:r.ml||''};
           var _pb=(typeof window._pkgBadge==='function')?window._pkgBadge(_bm):'';
           var _qn=(typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—');
-          return '<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+_qn+_pb+'</td>'; })()   /* [V669.2] ลิงก์ SmartFlow */
+          return '<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+_qn+_pb+(Number(r.nc||0)>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px;margin-left:4px">'+Number(r.nc)+'ชิ้น</span>':'')+'</td>'; })()   /* [V669.2] ลิงก์ SmartFlow · [V670.2] +Nชิ้น */
       +'<td style="padding:6px 10px">'+_esc((r.cu||'—').slice(0,24))+'</td>'
       +(function(){ var _bm=(typeof resolveBM==='function')?resolveBM(r):{br:r.br||'',ml:r.ml||''}; var _tx=((_bm.br||'')+' '+(_bm.ml||'')).trim(); return '<td style="padding:6px 10px;color:var(--mu);font-size:12px">'+(_tx?('<b style="color:var(--tx)">'+_esc(_bm.br||'')+'</b> '+_esc(String(_bm.ml||'').slice(0,22))):'—')+'</td>'; })()   // [v385] resolveBM ตัวเดียวกับตารางหลัก
       +'<td style="padding:6px 10px"><span style="color:#38bdf8">'+_esc((window._stLbl?window._stLbl(r.st):r.st)||'—')+'</span></td>'
@@ -9090,7 +9091,7 @@ window.spRenderBilling = function(){
     return '<tr style="border-bottom:1px solid var(--bd2,#374151);cursor:pointer" onclick="spOpenSPDetail('+r._idx+')">'
       +'<td style="padding:6px 8px"><span style="color:'+tc+';font-weight:600;font-size:12px">'+(r.t||'—')+'</span></td>'
       +'<td style="padding:6px 8px">'+_esc(r.sa||'—')+'</td>'
-      +'<td style="padding:6px 8px;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'   /* [V669.2] ลิงก์ SmartFlow — V666 ตกหน้านี้ */
+      +'<td style="padding:6px 8px;font-size:11px;white-space:nowrap">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+(Number(r.nc||0)>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px;margin-left:4px">'+Number(r.nc)+'ชิ้น</span>':'')+'</td>'   /* [V669.2] ลิงก์ SmartFlow · [V670.2] +Nชิ้น */
       +'<td style="padding:6px 8px">'+_esc((r.cu||'—').slice(0,22))+'</td>'
       +'<td style="padding:6px 8px"><span style="color:#facc15;font-size:12px">'+_esc((window._stLbl?window._stLbl(r.st):r.st)||'—')+'</span></td>' // [v391]
       +'<td style="padding:6px 8px;text-align:right">'+_spFmtB(r.px||0)+'</td>'

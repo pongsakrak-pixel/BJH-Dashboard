@@ -1,6 +1,6 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260806151133
+Start time: 20260806151702
 Username: BERLI\PongsakR
 RunAs User: BERLI\PongsakR
 Configuration Name: 
@@ -15,27 +15,4 @@ CLRVersion: 4.0.30319.42000
 WSManStackVersion: 3.0
 PSRemotingProtocolVersion: 2.3
 SerializationVersion: 1.1.0.1
-**********************
-
-=== BJH patch V670.1 ===
-guard ok : base V670.0
-  wrote SalesProspect.html  710 KB  sha ok
-  wrote script_main.html  674 KB  sha ok
-  wrote overrides.html  198 KB  sha ok
-  wrote STATE.md  148 KB  sha ok
-version on disk : V670.1
-
-clasp push -f ...
-
-clasp create-deployment ...
-
-
-
-
-
-DONE : V670.1
-user must Ctrl+Shift+R
-**********************
-Windows PowerShell transcript end
-End time: 20260806151321
 **********************
