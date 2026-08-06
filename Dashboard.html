@@ -1158,8 +1158,9 @@
     var sumAct=_dbtsSum(st.monthlyActual);
     var conf=sumAct+_dbtsSum(st.monthlyBacklog);
     var order=_dbtsSum(st.monthlyOrderSC)+_dbtsSum(st.monthlySpOrdProc);
-    var sumPros=_dbtsSum(st.monthlyProspect), sumSpPros=_dbtsSum(st.monthlySpProspect), sumSPFCx=_dbtsSum(st.monthlyFCSP);
-    var pipe=Math.max(sumSPFCx,sumSpPros)+sumPros;
+    var sumPros=_dbtsSum(st.monthlyProspect);
+    // [V669] ใช้กฎเดียวกับการ์ด/Story — เดิม max(config, prospect) ทำให้ team scene ไม่ตรงกับ PIPELINE
+    var pipe=Number((window._dbSpFcShown(st,0,12)||{}).val||0)+sumPros;
     return {actual:sumAct,conf:conf,order:order,pipe:pipe,cp:conf+order+pipe};
   }
   function _dbtsCnt(st,key){var cm=st.cntMo;if(cm&&cm[key]){var t=0;for(var i=0;i<12;i++)t+=Number(cm[key][i]||0);return t;}return Number((st.cnt&&st.cnt[key])||0);}
@@ -1290,6 +1291,39 @@ function _qfApplyNames(){
 }
 window._qfApplyNames = _qfApplyNames;
 
+  /* ═══ [V669] SP Forecast — กฎเดียวใช้ทุกที่ (การ์ด · PIPELINE · Forecast YE · PPT/Export) ═══
+     ทั้งปี / H1-H2 / รายไตรมาส -> ผลรวม config เฉพาะ "เดือนอนาคต" ในช่วงนั้น ไม่หักอะไร
+     รายเดือน + เดือนอนาคต      -> config ของเดือนนั้น
+     รายเดือน + เดือนปัจจุบัน/อดีต -> เป้า - On Hand = To Find
+
+     ทำไมไม่ใช้ stats.monthlySpHave: getStats คิดค่านั้นไว้ "ก่อน" _dbForceActualFromSheet()
+     เขียนทับ monthlyActualSP ด้วย ACTUAL_FAD -> การ์ดจะโชว์เลขก่อน override ค้างอยู่ (ต่างจริง 4.34M)
+     ตรงนี้จึงอ่าน stats.monthlyActualSP/monthlyBacklogSP สดตอนเรียก = ผ่าน override แล้วเสมอ
+
+     ใช้ monthlyFCSPRaw (ไม่ใช่ FCSP_FIXED ดิบ) เพราะโหมดรายคนหารด้วยจำนวน sales มาแล้ว */
+  window._dbSpFcShown = function(st, lo, hi, yr){
+    st = st || {};
+    var raw = st.monthlyFCSPRaw || [];
+    var curYr = Number(window.CUR_YR) || (new Date().getFullYear());
+    var curMo = Number(window.CUR_MO) || (new Date().getMonth() + 1);
+    var y = Number(yr) || Number((document.getElementById('db-yr') || {}).value) || curYr;
+    function cfgMo(i){ return Number(raw[i] || 0); }
+    function isFuture(i){
+      if (y > curYr) return true;
+      if (y < curYr) return false;
+      return (i + 1) > curMo;              // เดือนปัจจุบันไม่ใช่อนาคต
+    }
+    lo = Number(lo) || 0; hi = Number(hi) || 12;
+    if ((hi - lo) === 1 && !isFuture(lo)) {
+      var have = Number((st.monthlyActualSP || [])[lo] || 0) + Number((st.monthlyBacklogSP || [])[lo] || 0);
+      var tgt  = cfgMo(lo);
+      return { val: Math.max(0, tgt - have), target: tgt, have: have, net: (tgt > 0) };
+    }
+    var s = 0;
+    for (var i = lo; i < hi; i++) if (isFuture(i)) s += cfgMo(i);
+    return { val: s, target: s, have: 0, net: false };
+  };
+
 function dbRenderStory(yr, budget, stats){
     // [v197] half filter — เฉพาะ tab Dashboard (Story); KPI cards Confirmed/Pipeline เท่านั้น
     var _halfSel=document.getElementById("db-half-sel"); var _half=window.dbActiveRange();
@@ -1315,12 +1349,12 @@ function dbRenderStory(yr, budget, stats){
     var sumProsAll=sumPros+sumSpPros; // (legacy) SC+SP prospect
     // [v222] โครง 3 กลุ่ม: CONFIRMED = Actual+Billed + Backlog + BL Confirm ; ORDER = SC Ordered+SC Carry+SP Ordered+SP Processing ; PIPELINE = SP Forecast(config)+SC Prospect
     var sumSPFCx=_sumR(stats.monthlyFCSP); // SP Forecast config
-    /* [V661.1] ใช้ค่าที่ getStats หักมาแล้ว — ไม่คำนวณซ้ำที่นี่
-       _sumR() ใช้ช่วงเดือนเดียวกับการ์ดอื่นทุกใบ จึงไม่มีทางเหลื่อม */
-    var _spHave     = _sumR(stats.monthlySpHave||[]);
-    var _spFcTarget = _sumR(stats.monthlyFCSPRaw||[]);
-    var _spForecastShown = Math.max(sumSPFCx, sumSpPros);
-    var _spIsProspectBigger = (sumSpPros > sumSPFCx);
+    /* [V669] กฎใหม่รวมศูนย์ที่ _dbSpFcShown — เลิก max(config, prospect) และเลิกใช้ monthlySpHave */
+    var _spFc = window._dbSpFcShown(stats, _lo, _hi, yr);
+    var _spHave     = _spFc.have;
+    var _spFcTarget = _spFc.target;
+    var _spForecastShown = _spFc.val;
+    var _spIsProspectBigger = false;   // [V669] การ์ดเป็นยอด config ล้วน ⭐ ท้ายการ์ดจึงเป็น SP Prospect เสมอ
     // [v222] แตก Backlog (CONFIRMED) vs SC Ordered/Carry (ORDER) จาก array ใหม่
     var _bkAll=stats.monthlyBacklog||[]; // รวม Backlog + Backlog (Confirmed) ราย idx
     var sumBacklogAll=_sumR(_bkAll);
@@ -1500,7 +1534,7 @@ function dbRenderStory(yr, budget, stats){
     /* [V661.1] ฿5.00M ·  /  มีรายการแล้ว ฿2.19M  /  เหลือ ฿2.81M */
     /* [V661.3] ฿5.00M / Confirm ฿2.25M / To Find ฿2.75M
        "To Find" ใช้คำเดียวกับการ์ด CHALLENGE — บอกว่าเป็นยอดที่ยังต้องปิดให้ได้ ไม่ใช่แค่เศษที่เหลือ */
-    var _spShowNet = (_spHave>0 && _spFcTarget>0);
+    var _spShowNet = !!_spFc.net;   // [V669] โชว์ เป้า/On Hand/To Find เฉพาะโหมดรายเดือนที่ถึงแล้ว
     setText('db-spfc2-target', _spShowNet ? fmtM(_spFcTarget) : '');
     setText('db-spfc2-have',   _spShowNet ? ('On Hand '+fmtM(_spHave)) : '');   // [V663] ตรงกับหัวกลุ่ม ON HAND
     setText('db-spfc2-lead',   _spShowNet ? 'To Find' : '');
@@ -5507,7 +5541,8 @@ function _pptStoryCalc(st,lo,hi){
   var confSP=S(st.monthlyActualSP,lo,hi)+S(st.monthlyBacklogSP,lo,hi);
   var orderSC=S(st.monthlyOrderSC,lo,hi), spOP=S(st.monthlySpOrdProc,lo,hi);
   var scPros=S(st.monthlyProspect,lo,hi), spFC=S(st.monthlyFCSP,lo,hi), spPros=S(st.monthlySpProspect,lo,hi);
-  var spFCshown=Math.max(spFC,spPros);
+  // [V669] กฎเดียวกับหน้าจอ — ไม่งั้น PPT/Export จะได้ Forecast YE คนละเลขกับที่คนเห็นบนจอ
+  var spFCshown=Number((window._dbSpFcShown(st,lo,hi)||{}).val||0);
   var conf=act+backlog, order=orderSC+spOP, pipe=spFCshown+scPros, co=conf+order, ye=co+pipe;
   // SC/SP rollups for Forecast YE
   var yeSC=confSC+orderSC+scPros, yeSP=confSP+spOP+spFCshown;

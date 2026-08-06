@@ -3063,6 +3063,18 @@ function _snapSheet(ss, name, hdr) {
   return sh;
 }
 
+/* [V669] วันที่ใน snapshot กลายเป็น Date object
+   setValues('2026-08-05') -> Sheets แปลงเป็นเซลล์วันที่ให้เอง -> อ่านกลับได้ Date
+   String(Date).slice(0,10) = 'Mon Aug 05' -> ตัวกรอง d<=t ใน getSnapshotRange เป็นเท็จเสมอ
+   = หน้า Order Tracking ขึ้นว่า 'ยังไม่มีข้อมูล' ทั้งที่เก็บไว้ครบ (และตัวกันซ้ำก็พลาดแบบเดียวกัน)
+   แก้ 2 ชั้น: อ่านผ่าน _snapDayStr เสมอ + บังคับคอลัมน์วันที่เป็น text ตอนเขียน */
+function _snapDayStr(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone() || 'Asia/Bangkok', 'yyyy-MM-dd');
+  }
+  return String(v || '').slice(0, 10);
+}
+
 function _snapDayDiff(a, b) {
   try {
     var d1 = new Date(a + 'T00:00:00'), d2 = new Date(b + 'T00:00:00');
@@ -3092,7 +3104,7 @@ function saveDailySnapshot(payloadStr) {
     if (sumLast > 1) {
       var dts = shSum.getRange(2, 1, sumLast - 1, 1).getValues();
       for (var di = dts.length - 1; di >= 0; di--) {
-        if (String(dts[di][0]).slice(0, 10) === day) {
+        if (_snapDayStr(dts[di][0]) === day) {
           return JSON.stringify({ ok: true, skipped: true, reason: 'already saved today' });
         }
       }
@@ -3104,7 +3116,7 @@ function saveDailySnapshot(payloadStr) {
       var pv = shState.getRange(2, 1, prevLast - 1, SNAP_STATE_HDR.length).getValues();
       pv.forEach(function (r) {
         var k = String(r[0] || '');
-        if (k) prev[k] = { st: String(r[4] || ''), since: String(r[14] || '').slice(0, 10) };
+        if (k) prev[k] = { st: String(r[4] || ''), since: _snapDayStr(r[14]) };
       });
     }
 
@@ -3158,11 +3170,23 @@ function saveDailySnapshot(payloadStr) {
     });
 
     // ── เขียน: change -> summary -> state ──
-    if (chg.length) shChg.getRange(shChg.getLastRow() + 1, 1, chg.length, SNAP_CHG_HDR.length).setValues(chg);
-    if (sumRows.length) shSum.getRange(shSum.getLastRow() + 1, 1, sumRows.length, SNAP_SUM_HDR.length).setValues(sumRows);
+    // [V669] setNumberFormat('@') ก่อน setValues -> วันที่คงเป็นข้อความ ไม่ถูกแปลงเป็นเซลล์วันที่
+    if (chg.length) {
+      var rgC = shChg.getRange(shChg.getLastRow() + 1, 1, chg.length, SNAP_CHG_HDR.length);
+      shChg.getRange(rgC.getRow(), 1, chg.length, 1).setNumberFormat('@');
+      rgC.setValues(chg);
+    }
+    if (sumRows.length) {
+      var rgS = shSum.getRange(shSum.getLastRow() + 1, 1, sumRows.length, SNAP_SUM_HDR.length);
+      shSum.getRange(rgS.getRow(), 1, sumRows.length, 1).setNumberFormat('@');
+      rgS.setValues(sumRows);
+    }
 
     if (shState.getLastRow() > 1) shState.getRange(2, 1, shState.getLastRow() - 1, SNAP_STATE_HDR.length).clearContent();
-    if (stateRows.length) shState.getRange(2, 1, stateRows.length, SNAP_STATE_HDR.length).setValues(stateRows);
+    if (stateRows.length) {
+      shState.getRange(2, 15, stateRows.length, 2).setNumberFormat('@');   // sinceDate / lastSeen
+      shState.getRange(2, 1, stateRows.length, SNAP_STATE_HDR.length).setValues(stateRows);
+    }
 
     return JSON.stringify({ ok: true, date: day, tracked: stateRows.length, changes: chg.length });
   } catch (e) {
@@ -3174,6 +3198,43 @@ function saveDailySnapshot(payloadStr) {
 
 /* [V660] อ่านข้อมูล snapshot สำหรับหน้า Order Tracking (ยังไม่มีหน้าจอ — เตรียมไว้)
    คืน summary + change ของช่วงวันที่ที่ขอ */
+/* [V669] ซ่อมข้อมูลเดิมที่เขียนไปแล้วก่อนแก้บั๊ก — รันมือครั้งเดียวจาก Apps Script editor
+   1) เขียนคอลัมน์วันที่กลับเป็นข้อความ yyyy-MM-dd ทุกชีต
+   2) ยุบแถวซ้ำใน daily_summary ให้เหลือชุดล่าสุดของแต่ละ (วัน, สถานะ)
+      — ตัวกันซ้ำเดิมพลาด จึงเขียนซ้ำทุกครั้งที่มีคนเปิดหน้าเว็บมาตั้งแต่ V660 */
+function repairSnapshotDates() {
+  var ss = getSpreadsheet(), out = {};
+  [['daily_summary', [1]], ['daily_change', [1]], ['snap_state', [15, 16]]].forEach(function (cfg) {
+    var sh = ss.getSheetByName(cfg[0]);
+    if (!sh || sh.getLastRow() < 2) { out[cfg[0]] = 0; return; }
+    var n = sh.getLastRow() - 1;
+    cfg[1].forEach(function (col) {
+      var rg = sh.getRange(2, col, n, 1);
+      var vals = rg.getValues().map(function (r) { return [_snapDayStr(r[0])]; });
+      rg.setNumberFormat('@');
+      rg.setValues(vals);
+    });
+    out[cfg[0]] = n;
+  });
+
+  var shSum = ss.getSheetByName('daily_summary');
+  if (shSum && shSum.getLastRow() > 1) {
+    var dat = shSum.getRange(2, 1, shSum.getLastRow() - 1, SNAP_SUM_HDR.length).getValues();
+    var last = {};
+    dat.forEach(function (r, i) { last[String(r[0]) + '|' + String(r[1])] = i; });
+    var rows = dat.filter(function (r, i) { return last[String(r[0]) + '|' + String(r[1])] === i; });
+    shSum.getRange(2, 1, dat.length, SNAP_SUM_HDR.length).clearContent();
+    if (rows.length) {
+      shSum.getRange(2, 1, rows.length, 1).setNumberFormat('@');
+      shSum.getRange(2, 1, rows.length, SNAP_SUM_HDR.length).setValues(rows);
+    }
+    out.summaryKept = rows.length;
+    out.summaryRemoved = dat.length - rows.length;
+    out.days = Object.keys(rows.reduce(function (a, r) { a[String(r[0])] = 1; return a; }, {})).length;
+  }
+  return JSON.stringify({ ok: true, detail: out });
+}
+
 function getSnapshotRange(fromDay, toDay) {
   try {
     var ss = getSpreadsheet();
@@ -3184,10 +3245,12 @@ function getSnapshotRange(fromDay, toDay) {
       if (!sh || sh.getLastRow() < 2) return [];
       var dat = sh.getRange(2, 1, sh.getLastRow() - 1, hdr.length).getValues();
       return dat.filter(function (r) {
-        var d = String(r[0] || '').slice(0, 10);
+        var d = _snapDayStr(r[0]);
         return d && (!f || d >= f) && (!t || d <= t);
       }).map(function (r) {
-        var o = {}; hdr.forEach(function (h, i) { o[h] = r[i]; }); return o;
+        var o = {}; hdr.forEach(function (h, i) { o[h] = r[i]; });
+        o[hdr[0]] = _snapDayStr(r[0]);   // [V669] ส่งเป็นข้อความเสมอ ฝั่ง client เทียบสตริงตรงๆ ได้
+        return o;
       });
     }
     return JSON.stringify({ ok: true, summary: pick(shSum, SNAP_SUM_HDR), changes: pick(shChg, SNAP_CHG_HDR) });
