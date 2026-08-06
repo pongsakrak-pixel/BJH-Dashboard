@@ -9013,9 +9013,13 @@ window.spRenderOrdSC = function(){
     if(_crossMo) _moCell='<span style="color:#f87171;font-weight:600">'+_moCell+' ⚠</span>';
     return '<tr style="border-bottom:1px solid var(--bd2,#374151);cursor:pointer;'+rowBg+'" onclick="spOpenSPDetail('+r._idx+')">'
       +'<td style="padding:6px 10px">'+_esc(r.sa||'—')+'</td>'
-      +'<td style="padding:6px 10px;font-size:11px">'+((typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—'))+'</td>'   /* [V669.2] ลิงก์ SmartFlow — V666 ตกหน้านี้ */
+      /* [V670.1] ป้าย (Px) ย้ายมาต่อท้าย QN ให้ตรงกับตารางหลัก — ป้ายเดียวกันต้องอยู่ที่เดียวกันทุกหน้า */
+      +(function(){ var _bm=(typeof resolveBM==='function')?resolveBM(r):{br:r.br||'',ml:r.ml||''};
+          var _pb=(typeof window._pkgBadge==='function')?window._pkgBadge(_bm):'';
+          var _qn=(typeof window._sfLink==='function')?window._sfLink(r.qn||'—', r.url||r.URL):_esc(r.qn||'—');
+          return '<td style="padding:6px 10px;font-size:11px;white-space:nowrap">'+_qn+_pb+'</td>'; })()   /* [V669.2] ลิงก์ SmartFlow */
       +'<td style="padding:6px 10px">'+_esc((r.cu||'—').slice(0,24))+'</td>'
-      +(function(){ var _bm=(typeof resolveBM==='function')?resolveBM(r):{br:r.br||'',ml:r.ml||''}; var _tx=((_bm.br||'')+' '+(_bm.ml||'')).trim(); var _pb=(typeof window._pkgBadge==='function')?window._pkgBadge(_bm):''; return '<td style="padding:6px 10px;color:var(--mu);font-size:12px">'+(_tx?('<b style="color:var(--tx)">'+_esc(_bm.br||'')+'</b> '+_esc(String(_bm.ml||'').slice(0,22))+_pb):'—')+'</td>'; })()   /* [V664.3] +ป้าย (Px) */ // [v385] resolveBM ตัวเดียวกับตารางหลัก (v383 join RAW_Quotation ว่าง)
+      +(function(){ var _bm=(typeof resolveBM==='function')?resolveBM(r):{br:r.br||'',ml:r.ml||''}; var _tx=((_bm.br||'')+' '+(_bm.ml||'')).trim(); return '<td style="padding:6px 10px;color:var(--mu);font-size:12px">'+(_tx?('<b style="color:var(--tx)">'+_esc(_bm.br||'')+'</b> '+_esc(String(_bm.ml||'').slice(0,22))):'—')+'</td>'; })()   // [v385] resolveBM ตัวเดียวกับตารางหลัก
       +'<td style="padding:6px 10px"><span style="color:#38bdf8">'+_esc((window._stLbl?window._stLbl(r.st):r.st)||'—')+'</span></td>'
       +'<td style="padding:6px 10px;font-size:11px;color:var(--mu)">'+_esc(r.sn||'—')+'</td>'
       +'<td style="padding:6px 10px;font-size:11px;color:var(--mu)">'+_esc(r.sr||'—')+'</td>' // [V513] เลขที่ SR (RAW_SC_BILL.SR)

@@ -4379,7 +4379,7 @@ function renderTbl(){
     /* [V623] ใบ Package → กดแล้วเปิด modal รายละเอียด แล้วเด้งไปแท็บ Hardware List
        (เดิม V622 เปิด popup แยก _pkgShow — คงฟังก์ชันไว้เรียกจาก console ได้)
        stopPropagation ยังต้องมี กัน selRow ทำงานซ้ำสองรอบ */
-    var _brHTML;
+    var _brHTML, _pkgB='';   // [V670.1] ป้าย (Px) เก็บไว้ไปแปะที่เซลล์ QN
     /* [V624] เดิมใช้ _bm.multi ซึ่ง = "หลายเครื่อง" -> ยี่ห้อเดียวรุ่นเดียว 3 เครื่อง ก็ติดชิป
        ทำให้คอลัมน์ Brand หายไปเปล่า ๆ ทั้งที่รู้ยี่ห้อชัดเจน
        -> ใช้ nBr>1 (หลายยี่ห้อจริง) เท่านั้น · ไม่แตะค่า .multi เพราะ _bmAudit() ใช้อยู่ */
@@ -4397,8 +4397,10 @@ function renderTbl(){
          ตารางหลักสร้าง _brHTML เอง ไม่ได้เรียกฟังก์ชันนั้น -> V664.0 ป้ายเลยไม่ขึ้นสักใบ
          P = Package · x = จำนวนเครื่องในสัญญา (ไม่เกี่ยวกับยี่ห้อ) */
       _brHTML=_bm.br?esc(_bm.br):'<span style="color:var(--mu)">—</span>';
-      /* [V664.3] ใช้ตัวกลาง — guard ไว้ด้วย ถ้าเรียกก่อนโหลดจะพังทั้งตาราง (เทส V655 จับได้) */
-      if(typeof window._pkgBadge==='function') _brHTML += window._pkgBadge(_bm, r.id);
+      /* [V670.1] ป้าย (Px) ย้ายไปต่อท้ายเลขที่ใบเสนอราคา — ที่เดิมอยู่ท้ายยี่ห้อ อ่านเหมือนเป็นส่วนหนึ่งของยี่ห้อ
+         และไม่เข้าชุดกับป้าย "Nชิ้น" ของ QSP ที่อยู่หลัง QN อยู่แล้ว
+         [V664.3] ใช้ตัวกลาง — guard ไว้ด้วย ถ้าเรียกก่อนโหลดจะพังทั้งตาราง (เทส V655 จับได้) */
+      _pkgB = (typeof window._pkgBadge==='function') ? window._pkgBadge(_bm, r.id) : '';
     }
     var _mlHTML=_bm.ml?'<span title="'+esc(_bm.ml)+'">'+esc(_bm.ml)+'</span>':'<span style="color:var(--mu)">—</span>';
     h+='<td style="overflow:hidden;text-align:center"><span class="trunc" title="'+esc(ownerText||'')+'">'+esc(ownerText||'—')+'</span></td>';   /* [V621] */
@@ -4425,7 +4427,7 @@ function renderTbl(){
     var _qnHtml = (typeof window._sfLink==='function')
       ? window._sfLink(r.qn||'\u2014', _qnUrl)
       : esc(r.qn||'\u2014');
-    h+='<td style="font-family:var(--mono)"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"'+(_qnUrl?'':' title="'+esc(r.qn||'')+'"')+'>'+_qnHtml+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+'</div></td>';
+    h+='<td style="font-family:var(--mono)"><div style="display:flex;align-items:center;gap:4px;overflow:hidden"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"'+(_qnUrl?'':' title="'+esc(r.qn||'')+'"')+'>'+_qnHtml+'</span>'+(r.nc>0?'<span style="flex-shrink:0;font-size:10px;background:#1a1030;color:#a78bfa;padding:1px 4px;border-radius:3px">'+r.nc+'ชิ้น</span>':'')+(_pkgB?'<span style="flex-shrink:0">'+_pkgB+'</span>':'')+'</div></td>';   /* [V670.1] ป้าย (Px) ต่อท้าย QN ให้เข้าชุดกับ "Nชิ้น" ของ QSP */
     /* [V655] คืน ellipsis + tooltip — V621 ปล่อยล้นเพราะ 14px วันที่ไทยโดนตัด · 12px พอดีคอลัมน์แล้ว */
     var _pdTip=String(periodStr).replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/"/g,'&quot;').replace(/\s+/g,' ').trim();
     h+='<td style="color:var(--mu2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+_pdTip+'">'+periodStr+'</td>';
