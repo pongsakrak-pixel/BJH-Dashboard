@@ -6557,10 +6557,23 @@ window.spScqChipClick = function(btn){
 // เก็บ config section 'quote_notes' : { QN: "ข้อความ" }
 // ═══════════════════════════════════════════════════════════
 window._QUOTE_NOTES = window._QUOTE_NOTES || {};
+/* [V670.8] โน้ตที่เพิ่งแก้ในเครื่องนี้ — กันโดนทับตอน render รอบถัดไป
+   เดิม _qnLoadNotes() เขียนทับ _QUOTE_NOTES ด้วย _LAST_CONFIG.quote_notes ทั้งก้อน
+   แต่ตอนเซฟไม่ได้อัปเดต _LAST_CONFIG -> พอมี render ใหม่ (เช่นเปลี่ยน status / กรอง / โหลดข้อมูล)
+   โน้ตที่เพิ่งพิมพ์จะหายไปทั้งที่เซฟขึ้น server แล้ว */
+window._QN_NOTES_LOCAL = window._QN_NOTES_LOCAL || {};   // { QN: ข้อความ | '' (=ลบ) }
 function _qnLoadNotes(){
   try{
     var c=window._LAST_CONFIG||{};
-    if(c.quote_notes) window._QUOTE_NOTES=c.quote_notes;
+    var base = c.quote_notes ? c.quote_notes : (window._QUOTE_NOTES||{});
+    var out={};
+    Object.keys(base).forEach(function(k){ out[k]=base[k]; });
+    // ของที่แก้ในเครื่องนี้ทับเสมอ — ค่าว่าง = สั่งลบ
+    Object.keys(window._QN_NOTES_LOCAL).forEach(function(k){
+      var v=window._QN_NOTES_LOCAL[k];
+      if(v) out[k]=v; else delete out[k];
+    });
+    window._QUOTE_NOTES=out;
     if(c.cd_cleared) window._CD_CLEARED = c.cd_cleared;   /* [V601] Clear รายการ Critical Down */
   }catch(e){}
 }
@@ -6663,6 +6676,13 @@ window.cdClearUndo = function(sr){
 };
 
 function _qnSaveConfig(map, onOk){
+  /* [V670.8] sync ค่าที่เพิ่งเซฟกลับเข้า _LAST_CONFIG ทันที — เป็นแหล่งที่ _qnLoadNotes() อ่าน
+     ถ้าไม่ทำ render รอบถัดไปจะย้อนกลับไปใช้ค่าก่อนหน้า */
+  try{
+    window._LAST_CONFIG = window._LAST_CONFIG || {};
+    var cp={}; Object.keys(map||{}).forEach(function(k){ cp[k]=map[k]; });
+    window._LAST_CONFIG.quote_notes = cp;
+  }catch(e){}
   function done(){ if(onOk)onOk(true); }
   function err(){ if(onOk)onOk(false); }
   try{
@@ -6678,6 +6698,7 @@ window.qnSaveNote = function(qn){
   var txt=((document.getElementById('qn-note-text')||{}).value||'').trim();
   var st=document.getElementById('qn-note-status');
   if(txt) window._QUOTE_NOTES[q]=txt; else delete window._QUOTE_NOTES[q];
+  window._QN_NOTES_LOCAL[q]=txt;   /* [V670.8] '' = สั่งลบ */
   if(st){ st.style.color='#333b44'; st.textContent='กำลังบันทึก…'; }
   _qnSaveConfig(window._QUOTE_NOTES, function(ok){
     if(st){ st.style.color = ok?'#0b7a2e':'#b01226'; st.textContent = ok?'✓ บันทึกแล้ว':'⚠ เก็บ local (Code.gs ต้อง Deploy New Version)'; }
@@ -6690,6 +6711,7 @@ window.qnSaveNote = function(qn){
 window.qnDeleteNote = function(qn){
   var q=String(qn||'').trim();
   delete window._QUOTE_NOTES[q];
+  window._QN_NOTES_LOCAL[q]='';   /* [V670.8] กันตัวโหลดดึงกลับมา */
   var ta=document.getElementById('qn-note-text'); if(ta) ta.value='';
   var st=document.getElementById('qn-note-status');
   if(st){ st.style.color='#333b44'; st.textContent='กำลังลบ…'; }
@@ -6935,7 +6957,9 @@ window.cdOpenNote = function(sn){
 window.cdSaveNote = function(sn){
   var ta=document.getElementById('cd-note-ta'); var val=ta?String(ta.value||'').trim():'';
   window._NOTE_SN=window._NOTE_SN||{};
+  window._SN_NOTES_LOCAL=window._SN_NOTES_LOCAL||{};
   if(val) window._NOTE_SN[sn]=val; else delete window._NOTE_SN[sn];
+  window._SN_NOTES_LOCAL[sn]=val;   /* [V670.8] '' = สั่งลบ */
   try{ if(typeof google!=='undefined'&&google.script&&google.script.run){ google.script.run.saveConfigSection(JSON.stringify({section:'note_sn', data:window._NOTE_SN})); } }catch(e){}
   window.cdCloseNote();
   try{

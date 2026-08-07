@@ -8528,7 +8528,16 @@ function applyConfig(cfg){
     var _ssCfg = (cfg.sum_status && cfg.sum_status.ids) || null;
     if (_ssCfg && _ssCfg.length) { window._sumStatusFilter = _ssCfg.slice(); }
   }catch(e){}
-  try{ window._NOTE_SN = cfg.note_sn || {}; }catch(e){ window._NOTE_SN={}; } // [B8]
+  /* [V670.8] โน้ตต่อ SN อาการเดียวกับโน้ตต่อ QN — โหลด config ทับทั้งก้อน
+     ของที่เพิ่งแก้ในเครื่องนี้ (_SN_NOTES_LOCAL) ต้องทับกลับ ไม่งั้นกด Load Data แล้วโน้ตหาย */
+  try{
+    var _sn = cfg.note_sn || {};
+    var _snOut = {};
+    Object.keys(_sn).forEach(function(k){ _snOut[k]=_sn[k]; });
+    var _snLocal = window._SN_NOTES_LOCAL || {};
+    Object.keys(_snLocal).forEach(function(k){ if(_snLocal[k]) _snOut[k]=_snLocal[k]; else delete _snOut[k]; });
+    window._NOTE_SN = _snOut;
+  }catch(e){ window._NOTE_SN={}; } // [B8]
   try{ window._SALES_REGION = cfg.sales_region || {}; if(window._applySalesRegion) window._applySalesRegion(); }catch(e){} // [B10]
   try{ window._PARTS_STATUS = cfg.parts_status || {}; }catch(e){}   // [V562] Parts Status Mapping
   try{ window._JOB_STATUS = cfg.job_status || {}; }catch(e){}       // [V658] Job Status Mapping
