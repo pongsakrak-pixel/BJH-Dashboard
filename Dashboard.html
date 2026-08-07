@@ -287,6 +287,8 @@
 
     <!-- TAB: Dashboard (default) -->
     <div id="db-tab-salesrep" style="display:none"><div id="sr-content" style="padding:6px 0"></div></div>
+    <!-- [V671] Revenue by Province -->
+    <div id="db-tab-province" style="display:none"><div id="pv-content" style="padding:6px 0"></div></div>
       <div id="db-tab-dashboard" style="max-width:92%;margin:0 auto;width:100%">
 
     <!-- Dashboard-specific Header bar -->
@@ -303,6 +305,8 @@
       <span class="db-sep" style="width:1px;height:18px;background:var(--bd2);margin:0 2px"></span>
       <button id="db-fbtn-table" onclick="dbSwitchTab('table')" style="padding:4px 12px;border-radius:5px;border:1px solid #34d399;background:rgba(52,211,153,0.12);color:#6ee7b7;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">📋 Budget &amp; Actual</button>
       <button id="db-fbtn-salesarea" onclick="dbSwitchTab('salesarea')" style="padding:4px 12px;border-radius:5px;border:1px solid #38bdf8;background:rgba(56,189,248,0.12);color:#7dd3fc;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">🗺 Sales Areas</button>
+      <!-- [V671] Revenue by Province — แท็บแยก ไม่ยัดลงหน้าแผนที่ -->
+      <button id="db-fbtn-province" onclick="dbSwitchTab('province')" style="padding:4px 12px;border-radius:5px;border:1px solid #34d399;background:rgba(52,211,153,0.12);color:#6ee7b7;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">🏙 Revenue by Province</button>
       <!-- [V668] Order Tracking — ย้ายจาก nav บนมาที่นี่ เปิดเป็น modal ทับ Summary
            คง id เดิม (nb-track) ไว้ เพราะ _applyNavPermissions ใช้ id นี้คุมสิทธิ์ nav_track -->
       <button id="nb-track" onclick="if(typeof window.otOpenModal==='function')window.otOpenModal()" style="padding:4px 12px;border-radius:5px;border:1px solid #f472b6;background:rgba(244,114,182,0.12);color:#f9a8d4;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600">📋 Order Tracking</button>
@@ -369,6 +373,7 @@
       .story-hdr.presenting #db-filterbar #db-fbtn-analysis,
       .story-hdr.presenting #db-filterbar #db-btn-present,
       .story-hdr.presenting #db-filterbar #nb-track,
+      .story-hdr.presenting #db-filterbar #db-fbtn-province,
       .story-hdr.presenting #db-filterbar .db-sep{ display:none !important; }
 
       /* fallback: ไม่มี Fullscreen API */
@@ -3801,9 +3806,207 @@ function dbRenderStory(yr, budget, stats){
   // ── Sub-tab switching ──
   document.addEventListener('click',function(e){var dd=document.getElementById('db-export-dd');var menu=document.getElementById('db-export-menu');if(menu&&dd&&!dd.contains(e.target)) menu.style.display='none';});
 
-  window.dbSwitchTab = function(t){
+
+/* ═══════════════ [V671] Revenue by Province ═══════════════
+   ยอดต่อจังหวัด แยก SC / SP — นับ "ทุกสถานะ" ตามที่ตกลงกับผู้ใช้
+
+   ผูกจังหวัดยังไง: window.D มีแต่ชื่อลูกค้า (r.cu) ไม่มีจังหวัด
+   -> ต้อง join กับ RAW_CUSTOMER (_spCustomerRows) ที่มี PROVINCE
+      โดยเทียบชื่อแบบ normalize ชุดเดียวกับหน้า Sales Areas (ตัด "รพ." / วงเล็บ / ช่องว่าง)
+   ชื่อที่เทียบไม่ติดไม่หายไปเฉยๆ — รวมเป็นแถบ "จับจังหวัดไม่ได้" ให้เห็นว่าตัวเลขครอบคลุมแค่ไหน
+
+   Sales Rep ในตาราง = เจ้าของเขตจาก province_rep (config ทับ default)
+   ไม่ใช่คนที่ขายใบนั้น — คนละความหมาย เขียนกำกับไว้ในหน้าแล้ว
+*/
+window._PV_EN = {
+'กรุงเทพมหานคร':'Bangkok','กระบี่':'Krabi','กาญจนบุรี':'Kanchanaburi','กาฬสินธุ์':'Kalasin','กำแพงเพชร':'Kamphaeng Phet',
+'ขอนแก่น':'Khon Kaen','จันทบุรี':'Chanthaburi','ฉะเชิงเทรา':'Chachoengsao','ชลบุรี':'Chon Buri','ชัยนาท':'Chai Nat',
+'ชัยภูมิ':'Chaiyaphum','ชุมพร':'Chumphon','เชียงราย':'Chiang Rai','เชียงใหม่':'Chiang Mai','ตรัง':'Trang',
+'ตราด':'Trat','ตาก':'Tak','นครนายก':'Nakhon Nayok','นครปฐม':'Nakhon Pathom','นครพนม':'Nakhon Phanom',
+'นครราชสีมา':'Nakhon Ratchasima','นครศรีธรรมราช':'Nakhon Si Thammarat','นครสวรรค์':'Nakhon Sawan','นนทบุรี':'Nonthaburi',
+'นราธิวาส':'Narathiwat','น่าน':'Nan','บึงกาฬ':'Bueng Kan','บุรีรัมย์':'Buri Ram','ปทุมธานี':'Pathum Thani',
+'ประจวบคีรีขันธ์':'Prachuap Khiri Khan','ปราจีนบุรี':'Prachin Buri','ปัตตานี':'Pattani','พระนครศรีอยุธยา':'Phra Nakhon Si Ayutthaya',
+'พะเยา':'Phayao','พังงา':'Phang Nga','พัทลุง':'Phatthalung','พิจิตร':'Phichit','พิษณุโลก':'Phitsanulok',
+'เพชรบุรี':'Phetchaburi','เพชรบูรณ์':'Phetchabun','แพร่':'Phrae','ภูเก็ต':'Phuket','มหาสารคาม':'Maha Sarakham',
+'มุกดาหาร':'Mukdahan','แม่ฮ่องสอน':'Mae Hong Son','ยโสธร':'Yasothon','ยะลา':'Yala','ร้อยเอ็ด':'Roi Et',
+'ระนอง':'Ranong','ระยอง':'Rayong','ราชบุรี':'Ratchaburi','ลพบุรี':'Lop Buri','ลำปาง':'Lampang','ลำพูน':'Lamphun',
+'เลย':'Loei','ศรีสะเกษ':'Si Sa Ket','สกลนคร':'Sakon Nakhon','สงขลา':'Songkhla','สตูล':'Satun',
+'สมุทรปราการ':'Samut Prakan','สมุทรสงคราม':'Samut Songkhram','สมุทรสาคร':'Samut Sakhon','สระแก้ว':'Sa Kaeo',
+'สระบุรี':'Saraburi','สิงห์บุรี':'Sing Buri','สุโขทัย':'Sukhothai','สุพรรณบุรี':'Suphan Buri','สุราษฎร์ธานี':'Surat Thani',
+'สุรินทร์':'Surin','หนองคาย':'Nong Khai','หนองบัวลำภู':'Nong Bua Lam Phu','อ่างทอง':'Ang Thong','อำนาจเจริญ':'Amnat Charoen',
+'อุดรธานี':'Udon Thani','อุตรดิตถ์':'Uttaradit','อุทัยธานี':'Uthai Thani','อุบลราชธานี':'Ubon Ratchathani','ต่างประเทศ':'Overseas'
+};
+window._pvSort = window._pvSort || {col:'total', dir:-1};
+window._pvType = window._pvType || 'all';    // all | SC | SP
+
+window.pvSortBy = function(col){
+  var s=window._pvSort;
+  if(s.col===col) s.dir=-s.dir; else { s.col=col; s.dir=(col==='province')?1:-1; }
+  window.dbRenderProvince();
+};
+window.pvSetType = function(v){ window._pvType=v; window.dbRenderProvince(); };
+window.pvExport = function(){
+  var rows=window._pvRows||[];
+  var out=['Province,Province (TH),Sales Rep,SC,SP,Total,Items'];
+  rows.forEach(function(r){
+    out.push([JSON.stringify(r.en), JSON.stringify(r.th), JSON.stringify(r.rep),
+              r.sc, r.sp, r.total, r.items].join(','));
+  });
+  var blob=new Blob(['\ufeff'+out.join('\n')],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='revenue_by_province.csv'; a.click();
+};
+
+window.dbRenderProvince = function(){
+  var el=document.getElementById('pv-content'); if(!el) return;
+  var D=window.D||[], cust=window._spCustomerRows||[];
+  function norm(s){ return String(s||'').replace(/[\s\u0e46]|รพ\.?|โรงพยาบาล|\(.*?\)|จำกัด|มหาชน/g,'').toLowerCase(); }
+
+  /* ชื่อลูกค้า -> จังหวัด (normalize ชุดเดียวกับหน้า Sales Areas) */
+  var provOf={};
+  cust.forEach(function(c){
+    var pv=String(c.PROVINCE==null?'':c.PROVINCE).trim();
+    if(!pv) return;
+    var n1=norm(c.CUS_NAME||''), n2=norm(c.CUS_SHORT_NAME||'');
+    if(n1 && provOf[n1]===undefined) provOf[n1]=pv;
+    if(n2 && provOf[n2]===undefined) provOf[n2]=pv;
+  });
+
+  var yr=Number(window.CUR_YR)||(new Date().getFullYear());
+  var type=window._pvType;
+  var agg={}, miss={n:0, amt:0, names:{}}, qnSeen={};
+  D.forEach(function(r){
+    if(Number(r.yr)!==yr) return;
+    var t=String(r.t||'');
+    if(type!=='all' && t!==type) return;
+    var amt=Number(r.px||0)/1.07;                 // ex.VAT เหมือนหน้าอื่น
+    if(!(amt>0)) return;
+    var pv=provOf[norm(r.cu||'')];
+    var qn=String(r.qn||'');
+    if(pv===undefined){
+      miss.n++; miss.amt+=amt; miss.names[r.cu||'—']=(miss.names[r.cu||'—']||0)+amt;
+      return;
+    }
+    var a=agg[pv]||(agg[pv]={sc:0,sp:0,total:0,items:{}});
+    if(t==='SP') a.sp+=amt; else a.sc+=amt;
+    a.total+=amt;
+    if(qn) a.items[qn]=1;
+  });
+
+  var repOf=(typeof _provRepOf==='function')?_provRepOf:function(){return '';};
+  var COL=(typeof _PROV_REP_COLOR!=='undefined')?_PROV_REP_COLOR:{};
+  var rows=Object.keys(agg).map(function(pv){
+    return { th:pv, en:(window._PV_EN[pv]||pv), rep:repOf(pv)||'—',
+             sc:agg[pv].sc, sp:agg[pv].sp, total:agg[pv].total,
+             items:Object.keys(agg[pv].items).length };
+  });
+
+  var s=window._pvSort;
+  rows.sort(function(a,b){
+    var x,y;
+    if(s.col==='province'){ x=a.en; y=b.en; return (x<y?-1:x>y?1:0)*s.dir; }
+    if(s.col==='rep'){ x=a.rep; y=b.rep; return (x<y?-1:x>y?1:0)*s.dir; }
+    x=Number(a[s.col]||0); y=Number(b[s.col]||0);
+    return (x-y)*s.dir;
+  });
+  window._pvRows=rows;
+
+  var tSC=0,tSP=0,tAll=0,tIt=0;
+  rows.forEach(function(r){ tSC+=r.sc; tSP+=r.sp; tAll+=r.total; tIt+=r.items; });
+  var maxV=rows.reduce(function(m,r){ return Math.max(m,r.total); },0)||1;
+
+  function fB(v){ return Math.round(v).toLocaleString('en-US'); }
+  function fM(v){ return (v/1e6).toFixed(2)+'M'; }
+  function arrow(c){ return (s.col===c)?(s.dir>0?' ▲':' ▼'):''; }
+  function th(c,label,align){
+    return '<th onclick="pvSortBy(\''+c+'\')" style="text-align:'+(align||'left')
+      +';padding:7px 10px;color:var(--mu2);font-weight:600;background:var(--sur2,#151d2c);'
+      +'border-bottom:1px solid var(--bd2,#2b3648);white-space:nowrap;font-size:11px;cursor:pointer;user-select:none">'
+      +label+arrow(c)+'</th>';
+  }
+  function chip(v,label){
+    var on=(type===v);
+    return '<button onclick="pvSetType(\''+v+'\')" style="padding:4px 12px;border-radius:5px;cursor:pointer;'
+      +'font-family:var(--font);font-size:11px;font-weight:600;'
+      +(on?'border:1px solid #34d399;background:rgba(52,211,153,.14);color:#6ee7b7'
+          :'border:1px solid var(--bd2,#2b3648);background:transparent;color:var(--mu2,#94a3b8)')+'">'+label+'</button>';
+  }
+
+  var body=rows.map(function(r,i){
+    var col=COL[r.rep]||'var(--mu)';
+    var pct=tAll>0?(r.total/tAll*100):0;
+    return '<tr style="border-bottom:1px solid var(--bd,#1e2836)">'
+      +'<td style="padding:6px 10px;color:var(--mu);font-family:var(--mono,monospace);font-size:11px">'+(i+1)+'</td>'
+      +'<td style="padding:6px 10px;white-space:nowrap"><b>'+r.en+'</b>'
+        +'<div style="font-size:10.5px;color:var(--mu)">'+r.th+'</div></td>'
+      +'<td style="padding:6px 10px;white-space:nowrap"><span style="font-size:11px;padding:1px 8px;border-radius:99px;font-weight:600;color:'+col+';background:rgba(148,163,184,.10)">'+r.rep+'</span></td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono,monospace)">'+fB(r.sc)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono,monospace)">'+fB(r.sp)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono,monospace);font-weight:700">'+fB(r.total)+'</td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono,monospace);color:var(--mu2)">'+pct.toFixed(1)+'%</td>'
+      +'<td style="padding:6px 10px;width:150px"><div style="height:5px;border-radius:3px;background:var(--bd2,#2b3648);position:relative">'
+        +'<i style="position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:'+col+';width:'+(r.total/maxV*100).toFixed(1)+'%;display:block"></i></div></td>'
+      +'<td style="padding:6px 10px;text-align:right;font-family:var(--mono,monospace);color:var(--mu2)">'+r.items+'</td>'
+      +'</tr>';
+  }).join('');
+
+  if(!rows.length){
+    body='<tr><td colspan="9" style="padding:26px;text-align:center;color:var(--mu2)">ไม่มีข้อมูลในปี '+yr+'</td></tr>';
+  }
+
+  var missTop=Object.keys(miss.names).sort(function(a,b){ return miss.names[b]-miss.names[a]; }).slice(0,5);
+
+  el.innerHTML=''
+    +'<div style="max-width:1500px;margin:0 auto;padding:4px 10px 30px">'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+    +  '<div style="font-size:15px;font-weight:700">🏙 Revenue by Province</div>'
+    +  '<div style="font-size:11px;color:var(--mu)">ปี '+yr+' · ทุกสถานะ · ex.VAT</div>'
+    +  '<span style="flex:1"></span>'
+    +  chip('all','SC + SP')+chip('SC','SC only')+chip('SP','SP only')
+    +  '<button onclick="pvExport()" style="padding:4px 12px;border-radius:5px;border:1px solid var(--bd2,#2b3648);background:transparent;color:var(--mu2,#94a3b8);cursor:pointer;font-family:var(--font);font-size:11px">↓ Export CSV</button>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:13px">'
+    +  '<div style="background:var(--sur,#0f1521);border:1px solid var(--bd,#1e2836);border-radius:9px;padding:11px 13px"><div style="font-size:11px;color:var(--mu)">Total revenue</div><div style="font-family:var(--mono,monospace);font-size:19px;font-weight:700;margin-top:3px">฿'+fM(tAll)+'</div></div>'
+    +  '<div style="background:var(--sur,#0f1521);border:1px solid var(--bd,#1e2836);border-radius:9px;padding:11px 13px"><div style="font-size:11px;color:var(--mu)">SC</div><div style="font-family:var(--mono,monospace);font-size:19px;font-weight:700;margin-top:3px;color:#60a5fa">฿'+fM(tSC)+'</div></div>'
+    +  '<div style="background:var(--sur,#0f1521);border:1px solid var(--bd,#1e2836);border-radius:9px;padding:11px 13px"><div style="font-size:11px;color:var(--mu)">SP</div><div style="font-family:var(--mono,monospace);font-size:19px;font-weight:700;margin-top:3px;color:#a78bfa">฿'+fM(tSP)+'</div></div>'
+    +  '<div style="background:var(--sur,#0f1521);border:1px solid var(--bd,#1e2836);border-radius:9px;padding:11px 13px"><div style="font-size:11px;color:var(--mu)">Provinces with revenue</div><div style="font-family:var(--mono,monospace);font-size:19px;font-weight:700;margin-top:3px">'+rows.length+'<span style="font-size:12px;color:var(--mu)"> / 77</span></div></div>'
+    +'</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--sur,#0f1521);border:1px solid var(--bd,#1e2836);border-radius:9px;overflow:hidden">'
+    +'<thead><tr>'
+    +  '<th style="padding:7px 10px;background:var(--sur2,#151d2c);border-bottom:1px solid var(--bd2,#2b3648);width:34px"></th>'
+    +  th('province','Province')+th('rep','Sales Rep')
+    +  th('sc','SC','right')+th('sp','SP','right')+th('total','Total','right')
+    +  '<th style="padding:7px 10px;text-align:right;background:var(--sur2,#151d2c);border-bottom:1px solid var(--bd2,#2b3648);color:var(--mu2);font-size:11px;font-weight:600">Share</th>'
+    +  '<th style="padding:7px 10px;background:var(--sur2,#151d2c);border-bottom:1px solid var(--bd2,#2b3648)"></th>'
+    +  th('items','Items','right')
+    +'</tr></thead><tbody>'+body
+    +'<tr style="border-top:1px solid var(--bd2,#2b3648)"><td style="padding:7px 10px;background:var(--sur2,#151d2c)"></td>'
+    +'<td style="padding:7px 10px;background:var(--sur2,#151d2c);font-weight:700">Total</td>'
+    +'<td style="padding:7px 10px;background:var(--sur2,#151d2c)"></td>'
+    +'<td style="padding:7px 10px;background:var(--sur2,#151d2c);text-align:right;font-family:var(--mono,monospace);font-weight:700">'+fB(tSC)+'</td>'
+    +'<td style="padding:7px 10px;background:var(--sur2,#151d2c);text-align:right;font-family:var(--mono,monospace);font-weight:700">'+fB(tSP)+'</td>'
+    +'<td style="padding:7px 10px;background:var(--sur2,#151d2c);text-align:right;font-family:var(--mono,monospace);font-weight:700">'+fB(tAll)+'</td>'
+    +'<td style="padding:7px 10px;background:var(--sur2,#151d2c);text-align:right;color:var(--mu2)">100%</td>'
+    +'<td style="padding:7px 10px;background:var(--sur2,#151d2c)"></td>'
+    +'<td style="padding:7px 10px;background:var(--sur2,#151d2c);text-align:right;font-family:var(--mono,monospace);font-weight:700">'+tIt+'</td>'
+    +'</tr></tbody></table>'
+    +(miss.n>0
+      ? '<div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.35);color:#fdba74;border-radius:7px;padding:8px 11px;font-size:11.5px;margin-top:10px;line-height:1.8">'
+        +'⚠ จับจังหวัดไม่ได้ <b>'+miss.n+'</b> รายการ · <b>฿'+fB(miss.amt)+'</b> ('+(tAll+miss.amt>0?(miss.amt/(tAll+miss.amt)*100).toFixed(1):'0')+'% ของยอดรวม) — ชื่อลูกค้าเทียบกับ RAW_CUSTOMER ไม่ติด'
+        +'<div style="color:var(--mu2);font-size:11px;margin-top:3px">รายใหญ่: '+missTop.map(function(n){ return n+' (฿'+fB(miss.names[n])+')'; }).join(' · ')+'</div>'
+        +'</div>'
+      : '')
+    +'<div style="font-size:11px;color:var(--mu);margin-top:11px;line-height:1.9;border-top:1px solid var(--bd,#1e2836);padding-top:10px">'
+    +  '<b style="color:var(--mu2)">Sales Rep</b> = เจ้าของเขตตามตาราง province_rep (Config › เขตจังหวัด) ไม่ใช่คนที่ขายใบนั้น<br>'
+    +  '<b style="color:var(--mu2)">Items</b> = จำนวนใบเสนอราคา (นับ QN ไม่ซ้ำ)<br>'
+    +  'จังหวัดของลูกค้ามาจาก RAW_CUSTOMER.PROVINCE เทียบชื่อแบบ normalize ชุดเดียวกับหน้า Sales Areas'
+    +'</div>'
+    +'</div>';
+};
+
+window.dbSwitchTab = function(t){
     window._dbCurrentTab = t;
-    var tabs={dashboard:'db-tab-dashboard',table:'db-tab-table',salesarea:'db-tab-salesrep',sabud:'db-tab-sabud',analysis:'db-tab-analysis'};
+    var tabs={dashboard:'db-tab-dashboard',table:'db-tab-table',salesarea:'db-tab-salesrep',sabud:'db-tab-sabud',analysis:'db-tab-analysis',province:'db-tab-province'};   // [V671]
     // [v304] target panel ของ tab ปัจจุบัน — แสดงตัวนี้ตัวเดียว ที่เหลือซ่อน
     var _activePanel=tabs[t]||'db-tab-dashboard';
     var _shown={};
@@ -3824,6 +4027,7 @@ function dbRenderStory(yr, budget, stats){
     if(t==='analysis'){ try{ dbRenderAnalysis(); }catch(e){} }
     if(t==='sabud'){ try{ dbRenderSaBud(); }catch(e){} }
     if(t==='salesarea'){ try{ window.dbRenderSalesRep(); }catch(e){console.warn('SR render:',e);} }
+    if(t==='province'){ try{ window.dbRenderProvince(); }catch(e){console.warn('PV render:',e);} }   // [V671]
   };
 
   /* ===== [v308] Sales Rep Territory tab ===== */
