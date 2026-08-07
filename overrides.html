@@ -1883,8 +1883,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V671.1';
-    var _BUILD_TIME='7 ส.ค. 2569 (V671.1 Weekly Report ไม่ค้าง)';
+    var _BUILD_VER='V672.0';
+    var _BUILD_TIME='7 ส.ค. 2569 (V672 ป้ายเลื่อนเดือน + แจ้ง MD Group Service)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
@@ -3042,6 +3042,241 @@ window._bjhCdDebug = function(){
     var ov=document.getElementById('ot-modal');
     if(ov&&ov.style.display!=='none') window.otCloseModal();
   });
+})();
+
+
+/* ══════════════════════════════════════════════════════════════
+   [V672] เลื่อนเดือน — ป้ายในตาราง + แจ้ง MD Group Service
+
+   ข้อมูลมีอยู่แล้ว ไม่ต้องเก็บเพิ่ม: Sales Confirm (V525) เก็บ _orig_mo/_orig_yr
+   ไว้ตั้งแต่ตอนกดย้ายเดือน — ตรงนี้แค่เอามาแสดงและเอาไปประกอบอีเมล
+
+   ส่งเมลด้วย mailto: แบบเดียวกับปุ่มเบิกอะไหล่ (dpReqEmail) ไม่ใช่ MailApp
+   -> ส่งจากเมลของคนแจ้งเอง MD Group Service จะได้รู้ว่าใครขอ และตอบกลับได้ตรงคน
+   ปลายทางอ่านจาก config email_req เหมือนกัน (คีย์ mv_to) ไม่ hardcode
+
+   "แจ้งแล้ว" เก็บใน config section mv_notice: { QN: {at, by, from, to} }
+   mailto บอกไม่ได้ว่าผู้ใช้กดส่งจริงไหม จึงบันทึกตอน "กดเปิดเมล" และเขียนกำกับไว้ในป๊อปอัพ
+   ══════════════════════════════════════════════════════════════ */
+(function(){
+  var MON = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var MON_FULL = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                  'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+  function esc(v){
+    return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  window._MV_NOTICE = window._MV_NOTICE || {};
+  window._MV_NOTICE_LOCAL = window._MV_NOTICE_LOCAL || {};   /* [V670.8] pattern เดียวกับโน้ต */
+
+  function mvLoad(){
+    try{
+      var c = window._LAST_CONFIG || {};
+      var base = c.mv_notice ? c.mv_notice : (window._MV_NOTICE||{});
+      var out = {};
+      Object.keys(base).forEach(function(k){ out[k]=base[k]; });
+      Object.keys(window._MV_NOTICE_LOCAL).forEach(function(k){ out[k]=window._MV_NOTICE_LOCAL[k]; });
+      window._MV_NOTICE = out;
+    }catch(e){}
+    return window._MV_NOTICE;
+  }
+  window._mvLoad = mvLoad;
+
+  /* เดือนถูกย้ายจริงไหม — ต้องมีเดือนเดิม และไม่เท่าเดือนที่ลงจริง */
+  window._mvInfo = function(r){
+    if(!r) return null;
+    var om = Number(r._orig_mo||0), oy = Number(r._orig_yr||0);
+    if(!om) return null;
+    var nm = Number(r.rbmo || r.mo || 0), ny = Number(r.rbyr || r.yr || 0);
+    if(!nm) return null;
+    if(om===nm && (!oy || !ny || oy===ny)) return null;      /* ไม่ได้ย้าย */
+    var back = (ny>oy) || (ny===oy && nm>om);                /* เลื่อนออกไปข้างหน้า */
+    return { om:om, oy:oy, nm:nm, ny:ny, back:back,
+             qn:String(r.qn||r.sr||''), label: MON[om]+'→'+MON[nm] };
+  };
+
+  /* ป้ายในตาราง — ใช้ตัวเดียวกันทุกหน้า */
+  window._mvBadge = function(r){
+    var i = window._mvInfo(r);
+    if(!i) return '';
+    var col = i.back ? '#93c5fd' : '#fdba74';
+    var bg  = i.back ? 'rgba(96,165,250,.14)' : 'rgba(251,146,60,.14)';
+    var bd  = i.back ? 'rgba(96,165,250,.4)'  : 'rgba(251,146,60,.4)';
+    var sent = (window._MV_NOTICE||{})[i.qn];
+    var tip = 'เดิม '+MON_FULL[i.om]+' '+i.oy+' · ลงจริง '+MON_FULL[i.nm]+' '+i.ny
+            + (sent ? (' · แจ้ง MD แล้ว '+String(sent.at||'').slice(0,16)) : ' · ยังไม่ได้แจ้ง MD');
+    return '<span title="'+esc(tip)+'" style="display:inline-flex;align-items:center;gap:3px;'
+      + 'font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;white-space:nowrap;margin-left:5px;'
+      + 'background:'+bg+';color:'+col+';border:1px solid '+bd+';cursor:help">'
+      + (i.back?'\u2935':'\u2934') + ' ' + esc(i.label) + '</span>';
+  };
+
+  /* ปุ่ม ✉ แจ้ง MD — โผล่เฉพาะแถวที่ย้ายเดือนจริง */
+  window._mvBtnHtml = function(idx){
+    var r = (window.D||[])[idx];
+    var i = window._mvInfo(r);
+    if(!i) return '';
+    if(typeof window._scfCanConfirm==='function' && !window._scfCanConfirm(r)) return '';
+    mvLoad();
+    var sent = (window._MV_NOTICE||{})[i.qn];
+    return '<button onclick="event.stopPropagation();_mvOpen('+idx+')" '
+      + 'title="'+(sent?esc('แจ้งแล้ว '+String(sent.at||'').slice(0,16)+' โดย '+(sent.by||'')):'แจ้ง MD Group Service ว่าเลื่อนเดือน')+'" '
+      + 'style="font-size:10.5px;padding:3px 9px;border-radius:11px;margin-left:4px;cursor:pointer;font-family:inherit;white-space:nowrap;'
+      + (sent ? 'border:1px solid #22c55e;background:rgba(34,197,94,.10);color:#4ade80">\u2705 แจ้งแล้ว'
+              : 'border:1px solid var(--bd2,#334155);background:transparent;color:var(--mu2,#94a3b8)">\u2709 แจ้ง MD')
+      + '</button>';
+  };
+
+  function mvCfg(k, dflt){
+    var C = window.EMAIL_REQ_CFG || {};
+    var D = window.EMAIL_REQ_DEFAULT || {};
+    var v = (C[k]!=null && C[k]!=='') ? C[k] : D[k];
+    return (v!=null && v!=='') ? v : dflt;
+  }
+
+  window._mvBuild = function(idx, noteText){
+    var r = (window.D||[])[idx]; var i = window._mvInfo(r);
+    if(!r || !i) return null;
+    var to = String(mvCfg('mv_to','') || '').trim();
+    var brand = (typeof resolveBM==='function') ? (function(){ var b=resolveBM(r)||{}; return ((b.br||'')+' '+(b.ml||'')).trim(); })() : (r.pg||'');
+    var by = String((window._currentUser&&window._currentUser.name) || window._spMyName || r.sa || '').trim();
+    var subj = '[BJH] ขอเลื่อนงาน '+i.qn+' — '+MON[i.om]+' '+i.oy+' \u2192 '+MON[i.nm]+' '+i.ny;
+    var L = [];
+    L.push('เรียน MD Group Service');
+    L.push('');
+    L.push('ขอแจ้งเลื่อนกำหนดงานดังนี้');
+    L.push('');
+    L.push('  เลขที่ใบเสนอราคา : ' + i.qn);
+    L.push('  ลูกค้า           : ' + (r.cu||'—'));
+    L.push('  เครื่อง           : ' + (brand||'—'));
+    if(r.px) L.push('  มูลค่า            : ' + Number(r.px).toLocaleString('en-US') + ' บาท');
+    L.push('  กำหนดเดิม        : ' + MON_FULL[i.om] + ' ' + i.oy);
+    L.push('  ขอเลื่อนเป็น      : ' + MON_FULL[i.nm] + ' ' + i.ny);
+    L.push('  หมายเหตุ         : ' + (String(noteText||'').trim() || '—'));
+    L.push('');
+    L.push('ผู้แจ้ง : ' + (by||'—'));
+    L.push('ส่งจาก BJH Revenue Dashboard');
+    return { to:to, subj:subj, body:L.join('\n'), qn:i.qn, by:by, info:i };
+  };
+
+  window._mvOpen = function(idx){
+    var r = (window.D||[])[idx]; var i = window._mvInfo(r);
+    if(!r || !i){ alert('รายการนี้ไม่ได้เลื่อนเดือน'); return; }
+    mvLoad();
+    var el = document.getElementById('mv-overlay'); if(el) el.remove();
+
+    var note = '';
+    try{
+      var t = (window._QUOTE_NOTES||{})[i.qn] || '';
+      note = (typeof window._scfStripTag==='function') ? window._scfStripTag(t) : t;
+    }catch(e){}
+    var sent = (window._MV_NOTICE||{})[i.qn];
+    var to = String(mvCfg('mv_to','')||'').trim();
+
+    el = document.createElement('div'); el.id='mv-overlay';
+    el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100002;display:flex;align-items:center;justify-content:center;padding:20px';
+    el.innerHTML =
+        '<div style="background:#0f172a;border:1px solid #334155;border-radius:11px;max-width:580px;width:100%;max-height:92vh;display:flex;flex-direction:column">'
+      +   '<div style="padding:13px 18px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;flex:0 0 auto">'
+      +     '<div style="font-size:14px;font-weight:700;color:#e2e8f0">\u2709 แจ้งเลื่อนงาน — MD Group Service</div>'
+      +     '<button onclick="document.getElementById(\'mv-overlay\').remove()" style="background:transparent;border:none;color:#64748b;font-size:21px;cursor:pointer;line-height:1">\u00d7</button>'
+      +   '</div>'
+      +   '<div style="padding:14px 18px;overflow:auto;flex:1">'
+      +     '<div style="font-size:12px;font-weight:600;color:#e2e8f0">'+esc(i.qn)+'</div>'
+      +     '<div style="font-size:11px;color:#64748b;margin-bottom:13px">'+esc(r.cu||'—')
+      +       (r.px?' \u00b7 <b style="color:#4ade80">'+Number(r.px).toLocaleString('en-US')+'\u0e3f</b>':'')+'</div>'
+      +     '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">'
+      +       '<div style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:7px 9px;font-size:12px;color:#94a3b8">'+MON_FULL[i.om]+' '+i.oy+'</div>'
+      +       '<div style="color:#64748b">\u2192</div>'
+      +       '<div style="flex:1;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:7px 9px;font-size:12px;color:#fbbf24;font-weight:700">'+MON_FULL[i.nm]+' '+i.ny+'</div>'
+      +     '</div>'
+      +     '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">หมายเหตุ <span style="color:#64748b">(ดึงจากช่อง \ud83d\udcdd โน้ต · แก้ตรงนี้ได้ ไม่กระทบโน้ตเดิม)</span></div>'
+      +     '<textarea id="mv-note" rows="2" oninput="_mvPreview('+idx+')" style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:7px 9px;color:#e2e8f0;font-size:12px;font-family:inherit;box-sizing:border-box;outline:none;margin-bottom:12px">'+esc(note)+'</textarea>'
+      +     '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">ตัวอย่างอีเมลที่จะส่ง</div>'
+      +     '<div id="mv-prev" style="background:#0b1220;border:1px solid #24324a;border-radius:7px;padding:11px 13px;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.8;color:#cbd5e1;white-space:pre-wrap"></div>'
+      +     (to ? '' : '<div style="background:rgba(251,146,60,.10);border:1px solid rgba(251,146,60,.4);color:#fdba74;border-radius:7px;padding:8px 11px;font-size:11.5px;margin-top:10px;line-height:1.7">\u26a0 ยังไม่ได้ตั้งอีเมล MD Group Service<br>ไปตั้งที่ <b>Config \u203a Email \u203a แจ้งเลื่อนงาน (ถึง)</b> แล้วปุ่มส่งจะใช้ได้ทันที</div>')
+      +     (sent ? '<div style="font-size:11px;color:#64748b;margin-top:9px">เคยแจ้งเมื่อ <span style="color:#94a3b8">'+esc(String(sent.at||'').slice(0,16))+'</span> โดย <span style="color:#94a3b8">'+esc(sent.by||'—')+'</span></div>' : '')
+      +   '</div>'
+      +   '<div style="padding:12px 18px;border-top:1px solid #334155;display:flex;gap:8px;align-items:center;flex:0 0 auto">'
+      +     '<button onclick="_mvCopy('+idx+',this)" style="padding:7px 14px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:12px;font-family:inherit;cursor:pointer">\ud83d\udccb คัดลอกข้อความ</button>'
+      +     '<span style="flex:1"></span>'
+      +     '<button onclick="document.getElementById(\'mv-overlay\').remove()" style="padding:7px 15px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:12px;font-family:inherit;cursor:pointer">ปิด</button>'
+      +     (to
+          ? '<button onclick="_mvSend('+idx+')" style="padding:7px 18px;border-radius:6px;border:none;background:#22c55e;color:#052e16;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">\u2709 ส่งอีเมล</button>'
+          : '<button disabled title="ยังไม่ได้ตั้งอีเมลปลายทาง" style="padding:7px 18px;border-radius:6px;border:none;background:#334155;color:#64748b;font-size:12px;font-weight:700;font-family:inherit;cursor:not-allowed">\u2709 ส่งอีเมล</button>')
+      +   '</div>'
+      + '</div>';
+    document.body.appendChild(el);
+    window._mvPreview(idx);
+  };
+
+  window._mvPreview = function(idx){
+    var ta = document.getElementById('mv-note');
+    var o = window._mvBuild(idx, ta?ta.value:'');
+    var pv = document.getElementById('mv-prev');
+    if(!o || !pv) return;
+    pv.textContent = 'ถึง   : ' + (o.to || '<ยังไม่ได้ตั้งค่า>') + '\nเรื่อง : ' + o.subj + '\n\n' + o.body;
+  };
+
+  function mvMarkSent(o){
+    var rec = { at:new Date().toISOString().slice(0,16).replace('T',' '), by:o.by||'',
+                from:o.info.om+'/'+o.info.oy, to:o.info.nm+'/'+o.info.ny };
+    window._MV_NOTICE[o.qn] = rec;
+    window._MV_NOTICE_LOCAL[o.qn] = rec;
+    try{
+      window._LAST_CONFIG = window._LAST_CONFIG || {};
+      var cp={}; Object.keys(window._MV_NOTICE).forEach(function(k){ cp[k]=window._MV_NOTICE[k]; });
+      window._LAST_CONFIG.mv_notice = cp;
+      if(typeof google!=='undefined' && google.script && google.script.run){
+        google.script.run
+          .withSuccessHandler(function(){})
+          .withFailureHandler(function(e){ console.warn('[V672] บันทึกสถานะแจ้งไม่สำเร็จ', e); })
+          .saveConfigSection('mv_notice', cp);
+      }
+    }catch(e){}
+  }
+
+  window._mvSend = function(idx){
+    var ta = document.getElementById('mv-note');
+    var o = window._mvBuild(idx, ta?ta.value:'');
+    if(!o) return;
+    if(!o.to){ alert('ยังไม่ได้ตั้งอีเมล MD Group Service\nไปตั้งที่ Config › Email'); return; }
+    mvMarkSent(o);
+    window.location.href = 'mailto:' + encodeURIComponent(o.to)
+      + '?subject=' + encodeURIComponent(o.subj)
+      + '&body=' + encodeURIComponent(o.body);
+    var el=document.getElementById('mv-overlay'); if(el) el.remove();
+    try{ if(typeof window.spRenderAll==='function') window.spRenderAll(); else if(typeof window.af==='function') window.af(); }catch(e){}
+  };
+
+  /* คัดลอก — เผื่อเครื่องไม่มีโปรแกรมเมล (แพตเทิร์นเดียวกับ dpReqCopy) */
+  window._mvCopy = function(idx, btn){
+    var ta = document.getElementById('mv-note');
+    var o = window._mvBuild(idx, ta?ta.value:'');
+    if(!o) return;
+    var txt = 'ถึง : ' + (o.to||'') + '\nเรื่อง : ' + o.subj + '\n\n' + o.body;
+    function done(){
+      if(!btn) return;
+      var old = btn.getAttribute('data-lbl') || btn.innerHTML;
+      btn.setAttribute('data-lbl', old);
+      btn.innerHTML='\u2713 คัดลอกแล้ว'; btn.style.color='#4ade80';
+      setTimeout(function(){ btn.innerHTML=old; btn.style.color=''; }, 1600);
+    }
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(done, function(){ fallback(); });
+      } else fallback();
+    }catch(e){ fallback(); }
+    function fallback(){
+      try{
+        var t=document.createElement('textarea'); t.value=txt;
+        t.style.cssText='position:fixed;top:-1000px'; document.body.appendChild(t);
+        t.select(); document.execCommand('copy'); t.remove(); done();
+      }catch(e2){ alert(txt); }
+    }
+  };
 })();
 
 </script>

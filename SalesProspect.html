@@ -9058,6 +9058,7 @@ window.spRenderOrdSC = function(){
     var _entryCell=_jdaValid?_spFmtDate(_jda):'<span style="color:var(--mu2);font-size:11px">รอนัด</span>';
     var _moCell=(_realMo||'—')+'/'+(_realYr||'—');
     if(_crossMo) _moCell='<span style="color:#f87171;font-weight:600">'+_moCell+' ⚠</span>';
+    if(typeof window._mvBadge==='function') _moCell+=window._mvBadge(r);   /* [V672] ป้ายเลื่อนเดือน */
     return '<tr style="border-bottom:1px solid var(--bd2,#374151);cursor:pointer;'+rowBg+'" onclick="spOpenSPDetail('+r._idx+')">'
       +'<td style="padding:6px 10px">'+_esc(r.sa||'—')+'</td>'
       /* [V670.1] ป้าย (Px) ย้ายมาต่อท้าย QN ให้ตรงกับตารางหลัก — ป้ายเดียวกันต้องอยู่ที่เดียวกันทุกหน้า */
@@ -9074,7 +9075,7 @@ window.spRenderOrdSC = function(){
       +'<td style="padding:6px 10px;text-align:right">'+_spFmtB(r.px||0)+'</td>'
       +'<td style="padding:6px 10px;text-align:center">'+_moCell+'</td>'
       +'<td style="padding:6px 10px;text-align:center" onclick="event.stopPropagation()">'+_qnCellHtml(r.qn||'')+'</td>' // [V508]
-      +'<td style="padding:6px 10px;text-align:center" onclick="event.stopPropagation()">'+(window._scfCellHtml?window._scfCellHtml(r._idx):'')+'</td>' // [V522] Sales Confirm
+      +'<td style="padding:6px 10px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">'+(window._scfCellHtml?window._scfCellHtml(r._idx):'')+(window._mvBtnHtml?window._mvBtnHtml(r._idx):'')+'</td>' // [V522] Sales Confirm · [V672] +แจ้ง MD
       +'</tr>';
   }).join('');
   el.innerHTML=_spTbl(cols,body);

@@ -3742,7 +3742,9 @@ function dbRenderStory(yr, budget, stats){
       dashboard:{admin:true,manager:true,sales:true},
       table:{admin:true,manager:true,sales:false},
       sabud:{admin:true,manager:true,sales:false},
-      analysis:{admin:true,manager:true,sales:false}
+      analysis:{admin:true,manager:true,sales:false},
+      salesarea:{admin:true,manager:true,sales:true},   /* [V671.2] */
+      province:{admin:true,manager:true,sales:true}     /* [V671.2] */
     };
     var perms = window._TAB_PERMISSIONS || DEF;
     function can(key){
@@ -3750,7 +3752,8 @@ function dbRenderStory(yr, budget, stats){
       var p = perms[key] || DEF[key] || {};
       return !!p[role];
     }
-    var tabKeys = ['dashboard','table','sabud','analysis'];
+    /* [V671.2] +salesarea +province — 2 ปุ่มนี้เคยหลุดจากระบบสิทธิ์ ทุก role เห็นตลอด */
+    var tabKeys = ['dashboard','table','sabud','analysis','salesarea','province'];
     var visibleTabs = [];
     tabKeys.forEach(function(tk){
       var canSee = can(tk);
