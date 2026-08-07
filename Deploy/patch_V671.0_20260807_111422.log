@@ -16,3 +16,25 @@ WSManStackVersion: 3.0
 PSRemotingProtocolVersion: 2.3
 SerializationVersion: 1.1.0.1
 **********************
+
+=== BJH patch V671.0 ===
+guard ok : base V670.8
+  wrote Dashboard.html  606 KB  sha ok
+  wrote overrides.html  198 KB  sha ok
+  wrote STATE.md  175 KB  sha ok
+version on disk : V671.0
+
+clasp push -f ...
+
+clasp create-deployment ...
+
+
+
+
+
+DONE : V671.0
+user must Ctrl+Shift+R
+**********************
+Windows PowerShell transcript end
+End time: 20260807111603
+**********************

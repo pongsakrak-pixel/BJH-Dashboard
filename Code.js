@@ -3313,9 +3313,14 @@ function saveContractSnapshot(payloadStr) {
   }
 }
 
-/* คืนรายการ "ขยับสถานะ" ทั้งหมด + วันแรกที่เริ่มเก็บ
-   ส่งทั้งก้อนเพราะการขยับต่อวันมีไม่กี่รายการ · ฝั่ง Weekly กรองช่วงสัปดาห์เอง */
-function getContractChanges() {
+/* คืนรายการ "ขยับสถานะ" ในช่วงที่ขอ + วันแรกที่เริ่มเก็บ
+   [V671.1] เดิมส่งทั้งก้อนและไม่กรองอะไรเลย -> วันแรกที่เก็บ snapshot ทุกสัญญาเป็น kind='new'
+   = 5,455 แถวในวันเดียว ส่งกลับ client ทีเดียว -> หน้า Weekly ค้างที่ "กำลังโหลดรายงาน…"
+   แก้ 2 ชั้น:
+     1. กรองช่วงวันที่ฝั่ง server (ฝั่ง Weekly ส่งช่วงสัปดาห์มาให้)
+     2. คืนเฉพาะ kind='moved' ซึ่งเป็นอย่างเดียวที่ Weekly ใช้ — 'new'/'gone' ไม่ต้องส่ง
+   ไม่ส่งช่วงมา = คืน 60 วันล่าสุด (กันเผลอดึงทั้งชีตอีก) */
+function getContractChanges(fromDay, toDay) {
   try {
     var ss = getSpreadsheet();
     var sh = ss.getSheetByName('contract_change');
@@ -3323,13 +3328,27 @@ function getContractChanges() {
     if (!sh || sh.getLastRow() < 2) {
       return JSON.stringify({ ok: true, ready: false, changes: [], since: '' });
     }
+    var f = String(fromDay || '').slice(0, 10);
+    var t = String(toDay || '').slice(0, 10);
+    if (!f) {
+      var d60 = new Date(); d60.setDate(d60.getDate() - 60);
+      f = Utilities.formatDate(d60, Session.getScriptTimeZone() || 'Asia/Bangkok', 'yyyy-MM-dd');
+    }
     var dat = sh.getRange(2, 1, sh.getLastRow() - 1, CON_CHG_HDR.length).getValues();
-    var out = dat.map(function (r) {
+    var out = [];
+    for (var i = 0; i < dat.length; i++) {
+      var r = dat[i];
+      if (String(r[1] || '') !== 'moved') continue;      // Weekly ใช้แค่ 'moved'
+      var d = _snapDayStr(r[0]);
+      if (!d) continue;
+      if (f && d < f) continue;
+      if (t && d > t) continue;
       var o = {};
-      CON_CHG_HDR.forEach(function (h, i) { o[h] = r[i]; });
-      o.date = _snapDayStr(r[0]);
-      return o;
-    }).filter(function (o) { return !!o.date; });
+      CON_CHG_HDR.forEach(function (h, k) { o[h] = r[k]; });
+      o.date = d;
+      out.push(o);
+      if (out.length >= 5000) break;                     // กันเคสผิดปกติ
+    }
 
     var since = '';
     if (shS && shS.getLastRow() > 1) {
@@ -3337,7 +3356,11 @@ function getContractChanges() {
         .map(function (r) { return _snapDayStr(r[0]); }).filter(String).sort();
       since = col[0] || '';
     }
-    return JSON.stringify({ ok: true, ready: out.length > 0, changes: out, since: since });
+    /* ready = "มีภาพเทียบแล้ว" ไม่ใช่ "มีการขยับในช่วงนี้"
+       ดูจาก contract_state ว่าเริ่มเก็บมาแล้วอย่างน้อย 1 วันก่อนวันนี้ */
+    var today = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Bangkok', 'yyyy-MM-dd');
+    var ready = !!since && since < today;
+    return JSON.stringify({ ok: true, ready: ready, changes: out, since: since });
   } catch (e) {
     return JSON.stringify({ ok: false, error: e.message, changes: [] });
   }

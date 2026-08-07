@@ -7571,7 +7571,12 @@ window.wkSave=function(status){
     .withFailureHandler(function(e){ if(msg) msg.textContent='⚠ '+(e&&e.message||'บันทึกไม่สำเร็จ'); })
     .saveWeeklyReport(JSON.stringify(payload));
 };
-window.wkWeek=function(d){ window._wkOff+=d; window._wkView=null; window.spRenderWeekly(); };
+window.wkWeek=function(d){
+  window._wkOff+=d; window._wkView=null;
+  /* [V671.1] cache ครอบคลุมแค่ 8 สัปดาห์ย้อนหลัง — เลื่อนเกินกว่านั้นต้องโหลดใหม่ */
+  if(Math.abs(window._wkOff||0) > 8){ window._wkConChg=null; }
+  window.spRenderWeekly();
+};
 window.wkBack=function(){ window._wkView=null; window.spRenderWeekly(); };
 window.wkOpen=function(empId){
   var st=window._wkStore||{rows:[]};
@@ -7620,16 +7625,32 @@ window._wkConLoad = function(cb){
     window._wkConChg={ready:false,changes:[],since:''}; cb(); return;
   }
   window._wkConBusy=true;
+
+  /* [V671.1] กันหน้าค้างถาวร — ถ้า server ไม่ตอบใน 20 วิ ให้เรนเดอร์ต่อด้วยยอด ณ ปัจจุบัน
+     (เดิมถ้า callback ไม่มา หน้าจะค้างที่ "กำลังโหลดรายงาน…" ตลอดไป) */
+  var done=false;
+  function finish(o){
+    if(done) return; done=true;
+    window._wkConChg=o; window._wkConBusy=false;
+    try{ cb(); }catch(e){ console.error('[V671.1] weekly cb',e); }
+  }
+  setTimeout(function(){ finish({ready:false,changes:[],since:'',timeout:true}); }, 20000);
+
+  /* ส่งช่วง 8 สัปดาห์ย้อนหลังถึงสัปดาห์ที่ดูอยู่ — พอสำหรับปุ่มเลื่อนสัปดาห์ และไม่ดึงทั้งชีต */
+  var _rNow=_wkRange(window._wkOff||0), _rFrom=_wkRange((window._wkOff||0)-8);
+  function _ds(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
   google.script.run
     .withSuccessHandler(function(s){
       var o={ready:false,changes:[],since:''};
       try{ o=JSON.parse(s)||o; }catch(e){}
-      window._wkConChg=o; window._wkConBusy=false; cb();
+      finish(o);
     })
-    .withFailureHandler(function(){
-      window._wkConChg={ready:false,changes:[],since:''}; window._wkConBusy=false; cb();
+    .withFailureHandler(function(e){
+      console.warn('[V671.1] getContractChanges fail:', e);
+      finish({ready:false,changes:[],since:''});
     })
-    .getContractChanges();
+    .getContractChanges(_ds(_rFrom.s), _ds(_rNow.e));
 };
 
 window.spRenderWeekly = function(){
