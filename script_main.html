@@ -3606,18 +3606,6 @@ function extractBrandModelHTML(r){
 }
 function normStatusText(s){return String(s||'').replace(/\s*\/\s*/g,'/').replace(/\s+/g,' ').trim();}
 function isOfferSC(s){return ['รอใบสั่งจ้าง/รอทำสัญญา','รอใบสั่งจ้าง','รอทำสัญญา','อยู่ระหว่างทำสัญญา','ส่งเอกสารให้ลูกค้า','เอกสารรอส่งลูกค้า','มอบอำนาจ/BG'].indexOf(normStatusText(s))>=0;}
-/* [V672] ห่อ periodLabel เพื่อต่อป้ายเลื่อนเดือนท้ายข้อความเดือน
-   ห่อแทนการไปแก้ทุก return ข้างใน (มีหลายทางออก: Low / High-Medium / ปกติ)
-   ตัว badge guard ตัวเองอยู่แล้ว — คืน '' ถ้าแถวนั้นไม่ได้ย้ายเดือน หรือ overrides ยังไม่โหลด */
-(function(){
-  var _plOrig = periodLabel;
-  periodLabel = function(r){
-    var out = _plOrig(r);
-    try{ if(typeof window._mvBadge==='function') out += window._mvBadge(r); }catch(e){}
-    return out;
-  };
-})();
-
 function periodLabel(r){
   // Low Prospect — แสดง "Low Prospect → ธ.ค. 2026" สีเหลือง
   if(r&&r._isLow){

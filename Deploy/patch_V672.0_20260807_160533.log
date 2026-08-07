@@ -1,6 +1,6 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260807153020
+Start time: 20260807160533
 Username: BERLI\PongsakR
 RunAs User: BERLI\PongsakR
 Configuration Name: 
@@ -18,25 +18,8 @@ SerializationVersion: 1.1.0.1
 **********************
 
 === BJH patch V672.0 ===
-guard ok : base V671.1 เธซเธฃเธทเธญ V671.2
-  wrote script_main.html  678 KB  sha ok
-  wrote SalesProspect.html  714 KB  sha ok
-  wrote Dashboard.html  606 KB  sha ok
-  wrote overrides.html  214 KB  sha ok
-  wrote STATE.md  187 KB  sha ok
-version on disk : V672.0
-
-clasp push -f ...
-
-clasp create-deployment ...
-
-
-
-
-
-DONE : V672.0
-user must Ctrl+Shift+R
+BASE MISMATCH : found 'V672.0' , expected 'V671.1 เธซเธฃเธทเธญ V671.2'
 **********************
 Windows PowerShell transcript end
-End time: 20260807153140
+End time: 20260807160533
 **********************

@@ -1883,8 +1883,8 @@ function dpFmtDate(v){
       if(_el){ try{ var _p=JSON.parse(atob((_el.textContent||'').trim())||'{}'); if(_p.version) vs.textContent=_p.version; }catch(e){} }
     }
     // [v328] build stamp — แสดงสั้น (ver + วันที่ + เวลา deploy) ; detail เก็บใน window ให้ 🐛 dump console
-    var _BUILD_VER='V672.0';
-    var _BUILD_TIME='7 ส.ค. 2569 (V672 ป้ายเลื่อนเดือน + แจ้ง MD Group Service)';
+    var _BUILD_VER='V672.1';
+    var _BUILD_TIME='7 ส.ค. 2569 (V672.1 ป้ายเลื่อนเดือน + แจ้ง MD Group Service)';
     var _BUILD_DETAIL='V479.75: FIX ประวัติสัญญา = 0 รายการ ทั้งที่มีสัญญาจริง 5 ใบ. Root cause: RAW_CONTRACT.SERAIL_NUMBER ว่างเป็นส่วนใหญ่ — SN ฝังใน PRODUCT_NAME/QH_SUBJECT_EMAIL/PROJECT_NAME แทน. Fix: รวมหลาย field แล้วค้น (pattern เดียวกับประวัติเสนอราคา) + conNo ว่างก็ยังแสดง (key=CON_ID). + V479.74 SC Quotation +เริ่ม/สิ้นสุด.';
     try{ window._BJH_BUILD={ver:_BUILD_VER,time:_BUILD_TIME,detail:_BUILD_DETAIL}; }catch(e){}
     // [v409] เดิม overrides เขียนทับ #ver-stamp ตรงๆ ตรงนี้ — ตอนนี้ _bjhUpdateBadge() (script_main) เป็นเจ้าของ element นี้แทน
@@ -3044,6 +3044,22 @@ window._bjhCdDebug = function(){
   });
 })();
 
+
+/* [V672] ห่อ periodLabel เพื่อต่อป้ายเลื่อนเดือนท้ายข้อความเดือนในตารางหลัก
+   ต้องห่อ "ตัวใน overrides" ไม่ใช่ตัวใน script_main — overrides ประกาศทับไว้ตั้งแต่ V646/V647
+   (บทเรียนเดิม: overrides.html โหลดทีหลังเสมอ แก้ที่ script_main จะถูกทับ)
+   ห่อทีเดียวแทนแก้ทุก return เพราะฟังก์ชันมีหลายทางออก (Low / High-Medium / ปกติ) */
+(function(){
+  try{
+    if(typeof periodLabel !== 'function') return;
+    var _plOrig = periodLabel;
+    periodLabel = function(r){
+      var out = _plOrig(r);
+      try{ if(typeof window._mvBadge==='function') out += window._mvBadge(r); }catch(e){}
+      return out;
+    };
+  }catch(e){ console.warn('[V672] wrap periodLabel', e); }
+})();
 
 /* ══════════════════════════════════════════════════════════════
    [V672] เลื่อนเดือน — ป้ายในตาราง + แจ้ง MD Group Service
